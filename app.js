@@ -321,19 +321,28 @@
 
   async function saveData() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.records));
-      localStorage.setItem('daily_deleted_sigs_v1', JSON.stringify(Array.from(appState.deletedSignatures)));
-      localStorage.setItem('daily_notification_logs_v1', JSON.stringify(appState.notificationLogs));
+      if (appState.records.length > 0) {
+        // Bulk upsert records
+        await supabase.from('records').upsert(appState.records);
+      } else {
+        // If empty, delete all existing records to reflect empty state
+        await supabase.from('records').delete().neq('id', 0);
+      }
+      
+      await supabase.from('app_settings').upsert([
+        { key: 'deleted_signatures', value: Array.from(appState.deletedSignatures) },
+        { key: 'notification_logs', value: appState.notificationLogs }
+      ]);
     } catch (e) {
-      console.error('Failed to save to localStorage:', e);
+      console.error('Failed to save to Supabase:', e);
     }
   }
 
   async function saveRules() {
     try {
-      localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(appState.categoryRules));
+      await supabase.from('app_settings').upsert({ key: 'rules', value: appState.categoryRules });
     } catch (e) {
-      console.error('Failed to save rules to localStorage:', e);
+      console.error('Failed to save rules to Supabase:', e);
     }
   }
 
@@ -1970,16 +1979,36 @@
       // Delete Main Category
       if (e.target.closest('.btn-delete-main-cat')) {
         const cat = e.target.closest('.btn-delete-main-cat').dataset.cat;
-        if (confirm(`대분류 '${cat}'와 속한 모든 소분류를 삭제하시겠습니까? (기존 내역의 데이터는 유지됩니다)`)) {
+        
+        const isUsed = appState.records.some(r => r.category === cat);
+        let confirmMsg = `대분류 '${cat}'와 속한 모든 소분류를 삭제하시겠습니까?`;
+        if (isUsed) {
+          confirmMsg = `대분류 '${cat}'를 사용 중인 내역이 있습니다. 삭제 시 해당 내역들의 카테고리는 모두 '미분류'로 자동 변경됩니다. 계속하시겠습니까?`;
+        }
+        
+        if (confirm(confirmMsg)) {
           delete appState.masterCategories[cat];
           if (appState.activeManageMainCat === cat) {
             appState.activeManageMainCat = null;
           }
+          
+          if (isUsed) {
+            appState.records.forEach(r => {
+              if (r.category === cat) {
+                r.category = '미분류';
+                r.subCategory = '미분류';
+                checkFixedCategory(r); // 업데이트된 카테고리에 맞춰 고정비 여부 재확인
+              }
+            });
+            saveData();
+          }
+
           saveMasterCategories();
           populateFilterDropdowns();
           renderTable();
           renderManageMainCategories();
           renderManageSubCategories();
+          renderKPIs();
           showToast(`대분류 '${cat}'가 삭제되었습니다.`);
         }
       }
@@ -2034,12 +2063,31 @@
       if (e.target.closest('.btn-delete-sub-cat')) {
         const sub = e.target.closest('.btn-delete-sub-cat').dataset.sub;
         const mainCat = appState.activeManageMainCat;
+        
+        const isUsed = appState.records.some(r => r.category === mainCat && r.subCategory === sub);
+        let confirmMsg = `소분류 '${sub}'를 삭제하시겠습니까?`;
+        if (isUsed) {
+          confirmMsg = `소분류 '${sub}'를 사용 중인 내역이 있습니다. 삭제 시 해당 내역들의 소분류는 모두 '미분류'로 자동 변경됩니다. 계속하시겠습니까?`;
+        }
+        
         if (mainCat && appState.masterCategories[mainCat]) {
+          if (!confirm(confirmMsg)) return;
           appState.masterCategories[mainCat] = appState.masterCategories[mainCat].filter(s => s !== sub);
+          
+          if (isUsed) {
+            appState.records.forEach(r => {
+              if (r.category === mainCat && r.subCategory === sub) {
+                r.subCategory = '미분류';
+              }
+            });
+            saveData();
+          }
+
           saveMasterCategories();
           populateFilterDropdowns();
           renderTable();
           renderManageSubCategories();
+          renderKPIs();
           showToast(`소분류 '${sub}'가 삭제되었습니다.`);
         }
       }
@@ -2734,9 +2782,10 @@
   }
 
   async function applyExcelData(isAppend) {
-    if (!pendingUploadedRecords || pendingUploadedRecords.length === 0) return;
+    try {
+      if (!pendingUploadedRecords || pendingUploadedRecords.length === 0) return;
 
-    // 결제수단 필터 적용 및 체크 상태 저장
+      // 결제수단 필터 적용 및 체크 상태 저장
     const container = document.getElementById('paymentCheckboxContainer');
     if (container) {
       const checkboxes = container.querySelectorAll('.chk-payment');
@@ -2871,9 +2920,13 @@
       showUploadSummaryModal(appState.records);
     }
 
-    pendingUploadedRecords = [];
-    const modal = document.getElementById('excelModeModal');
-    if (modal) modal.classList.remove('show');
+      pendingUploadedRecords = [];
+      const modal = document.getElementById('excelModeModal');
+      if (modal) modal.classList.remove('show');
+    } catch (err) {
+      console.error(err);
+      alert('엑셀 데이터 적용 중 오류가 발생했습니다: ' + (err.message || err));
+    }
   }
 
   function showUploadSummaryModal(newRecords) {
