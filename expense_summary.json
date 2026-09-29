@@ -1,0 +1,200 @@
+{
+  "total_expenses_count": 136,
+  "total_amount": 4903266,
+  "payment_methods": [
+    [
+      "아시아나 KB국민플래티늄카드",
+      1000000
+    ],
+    [
+      "카카오페이 간편결제",
+      875080
+    ],
+    [
+      "네이버페이 간편결제",
+      623400
+    ],
+    [
+      "신한 SOL LINK (쏠편한 입출금)",
+      456770
+    ],
+    [
+      "신한은행 The More",
+      386985
+    ],
+    [
+      "7230",
+      362577
+    ],
+    [
+      "MG+ S 하나카드",
+      306740
+    ],
+    [
+      "KT Plus 우리카드",
+      294610
+    ],
+    [
+      "다드림 LOVE",
+      257586
+    ],
+    [
+      "페이코 간편결제",
+      216099
+    ],
+    [
+      "KB국민 톡톡 my point카드",
+      64670
+    ],
+    [
+      "카카오페이 머니",
+      33650
+    ],
+    [
+      "토스 간편결제",
+      14699
+    ],
+    [
+      "네이버페이 간편결제(포인트)",
+      10400
+    ]
+  ],
+  "categories": [
+    [
+      "의료/건강",
+      1127540
+    ],
+    [
+      "금융",
+      1077007
+    ],
+    [
+      "식비",
+      771989
+    ],
+    [
+      "온라인쇼핑",
+      750170
+    ],
+    [
+      "교통",
+      353380
+    ],
+    [
+      "주거/통신",
+      267960
+    ],
+    [
+      "여행/숙박",
+      138000
+    ],
+    [
+      "뷰티/미용",
+      107500
+    ],
+    [
+      "생활",
+      102820
+    ],
+    [
+      "문화/여가",
+      99500
+    ],
+    [
+      "카페/간식",
+      71500
+    ],
+    [
+      "교육/학습",
+      19000
+    ],
+    [
+      "패션/쇼핑",
+      16900
+    ]
+  ],
+  "date_min": "2026-09-01",
+  "date_max": "2026-09-27",
+  "sample_first_5": [
+    {
+      "id": 1,
+      "date": "2026-09-27",
+      "time": "19:53:14",
+      "type": "지출",
+      "category": "카페/간식",
+      "subCategory": "커피/음료",
+      "merchant": "(주)공차코리아",
+      "amount": 6900,
+      "origPay": "신한은행 The More",
+      "actualCard": "신한은행 The More",
+      "installment": "일시불",
+      "billingAmount": 6900,
+      "exclude": "N",
+      "memo": ""
+    },
+    {
+      "id": 2,
+      "date": "2026-09-27",
+      "time": "19:30:51",
+      "type": "지출",
+      "category": "식비",
+      "subCategory": "일식",
+      "merchant": "역전우동 강남터미널",
+      "amount": 10000,
+      "origPay": "신한은행 The More",
+      "actualCard": "신한은행 The More",
+      "installment": "일시불",
+      "billingAmount": 10000,
+      "exclude": "N",
+      "memo": ""
+    },
+    {
+      "id": 3,
+      "date": "2026-09-27",
+      "time": "16:52:09",
+      "type": "지출",
+      "category": "카페/간식",
+      "subCategory": "커피/음료",
+      "merchant": "(주)케이알산업  인삼랜드(상)휴게소",
+      "amount": 4200,
+      "origPay": "신한은행 The More",
+      "actualCard": "신한은행 The More",
+      "installment": "일시불",
+      "billingAmount": 4200,
+      "exclude": "N",
+      "memo": ""
+    },
+    {
+      "id": 4,
+      "date": "2026-09-27",
+      "time": "14:22:07",
+      "type": "지출",
+      "category": "생활",
+      "subCategory": "편의점",
+      "merchant": "씨유(CU) 통영죽림원룸점",
+      "amount": 3000,
+      "origPay": "MG+ S 하나카드",
+      "actualCard": "MG+ S 하나카드",
+      "installment": "일시불",
+      "billingAmount": 3000,
+      "exclude": "N",
+      "memo": ""
+    },
+    {
+      "id": 5,
+      "date": "2026-09-27",
+      "time": "13:43:27",
+      "type": "지출",
+      "category": "온라인쇼핑",
+      "subCategory": "인터넷쇼핑",
+      "merchant": "쿠팡",
+      "amount": 8910,
+      "origPay": "신한은행 The More",
+      "actualCard": "신한은행 The More",
+      "installment": "일시불",
+      "billingAmount": 8910,
+      "exclude": "N",
+      "memo": ""
+    }
+  ]
+}
