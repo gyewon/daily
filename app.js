@@ -16,8 +16,8 @@
   const DELETED_RECORDS_KEY = 'gyewon_deleted_records_v1';
 
   // --- Supabase Client ---
-  const supabaseUrl = 'https://hddlrrbscqrugxioduir.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkZGxycmJzY3FydWd4aW9kdWlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4OTg2NjMsImV4cCI6MjEwNTQ3NDY2M30.4cPWb-1QIsH6voLdTOJba8bqXfm-yVlKolQrl4Q7-3s';
+  const supabaseUrl = 'https://jkuuwmuniuvijvbtvwde.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprdXV3bXVuaXV2aWp2YnR2d2RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2NjYzNzIsImV4cCI6MjEwNjI0MjM3Mn0.oo9L8jfEKj_ASOqqLCOQaT_8_obkv6OyJ4pGdJXTLuE';
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
   const DEFAULT_MASTER_CATEGORIES = {
@@ -1919,29 +1919,7 @@
     document.getElementById('btnCloseCategoryManageModal')?.addEventListener('click', () => manageModal.classList.remove('show'));
     document.getElementById('btnDoneCategoryManageModal')?.addEventListener('click', () => manageModal.classList.remove('show'));
 
-    document.getElementById('categoryManageModal')?.addEventListener('click', e => {
-      const badge = e.target.closest('.fixed-badge');
-      if (badge) {
-        const cat = badge.dataset.cat;
-        const subcat = badge.dataset.subcat;
-        const key = subcat || cat; // subcat format is 'Main|Sub'
-        if (appState.fixedCategories.has(key)) {
-          appState.fixedCategories.delete(key);
-        } else {
-          appState.fixedCategories.add(key);
-        }
-        saveFixedCategories();
-        // Update existing records
-        appState.records.forEach(r => checkFixedCategory(r));
-        saveData();
-        renderKPIs();
-        renderTable();
-        
-        if (cat) renderManageMainCategories();
-        if (subcat) renderManageSubCategories();
-      }
-    });
-
+    
     document.getElementById('newMainCategoryForm')?.addEventListener('submit', e => {
       e.preventDefault();
       const val = document.getElementById('newMainCategoryName').value.trim();
@@ -1951,10 +1929,7 @@
         return;
       }
       appState.masterCategories[val] = [];
-      if (isFixed) {
-        appState.fixedCategories.add(val);
-        saveFixedCategories();
-      }
+      
       saveMasterCategories();
       populateFilterDropdowns(); // update dropdowns globally
       renderTable();
@@ -1973,10 +1948,7 @@
         return;
       }
       appState.masterCategories[mainCat].push(val);
-      if (isFixed) {
-        appState.fixedCategories.add(`${mainCat}|${val}`);
-        saveFixedCategories();
-      }
+      
       saveMasterCategories();
       populateFilterDropdowns();
       renderTable();
