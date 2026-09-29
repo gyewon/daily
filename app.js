@@ -675,6 +675,7 @@
     let installmentCount = 0;
     let excludedAmt = 0;
     let excludedCount = 0;
+    let fixedAmt = 0;
 
     records.forEach(r => {
       const amt = Number(r.amount) || 0;
@@ -689,6 +690,10 @@
       } else {
         totalValidAmt += amt;
         totalValidCount++;
+
+        if (r.isFixed === 'Y' || r.category === '고정비') {
+          fixedAmt += amt;
+        }
 
         if (isPhysical) {
           cardAmt += amt;
@@ -706,8 +711,12 @@
     });
 
     // Update KPI Elements
-    document.getElementById('kpiTotalAmount').textContent = formatCurrency(totalValidAmt);
-    document.getElementById('kpiTxCount').textContent = `${totalValidCount}건 지출 반영`;
+    const livingAmt = totalValidAmt - fixedAmt;
+    const kpiLivingAmountEl = document.getElementById('kpiLivingAmount');
+    if (kpiLivingAmountEl) kpiLivingAmountEl.textContent = formatCurrency(livingAmt);
+
+    const kpiFixedAmountTextEl = document.getElementById('kpiFixedAmountText');
+    if (kpiFixedAmountTextEl) kpiFixedAmountTextEl.textContent = `고정비: ${formatCurrency(fixedAmt)}원 (총 ${formatCurrency(totalValidAmt)}원)`;
 
     // Daily average based on period (10 days)
     const daysInPeriod = 10;
