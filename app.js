@@ -70,6 +70,7 @@
     searchQuery: '',
     filterCard: 'ALL',
     filterCategory: 'ALL',
+    filterType: 'ALL',
     filterExclude: 'ALL', // 'ALL' | 'N' | 'Y'
     filterInstallment: 'ALL',
      // 'ALL' | '일시불' | '할부'
@@ -623,6 +624,13 @@
         if (r.category !== appState.filterCategory) return false;
       }
 
+      // Type Filter
+      if (appState.filterType === 'Y') {
+        if (r.isFixed !== 'Y' && r.category !== '고정비') return false;
+      } else if (appState.filterType === 'N') {
+        if (r.isFixed === 'Y' || r.category === '고정비') return false;
+      }
+
       // Exclude Filter
       if (appState.filterExclude !== 'ALL') {
         if (r.exclude !== appState.filterExclude) return false;
@@ -635,15 +643,14 @@
         if (r.isInstallment !== 'Y') return false;
       }
 
-      // Search Query (merchant, memo, origPay)
+      // Search Query (merchant, memo)
       if (appState.searchQuery.trim()) {
         const q = appState.searchQuery.trim().toLowerCase();
         const m = (r.merchant || '').toLowerCase();
         const memo = (r.memo || '').toLowerCase();
-        const orig = (r.origPay || '').toLowerCase();
         const cat = (r.category || '').toLowerCase();
         const sub = (r.subCategory || '').toLowerCase();
-        if (!m.includes(q) && !memo.includes(q) && !orig.includes(q) && !cat.includes(q) && !sub.includes(q)) {
+        if (!m.includes(q) && !memo.includes(q) && !cat.includes(q) && !sub.includes(q)) {
           return false;
         }
       }
@@ -711,32 +718,26 @@
 
     // Update KPI Elements
     const livingAmt = totalValidAmt - fixedAmt;
+    
+    // KPI 1: 총 지출
+    const kpiTotalAmountEl = document.getElementById('kpiTotalAmount');
+    if (kpiTotalAmountEl) kpiTotalAmountEl.textContent = formatCurrency(totalValidAmt);
+    const kpiTxCountEl = document.getElementById('kpiTxCount');
+    if (kpiTxCountEl) kpiTxCountEl.textContent = `${totalValidCount}건 지출 반영`;
+
+    // KPI 2: 고정비
+    document.getElementById('kpiFixedAmount').textContent = formatCurrency(fixedAmt);
+    const fixedCount = records.filter(r => r.exclude !== 'Y' && (r.isFixed === 'Y' || r.category === '고정비')).length;
+    document.getElementById('kpiFixedCount').textContent = `고정비 ${fixedCount}건`;
+
+    // KPI 3: 순 생활비
     const kpiLivingAmountEl = document.getElementById('kpiLivingAmount');
     if (kpiLivingAmountEl) kpiLivingAmountEl.textContent = formatCurrency(livingAmt);
+    const livingRatio = totalValidAmt > 0 ? Math.round((livingAmt / totalValidAmt) * 100) : 0;
+    const kpiLivingRatioTextEl = document.getElementById('kpiLivingRatioText');
+    if (kpiLivingRatioTextEl) kpiLivingRatioTextEl.textContent = `비중 ${livingRatio}%`;
 
-    const kpiFixedAmountTextEl = document.getElementById('kpiFixedAmountText');
-    if (kpiFixedAmountTextEl) kpiFixedAmountTextEl.textContent = `고정비: ${formatCurrency(fixedAmt)}원 (총 ${formatCurrency(totalValidAmt)}원)`;
-
-    // Daily average based on period (10 days)
-    const daysInPeriod = 10;
-    const dailyAvg = Math.round(totalValidAmt / daysInPeriod);
-    document.getElementById('kpiDailyAvg').textContent = `일평균 ${formatCurrency(dailyAvg)}원`;
-
-    // Card Amount & Ratio
-    document.getElementById('kpiCardAmount').textContent = formatCurrency(cardAmt);
-    const cardRatio = totalValidAmt > 0 ? Math.round((cardAmt / totalValidAmt) * 100) : 0;
-    document.getElementById('kpiCardRatioBar').style.width = `${cardRatio}%`;
-    document.getElementById('kpiCardRatioText').textContent = `지출 비중 ${cardRatio}%`;
-
-    // Pay Amount
-    document.getElementById('kpiPayAmount').textContent = formatCurrency(payAmt);
-    document.getElementById('kpiPayCount').textContent = `간편결제/계좌 ${payCount}건`;
-
-    // Billing Amount
-    document.getElementById('kpiBillingAmount').textContent = formatCurrency(billingAmt);
-    document.getElementById('kpiInstallmentCount').textContent = `할부 설정 ${installmentCount}건`;
-
-    // Excluded
+    // KPI 4: 결제 완료 금액
     document.getElementById('kpiExcludedAmount').textContent = formatCurrency(excludedAmt);
     document.getElementById('kpiExcludedCount').textContent = `${excludedCount}건 완료`;
 
@@ -1554,14 +1555,13 @@
       showToast(`미매핑된 간편결제/계좌 내역 ${unmappedCount}건을 표시합니다.`, 'info');
     });
 
-    document.getElementById('btnFilterUnmapped')?.addEventListener('click', () => {
-      appState.filterCard = 'UNMAPPED';
-      document.getElementById('filterCard').value = 'UNMAPPED';
+    document.getElementById('btnFilterFixed')?.addEventListener('click', () => {
+      appState.filterType = 'Y';
+      document.getElementById('filterType').value = 'Y';
       appState.currentPage = 1;
-      renderCardsBreakdown();
       renderTable();
-      const unmappedCount = appState.records.filter(r =>  (!CARD_CONFIG[r.actualCard] || CARD_CONFIG[r.actualCard].type !== 'physical')).length;
-      showToast(`미매핑된 간편결제/계좌 내역 ${unmappedCount}건을 표시합니다.`, 'info');
+      const fixedCount = appState.records.filter(r => r.exclude !== 'Y' && (r.isFixed === 'Y' || r.category === '고정비')).length;
+      showToast(`고정비 내역 ${fixedCount}건을 표시합니다.`, 'info');
     });
 
     document.getElementById('btnFilterExcluded')?.addEventListener('click', () => {
@@ -1612,6 +1612,12 @@
       renderTable();
     });
 
+    document.getElementById('filterType')?.addEventListener('change', e => {
+      appState.filterType = e.target.value;
+      appState.currentPage = 1;
+      renderTable();
+    });
+
     document.getElementById('filterExclude')?.addEventListener('change', e => {
       appState.filterExclude = e.target.value;
       appState.currentPage = 1;
@@ -1629,12 +1635,14 @@
       appState.searchQuery = '';
       appState.filterCard = 'ALL';
       appState.filterCategory = 'ALL';
+      appState.filterType = 'ALL';
       appState.filterExclude = 'ALL';
       appState.filterInstallment = 'ALL';
       if (searchInput) searchInput.value = '';
       if (btnClearSearch) btnClearSearch.style.display = 'none';
       document.getElementById('filterCard').value = 'ALL';
       document.getElementById('filterCategory').value = 'ALL';
+      document.getElementById('filterType').value = 'ALL';
       document.getElementById('filterExclude').value = 'ALL';
       document.getElementById('filterInstallment').value = 'ALL';
       appState.currentPage = 1;

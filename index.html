@@ -111,8 +111,39 @@
 
       <!-- KPI Summary Cards -->
       <section class="kpi-grid">
-        <!-- KPI 1: 생활비 & 고정비 -->
+        <!-- KPI 1: 총 지출 -->
         <div class="kpi-card highlight-card">
+          <div class="kpi-header">
+            <span class="kpi-label">총 지출</span>
+            <span class="kpi-icon-pill">💰</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" id="kpiTotalAmount">0</span>
+            <span class="kpi-unit">원</span>
+          </div>
+          <div class="kpi-footer">
+            <span class="kpi-subtext" id="kpiTxCount">0건 지출 반영</span>
+          </div>
+        </div>
+
+        <!-- KPI 2: 고정비 -->
+        <div class="kpi-card card-accent-orange">
+          <div class="kpi-header">
+            <span class="kpi-label">고정비</span>
+            <span class="kpi-icon-pill">🔒</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" id="kpiFixedAmount">0</span>
+            <span class="kpi-unit">원</span>
+          </div>
+          <div class="kpi-footer">
+            <span class="kpi-subtext" id="kpiFixedCount">고정비 0건</span>
+            <button id="btnFilterFixed" class="kpi-mini-btn" title="고정비 항목만 즉시 필터링">모아보기 &rarr;</button>
+          </div>
+        </div>
+
+        <!-- KPI 3: 순 생활비 -->
+        <div class="kpi-card card-accent-blue">
           <div class="kpi-header">
             <span class="kpi-label">순 생활비 (총 지출 - 고정비)</span>
             <span class="kpi-icon-pill">🎯</span>
@@ -122,62 +153,11 @@
             <span class="kpi-unit">원</span>
           </div>
           <div class="kpi-footer">
-            <span class="kpi-subtext" id="kpiFixedAmountText">고정비: 0원 (총 0원)</span>
-            <span class="kpi-badge positive" id="kpiDailyAvg">일평균 0원</span>
+            <span class="kpi-subtext" id="kpiLivingRatioText">비중 0%</span>
           </div>
         </div>
 
-        <!-- KPI 2: 실물 카드 지출 -->
-        <div class="kpi-card card-accent-blue">
-          <div class="kpi-header">
-            <span class="kpi-label">실물 신용/체크카드 지출</span>
-            <span class="kpi-icon-pill">💳</span>
-          </div>
-          <div class="kpi-value-row">
-            <span class="kpi-value" id="kpiCardAmount">0</span>
-            <span class="kpi-unit">원</span>
-          </div>
-          <div class="kpi-footer">
-            <div class="progress-bar-container">
-              <div class="progress-fill blue-fill" id="kpiCardRatioBar" style="width: 0%;"></div>
-            </div>
-            <span class="kpi-subtext" id="kpiCardRatioText">비중 0%</span>
-          </div>
-        </div>
-
-        <!-- KPI 3: 간편결제 / 계좌 잔여액 -->
-        <div class="kpi-card card-accent-orange">
-          <div class="kpi-header">
-            <span class="kpi-label">간편결제 / 계좌 지출</span>
-            <span class="kpi-icon-pill">📱</span>
-          </div>
-          <div class="kpi-value-row">
-            <span class="kpi-value" id="kpiPayAmount">0</span>
-            <span class="kpi-unit">원</span>
-          </div>
-          <div class="kpi-footer">
-            <span class="kpi-subtext" id="kpiPayCount">미매핑 간편결제 0건</span>
-            <button id="btnFilterUnmapped" class="kpi-mini-btn" title="간편결제 항목만 즉시 필터링">매핑하기 &rarr;</button>
-          </div>
-        </div>
-
-        <!-- KPI 4: 이번달 청구 예상액 (할부 분할 반영) -->
-        <div class="kpi-card card-accent-green">
-          <div class="kpi-header">
-            <span class="kpi-label">청구 기준 금액 (할부반영)</span>
-            <span class="kpi-icon-pill">📑</span>
-          </div>
-          <div class="kpi-value-row">
-            <span class="kpi-value" id="kpiBillingAmount">0</span>
-            <span class="kpi-unit">원</span>
-          </div>
-          <div class="kpi-footer">
-            <span class="kpi-subtext" id="kpiInstallmentCount">할부 설정 0건</span>
-            <span class="kpi-badge info">1/N 분할 계산</span>
-          </div>
-        </div>
-
-        <!-- KPI 5: 결제 완료 내역 -->
+        <!-- KPI 4: 결제 완료 금액 -->
         <div class="kpi-card card-accent-purple">
           <div class="kpi-header">
             <span class="kpi-label">결제 완료 금액</span>
@@ -304,7 +284,7 @@
         <div class="table-controls-bar">
           <div class="search-box">
             <span class="search-icon">🔍</span>
-            <input type="text" id="searchInput" placeholder="가맹점명, 메모, 원본결제수단 검색..." autocomplete="off">
+            <input type="text" id="searchInput" placeholder="가맹점명, 카테고리, 메모 검색..." autocomplete="off">
             <button id="btnClearSearch" class="btn-clear-search" style="display:none;">&times;</button>
           </div>
 
@@ -325,6 +305,16 @@
               <label for="filterCategory">대분류</label>
               <select id="filterCategory">
                 <option value="ALL">모든 카테고리</option>
+              </select>
+            </div>
+
+            <!-- Filter Type -->
+            <div class="select-wrapper">
+              <label for="filterType">유형</label>
+              <select id="filterType">
+                <option value="ALL">전체 유형</option>
+                <option value="Y">고정비</option>
+                <option value="N">변동비</option>
               </select>
             </div>
 
