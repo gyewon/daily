@@ -279,6 +279,7 @@
           if (s.key === 'deleted_signatures') appState.deletedSignatures = new Set(s.value);
           if (s.key === 'notification_logs') appState.notificationLogs = s.value;
           if (s.key === 'card_config') CARD_CONFIG = s.value;
+          if (s.key === 'records') appState.records = s.value || [];
         });
       }
 
@@ -286,9 +287,14 @@
         appState.masterCategories = JSON.parse(JSON.stringify(DEFAULT_MASTER_CATEGORIES));
       }
 
-      const { data: records, error: recErr } = await supabase.from('records').select('*').order('id', { ascending: true });
-      if (records && records.length > 0) {
-        appState.records = records;
+      if (!appState.records || appState.records.length === 0) {
+        const { data: records, error: recErr } = await supabase.from('records').select('*').order('id', { ascending: true });
+        if (records && records.length > 0) {
+          appState.records = records;
+        }
+      }
+      
+      if (appState.records && appState.records.length > 0) {
         let changed = autoFlagInstallments();
         appState.records.forEach(r => {
           if (r.isFixed === undefined || r.isFixed === null) {
@@ -321,15 +327,8 @@
 
   async function saveData() {
     try {
-      if (appState.records.length > 0) {
-        // Bulk upsert records
-        await supabase.from('records').upsert(appState.records);
-      } else {
-        // If empty, delete all existing records to reflect empty state
-        await supabase.from('records').delete().neq('id', 0);
-      }
-      
       await supabase.from('app_settings').upsert([
+        { key: 'records', value: appState.records },
         { key: 'deleted_signatures', value: Array.from(appState.deletedSignatures) },
         { key: 'notification_logs', value: appState.notificationLogs }
       ]);
