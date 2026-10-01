@@ -644,11 +644,11 @@
         if (appState.filterType === '변동비') {
           let isCustom = r.isFixed === 'Y';
           for (const t in appState.customTypes) {
-            if (appState.customTypes[t].includes(r.category)) isCustom = true;
+            if (appState.customTypes[t].includes(r.category) || r.category === t) isCustom = true;
           }
           if (isCustom) return false;
         } else {
-          if (!typeCats.includes(r.category) && !(appState.filterType === '고정비' && r.isFixed === 'Y')) return false;
+          if (!typeCats.includes(r.category) && r.category !== appState.filterType && !(appState.filterType === '고정비' && r.isFixed === 'Y')) return false;
         }
       }
 
@@ -703,6 +703,7 @@
     let installmentCount = 0;
     let excludedAmt = 0;
     let excludedCount = 0;
+    let validCustomTypeAmt = 0;
     const customTypeSums = {};
     const customTypeCounts = {};
     for (const t in appState.customTypes) {
@@ -724,17 +725,6 @@
         totalValidAmt += amt;
         totalValidCount++;
 
-        for (const t in appState.customTypes) {
-          const cats = appState.customTypes[t];
-          if (t === '고정비' && (r.isFixed === 'Y' || cats.includes(r.category))) {
-            customTypeSums[t] += amt;
-            customTypeCounts[t]++;
-          } else if (t !== '고정비' && cats.includes(r.category)) {
-            customTypeSums[t] += amt;
-            customTypeCounts[t]++;
-          }
-        }
-
         if (isPhysical) {
           cardAmt += amt;
         } else {
@@ -748,11 +738,32 @@
           installmentCount++;
         }
       }
+
+      let matchedAnyType = false;
+      for (const t in appState.customTypes) {
+        const cats = appState.customTypes[t];
+        if (t === '고정비') {
+          if (r.isFixed === 'Y' || cats.includes(r.category) || r.category === t) {
+            customTypeSums[t] += amt;
+            customTypeCounts[t]++;
+            matchedAnyType = true;
+          }
+        } else {
+          if (cats.includes(r.category) || r.category === t) {
+            customTypeSums[t] += amt;
+            customTypeCounts[t]++;
+            matchedAnyType = true;
+          }
+        }
+      }
+      if (matchedAnyType && !isExclude) {
+        validCustomTypeAmt += amt;
+      }
     });
 
     // Update KPI Elements
     const fixedAmt = customTypeSums['고정비'] || 0;
-    const livingAmt = totalValidAmt - fixedAmt;
+    const livingAmt = totalValidAmt - validCustomTypeAmt;
     
     // KPI 1: 총 지출
     const kpiTotalAmountEl = document.getElementById('kpiTotalAmount');
@@ -808,6 +819,12 @@
     const livingRatio = totalValidAmt > 0 ? Math.round((livingAmt / totalValidAmt) * 100) : 0;
     const kpiLivingRatioTextEl = document.getElementById('kpiLivingRatioText');
     if (kpiLivingRatioTextEl) kpiLivingRatioTextEl.textContent = `비중 ${livingRatio}%`;
+    const kpiLivingLabelEl = document.getElementById('kpiLivingLabel');
+    if (kpiLivingLabelEl) {
+      const typeNames = Object.keys(appState.customTypes);
+      const excludeText = typeNames.length > 0 ? `(총 지출 - ${typeNames.join(', ')})` : '(총 지출)';
+      kpiLivingLabelEl.textContent = `순 생활비 ${excludeText}`;
+    }
 
     // KPI 4: 결제 완료 금액
     document.getElementById('kpiExcludedAmount').textContent = formatCurrency(excludedAmt);
@@ -1329,6 +1346,20 @@
     const installmentOptions = ['일시불', '2개월', '3개월', '4개월', '5개월', '6개월', '12개월'];
 
     pageRecords.forEach(rec => {
+      // Compute Record Type
+      let recordType = '변동비';
+      let matchedCustom = false;
+      for (const t in appState.customTypes) {
+        if (appState.customTypes[t].includes(rec.category) || rec.category === t) {
+          recordType = t;
+          matchedCustom = true;
+          break;
+        }
+      }
+      if (!matchedCustom && rec.isFixed === 'Y') {
+        recordType = '고정비';
+      }
+
       const isExcluded = rec.exclude === 'Y';
       const isUnmapped = !CARD_CONFIG[rec.actualCard] || CARD_CONFIG[rec.actualCard].type !== 'physical';
       const isCanceledClass = rec.isCanceled ? 'is-canceled' : '';
@@ -1400,18 +1431,15 @@
             ${rec.isInstallment === 'Y' ? 'Y' : 'N'}
           </button>
         </td>
-        <td class="col-bill" id="billCell_${rec.id}">
-          ${formatCurrency(rec.amount)}
-        </td>
         <td class="col-exclude">
           <button class="exclude-toggle-btn ${isExcluded ? 'active-y' : ''}" data-id="${rec.id}" title="결제 상태 토글" style="width: 50px; font-size:0.8rem; border-radius:12px; padding:4px;">
             ${isExcluded ? '완료' : '대기'}
           </button>
         </td>
           <td class="col-fixed" style="text-align:center;">
-            <button class="fixed-toggle-btn ${rec.isFixed === 'Y' ? 'active-y' : ''}" data-id="${rec.id}" title="고정비/생활비 토글" style="width: 50px; font-size:0.8rem; border-radius:12px; padding:4px; border:1px solid ${rec.isFixed === 'Y' ? 'var(--primary-color)' : 'var(--border-color)'}; background:${rec.isFixed === 'Y' ? 'var(--primary-color)' : 'transparent'}; color:${rec.isFixed === 'Y' ? 'white' : 'var(--text-muted)'};">
-              ${rec.isFixed === 'Y' ? '고정' : '변동'}
-            </button>
+            <span class="badge" style="background:var(--bg-surface); padding:4px 8px; border-radius:12px; font-size:0.8rem; border:1px solid var(--border-color); color:var(--text-muted);">
+              ${recordType}
+            </span>
           </td>
         <td class="col-memo">
           <input type="text" class="input-table-memo" data-id="${rec.id}" value="${rec.memo || ''}" placeholder="메모 입력...">
@@ -1939,11 +1967,25 @@
       
       if (!keyword || !category) return;
       
-      appState.categoryRules.push({ id: Date.now(), keyword, amount, category, subCategory });
+      const editId = e.target.dataset.editId;
+      if (editId) {
+        const id = Number(editId);
+        const ruleIdx = appState.categoryRules.findIndex(r => r.id === id);
+        if (ruleIdx > -1) {
+          appState.categoryRules[ruleIdx] = { id, keyword, amount, category, subCategory };
+        }
+        delete e.target.dataset.editId;
+        const btn = document.getElementById('ruleSubmitBtn');
+        if (btn) btn.textContent = '추가';
+        showToast(`'${keyword}' 규칙이 수정되었습니다.`, 'success');
+      } else {
+        appState.categoryRules.push({ id: Date.now(), keyword, amount, category, subCategory });
+        showToast(`'${keyword}' 규칙이 추가되었습니다.`, 'success');
+      }
+      
       saveRules();
       renderRulesTable();
       e.target.reset();
-      showToast(`'${keyword}' 규칙이 추가되었습니다.`, 'success');
     });
 
     document.getElementById('rulesTableBody')?.addEventListener('click', e => {
@@ -1953,6 +1995,22 @@
         supabase.from('category_rules').delete().eq('id', id); // background
         renderRulesTable();
         showToast('규칙이 삭제되었습니다.');
+      }
+      if (e.target.closest('.btn-edit-rule')) {
+        const id = Number(e.target.closest('.btn-edit-rule').dataset.id);
+        const rule = appState.categoryRules.find(r => r.id === id);
+        if (rule) {
+          document.getElementById('ruleKeyword').value = rule.keyword;
+          document.getElementById('ruleAmount').value = rule.amount || '';
+          document.getElementById('ruleCategory').value = rule.category;
+          updateSubCategoryOptions(document.getElementById('ruleCategory'), 'ruleSubCategory');
+          document.getElementById('ruleSubCategory').value = rule.subCategory || '';
+          
+          document.getElementById('newRuleForm').dataset.editId = rule.id;
+          const btn = document.getElementById('ruleSubmitBtn');
+          if (btn) btn.textContent = '수정';
+          document.getElementById('ruleKeyword').focus();
+        }
       }
     });
 
@@ -2011,7 +2069,8 @@
           <td style="padding: 10px;"><span class="badge-cat">${rule.category}</span></td>
           <td style="padding: 10px;">${rule.subCategory || '-'}</td>
           <td style="padding: 10px; text-align: center;">
-            <button type="button" class="btn-delete-rule" data-id="${rule.id}" title="삭제" style="background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--text-muted);">🗑️</button>
+            <button type="button" class="btn-edit-rule" data-id="${rule.id}" title="수정" style="background:none; border:none; cursor:pointer; font-size:1.1rem; color:var(--text-muted); margin-right:6px;">✏️</button>
+            <button type="button" class="btn-delete-rule" data-id="${rule.id}" title="삭제" style="background:none; border:none; cursor:pointer; font-size:1.1rem; color:var(--text-muted);">🗑️</button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -2279,45 +2338,16 @@
         }
         
         let currentType = '변동비';
-        if (appState.customTypes['고정비'] && appState.customTypes['고정비'].includes(cat)) currentType = '고정비';
-        else if (appState.customTypes['리뷰비'] && appState.customTypes['리뷰비'].includes(cat)) currentType = '리뷰비';
-
         div.innerHTML = `
           <span style="font-weight: 600; font-size: 0.95rem;">
             ${cat} 
           </span>
           <div style="display:flex; gap: 8px; align-items:center;">
-            <select class="type-assign-select" data-cat="${cat}" style="font-size:0.8rem; padding:2px; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-body);">
-              <option value="변동비" ${currentType === '변동비' ? 'selected' : ''}>🔵 변동비</option>
-              <option value="고정비" ${currentType === '고정비' ? 'selected' : ''}>🔒 고정비</option>
-              <option value="리뷰비" ${currentType === '리뷰비' ? 'selected' : ''}>📝 리뷰비</option>
-            </select>
             <button type="button" class="btn-edit-main-cat" data-cat="${cat}" style="background:none; border:none; color:var(--text-muted); cursor:pointer;" title="이름 수정">✏️</button>
             <button type="button" class="btn-delete-main-cat" data-cat="${cat}" style="background:none; border:none; color:var(--text-muted); cursor:pointer;" title="삭제">&times;</button>
           </div>
         `;
         container.appendChild(div);
-      });
-      
-      container.querySelectorAll('.type-assign-select').forEach(sel => {
-        sel.addEventListener('change', (e) => {
-          const cat = e.target.dataset.cat;
-          const newType = e.target.value;
-          
-          for (const t in appState.customTypes) {
-            appState.customTypes[t] = appState.customTypes[t].filter(c => c !== cat);
-          }
-          
-          if (newType !== '변동비') {
-            if (!appState.customTypes[newType]) appState.customTypes[newType] = [];
-            appState.customTypes[newType].push(cat);
-          }
-          
-          saveCustomTypes();
-          renderTypeFilter();
-          renderTable();
-          renderKPIs();
-        });
       });
     }
 
@@ -3114,6 +3144,79 @@
 
   let isAppInitialized = false;
 
+
+  const modalManageTypes = document.getElementById('modalManageTypes');
+  const btnManageTypes = document.getElementById('btnManageTypes');
+  const btnCloseManageTypes = document.getElementById('btnCloseManageTypes');
+  const btnAddType = document.getElementById('btnAddType');
+  const newTypeNameInput = document.getElementById('newTypeName');
+  const typeListContainer = document.getElementById('typeListContainer');
+
+  function renderManageTypes() {
+    if (!typeListContainer) return;
+    typeListContainer.innerHTML = '';
+    
+    for (const t in appState.customTypes) {
+      const typeCard = document.createElement('div');
+      typeCard.style.cssText = 'background: var(--bg-body); border-radius: 8px; padding: 12px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;';
+      
+      const titleSpan = document.createElement('span');
+      titleSpan.style.fontWeight = 'bold';
+      titleSpan.textContent = t;
+      typeCard.appendChild(titleSpan);
+      
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '유형 삭제';
+      delBtn.style.cssText = 'background: transparent; color: var(--color-danger); border: none; cursor: pointer; font-size: 0.85rem;';
+      delBtn.onclick = () => {
+        if(confirm(`'${t}' 유형을 삭제하시겠습니까? 속한 카테고리는 모두 변동비로 돌아갑니다.`)) {
+          delete appState.customTypes[t];
+          saveCustomTypes();
+          renderManageTypes();
+          renderTypeFilter();
+          renderTable();
+          renderKPIs();
+          renderManageMainCategories();
+        }
+      };
+      typeCard.appendChild(delBtn);
+      
+      typeListContainer.appendChild(typeCard);
+    }
+  }
+
+  if (btnManageTypes) {
+    btnManageTypes.addEventListener('click', () => {
+      renderManageTypes();
+      modalManageTypes.style.display = 'flex';
+    });
+  }
+  if (btnCloseManageTypes) {
+    btnCloseManageTypes.addEventListener('click', () => {
+      modalManageTypes.style.display = 'none';
+    });
+  }
+  if (btnAddType) {
+    btnAddType.addEventListener('click', () => {
+      const v = newTypeNameInput.value.trim();
+      if (!v) return;
+      if (appState.customTypes[v]) {
+        showToast('이미 존재하는 유형입니다.', 'warn');
+        return;
+      }
+      if (v === '변동비' || v === 'ALL' || v === '고정비') {
+        showToast('사용할 수 없는 이름입니다.', 'warn');
+        return;
+      }
+      appState.customTypes[v] = [];
+      newTypeNameInput.value = '';
+      saveCustomTypes();
+      renderManageTypes();
+      renderTypeFilter();
+      renderManageMainCategories();
+      showToast(`'${v}' 유형이 추가되었습니다.`, 'success');
+    });
+  }
 
   // --- Custom Types Management ---
   function renderTypeFilter() {
