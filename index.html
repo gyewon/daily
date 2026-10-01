@@ -126,21 +126,10 @@
           </div>
         </div>
 
-        <!-- KPI 2: 고정비 -->
-        <div class="kpi-card card-accent-orange">
-          <div class="kpi-header">
-            <span class="kpi-label">고정비</span>
-            <span class="kpi-icon-pill">🔒</span>
-          </div>
-          <div class="kpi-value-row">
-            <span class="kpi-value" id="kpiFixedAmount">0</span>
-            <span class="kpi-unit">원</span>
-          </div>
-          <div class="kpi-footer">
-            <span class="kpi-subtext" id="kpiFixedCount">고정비 0건</span>
-            <button id="btnFilterFixed" class="kpi-mini-btn" title="고정비 항목만 즉시 필터링">모아보기 &rarr;</button>
-          </div>
-        </div>
+        <!-- Dynamic Custom Type KPIs will be inserted here -->
+        <div id="dynamicKpiContainer" style="display: contents;"></div>
+
+
 
         <!-- KPI 3: 순 생활비 -->
         <div class="kpi-card card-accent-blue">
@@ -749,6 +738,7 @@
       </div>
     </div>
   </div>
+
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

@@ -66,6 +66,7 @@
     masterCategories: {},
     deletedSignatures: new Set(),
     notificationLogs: [], // newly added for logs
+    customTypes: { "고정비": ["고정비"] },
     activeManageMainCat: null,
     searchQuery: '',
     filterCard: 'ALL',
@@ -192,6 +193,7 @@
     await loadData();
     initTheme();
     populateFilterDropdowns();
+    if (typeof renderTypeFilter === 'function') renderTypeFilter();
     attachEventListeners();
     renderAll();
   }
@@ -275,6 +277,10 @@
       if (settings) {
         settings.forEach(s => {
           if (s.key === 'rules') appState.categoryRules = s.value;
+          if (s.key === 'custom_types') {
+            appState.customTypes = s.value || { "고정비": [], "리뷰비": [] };
+            if (!appState.customTypes['리뷰비']) appState.customTypes['리뷰비'] = [];
+          }
           if (s.key === 'master_categories') appState.masterCategories = s.value;
           
           if (s.key === 'deleted_signatures') appState.deletedSignatures = new Set(s.value);
@@ -343,6 +349,14 @@
       await supabase.from('app_settings').upsert({ key: 'rules', value: appState.categoryRules });
     } catch (e) {
       console.error('Failed to save rules to Supabase:', e);
+    }
+  }
+
+  async function saveCustomTypes() {
+    try {
+      await supabase.from('app_settings').upsert({ key: 'custom_types', value: appState.customTypes });
+    } catch (e) {
+      console.error('Failed to save custom types to Supabase:', e);
     }
   }
 
@@ -625,10 +639,17 @@
       }
 
       // Type Filter
-      if (appState.filterType === 'Y') {
-        if (r.isFixed !== 'Y' && r.category !== '고정비') return false;
-      } else if (appState.filterType === 'N') {
-        if (r.isFixed === 'Y' || r.category === '고정비') return false;
+      if (appState.filterType && appState.filterType !== 'ALL') {
+        const typeCats = appState.customTypes[appState.filterType] || [];
+        if (appState.filterType === '변동비') {
+          let isCustom = r.isFixed === 'Y';
+          for (const t in appState.customTypes) {
+            if (appState.customTypes[t].includes(r.category)) isCustom = true;
+          }
+          if (isCustom) return false;
+        } else {
+          if (!typeCats.includes(r.category) && !(appState.filterType === '고정비' && r.isFixed === 'Y')) return false;
+        }
       }
 
       // Exclude Filter
@@ -650,7 +671,8 @@
         const memo = (r.memo || '').toLowerCase();
         const cat = (r.category || '').toLowerCase();
         const sub = (r.subCategory || '').toLowerCase();
-        if (!m.includes(q) && !memo.includes(q) && !cat.includes(q) && !sub.includes(q)) {
+        const amtStr = (r.amount || '').toString();
+        if (!m.includes(q) && !memo.includes(q) && !cat.includes(q) && !sub.includes(q) && !amtStr.includes(q)) {
           return false;
         }
       }
@@ -681,7 +703,12 @@
     let installmentCount = 0;
     let excludedAmt = 0;
     let excludedCount = 0;
-    let fixedAmt = 0;
+    const customTypeSums = {};
+    const customTypeCounts = {};
+    for (const t in appState.customTypes) {
+      customTypeSums[t] = 0;
+      customTypeCounts[t] = 0;
+    }
 
     records.forEach(r => {
       const amt = Number(r.amount) || 0;
@@ -697,8 +724,15 @@
         totalValidAmt += amt;
         totalValidCount++;
 
-        if (r.isFixed === 'Y' || r.category === '고정비') {
-          fixedAmt += amt;
+        for (const t in appState.customTypes) {
+          const cats = appState.customTypes[t];
+          if (t === '고정비' && (r.isFixed === 'Y' || cats.includes(r.category))) {
+            customTypeSums[t] += amt;
+            customTypeCounts[t]++;
+          } else if (t !== '고정비' && cats.includes(r.category)) {
+            customTypeSums[t] += amt;
+            customTypeCounts[t]++;
+          }
         }
 
         if (isPhysical) {
@@ -717,6 +751,7 @@
     });
 
     // Update KPI Elements
+    const fixedAmt = customTypeSums['고정비'] || 0;
     const livingAmt = totalValidAmt - fixedAmt;
     
     // KPI 1: 총 지출
@@ -725,12 +760,49 @@
     const kpiTxCountEl = document.getElementById('kpiTxCount');
     if (kpiTxCountEl) kpiTxCountEl.textContent = `${totalValidCount}건 지출 반영`;
 
-    // KPI 2: 고정비
-    document.getElementById('kpiFixedAmount').textContent = formatCurrency(fixedAmt);
-    const fixedCount = records.filter(r => r.exclude !== 'Y' && (r.isFixed === 'Y' || r.category === '고정비')).length;
-    document.getElementById('kpiFixedCount').textContent = `고정비 ${fixedCount}건`;
+    // Dynamic Custom Types KPIs
+    const dynamicKpiContainer = document.getElementById('dynamicKpiContainer');
+    if (dynamicKpiContainer) {
+      dynamicKpiContainer.innerHTML = '';
+      const colors = ['card-accent-orange', 'card-accent-green', 'card-accent-purple', 'card-accent-blue'];
+      let colorIdx = 0;
+      
+      for (const t in appState.customTypes) {
+        const tAmt = customTypeSums[t] || 0;
+        const tCnt = customTypeCounts[t] || 0;
+        const icon = t === '고정비' ? '🔒' : (t === '리뷰비' ? '📝' : '✨');
+        const color = colors[colorIdx % colors.length];
+        
+        const cardEl = document.createElement('div');
+        cardEl.className = `kpi-card ${color}`;
+        cardEl.innerHTML = `
+          <div class="kpi-header">
+            <span class="kpi-label">${t}</span>
+            <span class="kpi-icon-pill">${icon}</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">${formatCurrency(tAmt)}</span>
+            <span class="kpi-unit">원</span>
+          </div>
+          <div class="kpi-footer">
+            <span class="kpi-subtext">${t} ${tCnt}건</span>
+            <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">모아보기 &rarr;</button>
+          </div>
+        `;
+        const btn = cardEl.querySelector('.kpi-mini-btn');
+        btn.onclick = () => {
+          appState.filterType = t;
+          document.getElementById('filterType').value = t;
+          appState.currentPage = 1;
+          renderTable();
+          showToast(`'${t}' 내역 ${tCnt}건을 표시합니다.`, 'info');
+        };
+        dynamicKpiContainer.appendChild(cardEl);
+        colorIdx++;
+      }
+    }
 
-    // KPI 3: 순 생활비
+    // KPI 4: 순 생활비
     const kpiLivingAmountEl = document.getElementById('kpiLivingAmount');
     if (kpiLivingAmountEl) kpiLivingAmountEl.textContent = formatCurrency(livingAmt);
     const livingRatio = totalValidAmt > 0 ? Math.round((livingAmt / totalValidAmt) * 100) : 0;
@@ -778,6 +850,8 @@
     // Aggregate by card
     const cardSums = {};
     const cardCounts = {};
+    const cardCompletedSums = {};
+    const cardCompletedCounts = {};
     let totalPhysicalAmt = 0;
 
     records.forEach(r => {
@@ -785,6 +859,11 @@
       const amt = Number(r.amount) || 0;
       cardSums[card] = (cardSums[card] || 0) + amt;
       cardCounts[card] = (cardCounts[card] || 0) + 1;
+
+      if (r.exclude === 'Y') {
+        cardCompletedSums[card] = (cardCompletedSums[card] || 0) + amt;
+        cardCompletedCounts[card] = (cardCompletedCounts[card] || 0) + 1;
+      }
 
       if (CARD_CONFIG[card] && CARD_CONFIG[card].type === 'physical') {
         totalPhysicalAmt += amt;
@@ -799,6 +878,8 @@
       const conf = CARD_CONFIG[cardName] || { color: '#64748b', chip: '#475569', target: 300000 };
       const amt = cardSums[cardName] || 0;
       const cnt = cardCounts[cardName] || 0;
+      const completedAmt = cardCompletedSums[cardName] || 0;
+      const completedCnt = cardCompletedCounts[cardName] || 0;
       const share = totalPhysicalAmt > 0 ? ((amt / totalPhysicalAmt) * 100).toFixed(1) : 0;
       const targetPercent = conf.target > 0 ? Math.min(100, Math.round((amt / conf.target) * 100)) : 100;
       const isTargetMet = conf.target > 0 && amt >= conf.target;
@@ -822,7 +903,10 @@
             <div class="card-bar-fill" style="width: ${share}%; background: ${conf.color};"></div>
           </div>
           <span class="card-meta-text">
-            ${cnt}건 ${conf.target > 0 ? `· 목표 ${formatCurrency(conf.target)}원 (${targetPercent}% ${isTargetMet ? '달성✨' : ''})` : ''}
+            총 ${cnt}건 ${conf.target > 0 ? `· 목표 ${formatCurrency(conf.target)}원 (${targetPercent}% ${isTargetMet ? '달성✨' : ''})` : ''}
+          </span>
+          <span class="card-meta-text" style="color: var(--primary-color); display:block; margin-top:4px; font-weight:bold;">
+            ✅ 결제 완료: ${completedCnt}건 / ${formatCurrency(completedAmt)}원
           </span>
         </div>
       `;
@@ -851,6 +935,8 @@
       const conf = CARD_CONFIG[payName] || { color: '#64748b', dot: '#94a3b8' };
       const amt = cardSums[payName] || 0;
       const cnt = cardCounts[payName] || 0;
+      const completedAmt = cardCompletedSums[payName] || 0;
+      const completedCnt = cardCompletedCounts[payName] || 0;
 
       const payEl = document.createElement('div');
       payEl.className = `pay-mini-card ${appState.filterCard === payName ? 'active-filter' : ''}`;
@@ -1564,6 +1650,16 @@
       showToast(`고정비 내역 ${fixedCount}건을 표시합니다.`, 'info');
     });
 
+    document.getElementById('btnFilterReview')?.addEventListener('click', () => {
+      appState.filterType = '리뷰비';
+      document.getElementById('filterType').value = '리뷰비';
+      appState.currentPage = 1;
+      renderTable();
+      const reviewCats = appState.customTypes['리뷰비'] || [];
+      const reviewCount = appState.records.filter(r => r.exclude !== 'Y' && reviewCats.includes(r.category)).length;
+      showToast(`리뷰비 내역 ${reviewCount}건을 표시합니다.`, 'info');
+    });
+
     document.getElementById('btnFilterExcluded')?.addEventListener('click', () => {
       appState.filterExclude = 'Y';
       document.getElementById('filterExclude').value = 'Y';
@@ -2182,16 +2278,46 @@
           div.addEventListener('mouseleave', () => { if(appState.activeManageMainCat !== cat) div.style.background = 'transparent'; });
         }
         
+        let currentType = '변동비';
+        if (appState.customTypes['고정비'] && appState.customTypes['고정비'].includes(cat)) currentType = '고정비';
+        else if (appState.customTypes['리뷰비'] && appState.customTypes['리뷰비'].includes(cat)) currentType = '리뷰비';
+
         div.innerHTML = `
           <span style="font-weight: 600; font-size: 0.95rem;">
             ${cat} 
           </span>
-          <div style="display:flex; gap: 8px;">
+          <div style="display:flex; gap: 8px; align-items:center;">
+            <select class="type-assign-select" data-cat="${cat}" style="font-size:0.8rem; padding:2px; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-body);">
+              <option value="변동비" ${currentType === '변동비' ? 'selected' : ''}>🔵 변동비</option>
+              <option value="고정비" ${currentType === '고정비' ? 'selected' : ''}>🔒 고정비</option>
+              <option value="리뷰비" ${currentType === '리뷰비' ? 'selected' : ''}>📝 리뷰비</option>
+            </select>
             <button type="button" class="btn-edit-main-cat" data-cat="${cat}" style="background:none; border:none; color:var(--text-muted); cursor:pointer;" title="이름 수정">✏️</button>
             <button type="button" class="btn-delete-main-cat" data-cat="${cat}" style="background:none; border:none; color:var(--text-muted); cursor:pointer;" title="삭제">&times;</button>
           </div>
         `;
         container.appendChild(div);
+      });
+      
+      container.querySelectorAll('.type-assign-select').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const cat = e.target.dataset.cat;
+          const newType = e.target.value;
+          
+          for (const t in appState.customTypes) {
+            appState.customTypes[t] = appState.customTypes[t].filter(c => c !== cat);
+          }
+          
+          if (newType !== '변동비') {
+            if (!appState.customTypes[newType]) appState.customTypes[newType] = [];
+            appState.customTypes[newType].push(cat);
+          }
+          
+          saveCustomTypes();
+          renderTypeFilter();
+          renderTable();
+          renderKPIs();
+        });
       });
     }
 
@@ -2987,6 +3113,27 @@
   }
 
   let isAppInitialized = false;
+
+
+  // --- Custom Types Management ---
+  function renderTypeFilter() {
+    const sel = document.getElementById('filterType');
+    if (!sel) return;
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="ALL">전체 유형</option>';
+    for (const t in appState.customTypes) {
+      sel.innerHTML += `<option value="${t}">${t}</option>`;
+    }
+    sel.innerHTML += '<option value="변동비">변동비 (나머지 전체)</option>';
+    
+    if (Object.keys(appState.customTypes).includes(currentVal) || currentVal === 'ALL' || currentVal === '변동비') {
+      sel.value = currentVal;
+    } else {
+      sel.value = 'ALL';
+      appState.filterType = 'ALL';
+    }
+  }
+
 
   async function initAuthAndLockScreen() {
     const lockScreen = document.getElementById('lockScreen');
