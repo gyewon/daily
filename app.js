@@ -2690,7 +2690,8 @@
     }
 
     // Excel File Upload
-    document.getElementById('excelFileInput')?.addEventListener('change', handleExcelUpload);
+    document.getElementById('excelFileInput')?.addEventListener('change', e => handleExcelUpload(e, 'bank'));
+  document.getElementById('backupFileInput')?.addEventListener('change', e => handleExcelUpload(e, 'backup'));
 
     // Excel Upload Mode Modal Handlers
     document.getElementById('btnUploadAppend')?.addEventListener('click', () => applyExcelData(true));
@@ -2789,15 +2790,15 @@
     // 1. Transaction Sheet
     // 뱅크샐러드와 동일하게 지출은 음수(-), 취소는 양수(+)로 내보냄 (업로드 시 부호를 다시 뒤집어 읽으므로 왕복 일치)
     const txHeaders = [
-      'No.', '날짜', '시간', '월', '대분류', '소분류', '내용(가맹점)',
+      'No.', '날짜', '시간', '대분류', '소분류', '내용(가맹점)',
       '금액', '실제 결제카드 (수정 가능)',
-      '할부 유무', '할부 개월', '결제 (완료/대기)', '메모', '유형'
+      '할부 유무', '결제 (완료/대기)', '유형', '메모', '할부 개월'
     ];
 
     const txRows = appState.records.map(r => [
-      r.id, r.date, r.time, r.month, r.category, r.subCategory, r.merchant,
-      -(Number(r.amount) || 0), r.actualCard, (r.isInstallment === 'Y' ? 'Y' : 'N'), r.installment,
-      (r.exclude === 'Y' ? '완료' : '대기'), r.memo, getRecordTypeLabel(r)
+      r.id, r.date, r.time, r.category, r.subCategory, r.merchant,
+      -(Number(r.amount) || 0), r.actualCard, (r.isInstallment === 'Y' ? 'Y' : 'N'),
+      (r.exclude === 'Y' ? '완료' : '대기'), getRecordTypeLabel(r), r.memo, r.installment
     ]);
 
     const wsTx = XLSX.utils.aoa_to_sheet([txHeaders, ...txRows]);
@@ -2840,8 +2841,9 @@
 
   // --- Excel File Upload ---
   let pendingUploadedRecords = [];
+  let pendingUploadMode = 'bank'; // 'bank'(뱅크샐러드 양식) | 'backup'(백업 복원 양식)
 
-  function handleExcelUpload(e) {
+  function handleExcelUpload(e, mode = 'bank') {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -2878,6 +2880,16 @@
         }
 
         const headerRow = rows[headerRowIdx] || [];
+        const headerFlat = headerRow.map(h => String(h || '').replace(/\s+/g, '')).join('|');
+        const isBackupFormat = headerFlat.includes('결제(완료') && headerFlat.includes('실제결제카드');
+        if (mode === 'backup' && !isBackupFormat) {
+          alert('백업 복원 양식이 아닙니다.\n앱의 [엑셀 내보내기]로 받은 파일을 선택해 주세요.\n(뱅크샐러드 파일은 [뱅크샐러드 업로드]를 이용하세요)');
+          return;
+        }
+        if (mode === 'bank' && isBackupFormat) {
+          alert('앱에서 내보낸 백업 파일입니다.\n[백업 복원] 버튼으로 올려주세요.');
+          return;
+        }
         const findCol = (keywords, defaultIdx) => {
           for (let i = 0; i < headerRow.length; i++) {
             const h = String(headerRow[i] || '').replace(/\s+/g, '');
@@ -2896,7 +2908,9 @@
           amt: findCol(['금액', '지출금액', '원화금액'], 6),
           pay: findCol(['실제결제카드', '결제수단', '원본결제수단'], 8),
           memo: findCol(['메모', '비고'], 9),
-          status: findCol(['결제(완료'], -1)
+          status: mode === 'backup' ? findCol(['결제(완료'], -1) : -1,
+          instYn: mode === 'backup' ? findCol(['할부유무'], -1) : -1,
+          instMon: mode === 'backup' ? findCol(['할부개월'], -1) : -1
         };
 
         const parsedList = [];
@@ -2918,7 +2932,7 @@
           if (rawAmt === undefined || rawAmt === null || rawAmt === '') continue;
           const numStr = String(rawAmt).replace(/[^0-9.-]/g, '');
           // 뱅크샐러드 기준: 엑셀의 마이너스(-)가 실제 지출, 플러스(+)가 취소이므로 부호를 뒤집어 저장합니다.
-          // 구버전 앱 내보내기 파일(헤더가 '지출금액')은 지출이 +이므로 뒤집지 않음\r\n          const isLegacyExport = String(headerRow[col.amt] || '').replace(/\s+/g, '').includes('지출금액');\r\n          const amount = isLegacyExport ? (Number(numStr) || 0) : -(Number(numStr) || 0);
+          const amount = -(Number(numStr) || 0);
           if (amount === 0) continue;
 
           let dateRaw = row[col.date];
@@ -2973,6 +2987,13 @@
             }
           }
 
+          // 내보내기 파일의 '할부 개월' / '할부 유무' 열이 있으면 그대로 복원
+          if (col.instMon !== -1) {
+            const mv = String(row[col.instMon] || '').trim();
+            if (['일시불', '2개월', '3개월', '4개월', '5개월', '6개월', '12개월'].includes(mv)) instVal = mv;
+          }
+          const instFlag = (col.instYn !== -1) ? (String(row[col.instYn] || '').trim().toUpperCase() === 'Y' ? 'Y' : 'N') : undefined;
+
           parsedList.push({
             id: Date.now() + r,
             origId: r,
@@ -2986,6 +3007,7 @@
             origPay: origPay,
             actualCard: actualCard,
             installment: instVal,
+            ...(instFlag !== undefined ? { isInstallment: instFlag } : {}),
             billingAmount: amount,
             exclude: (col.status !== -1 && String(row[col.status] || '').trim() === '완료') ? 'Y' : 'N',
             memo: memoRaw,
@@ -3000,6 +3022,7 @@
 
         applyCategoryRules(parsedList);
         pendingUploadedRecords = parsedList;
+        pendingUploadMode = mode;
 
         const modal = document.getElementById('excelModeModal');
         if (modal) {
@@ -3099,7 +3122,7 @@
       
       // 결제수단 필터 및 휴지통에 버린 내역 제외
       pendingUploadedRecords = pendingUploadedRecords.filter(r => 
-        selectedMethods.includes(r.actualCard) && !appState.deletedSignatures.has(getSignature(r))
+        selectedMethods.includes(r.actualCard) && (pendingUploadMode === 'backup' || !appState.deletedSignatures.has(getSignature(r)))
       );
 
       if (pendingUploadedRecords.length === 0) {
@@ -3136,7 +3159,8 @@
 
     // --- 마이너스 금액 헷징(상계) 처리 ---
     let toRemove = new Set();
-    let negatives = appState.records.filter(r => r.amount < 0);
+    // 상계처리는 뱅크샐러드 업로드에만 적용 (백업 복원은 저장된 그대로 복원)
+    let negatives = pendingUploadMode === 'bank' ? appState.records.filter(r => r.amount < 0) : [];
     let hedgeCount = 0;
 
     negatives.forEach(neg => {

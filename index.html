@@ -91,9 +91,13 @@
         <button id="btnExportExcel" class="btn btn-secondary" title="현재 수정된 내역을 엑셀로 다운로드합니다">
           <span class="btn-icon">📥</span> 엑셀 내보내기
         </button>
-        <label for="excelFileInput" class="btn btn-secondary file-upload-btn" title="엑셀 파일을 불러옵니다">
-          <span class="btn-icon">📤</span> 엑셀 업로드
+        <label for="excelFileInput" class="btn btn-secondary file-upload-btn" title="뱅크샐러드 엑셀 파일을 불러옵니다">
+          <span class="btn-icon">📤</span> 뱅크샐러드 업로드
           <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display:none;">
+        </label>
+        <label for="backupFileInput" class="btn btn-secondary file-upload-btn" title="엑셀 내보내기로 받은 백업 파일로 복원합니다 (할부/결제상태 포함)">
+          <span class="btn-icon">♻️</span> 백업 복원
+          <input type="file" id="backupFileInput" accept=".xlsx, .xls" style="display:none;">
         </label>
 
         <button id="btnThemeToggle" class="btn btn-icon-only" title="다크/라이트 테마 변경" aria-label="테마 변경">
