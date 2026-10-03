@@ -80,7 +80,7 @@
     sortOrder: 'asc',
     currentPage: 1,
     pageSize: 30,
-    activeChartTab: 'cards'
+    activeChartTab: 'categories'
   };
 
   // Chart instances
@@ -189,13 +189,63 @@
     });
   }
 
+  function loadLocalCache() {
+    try {
+      const cache = localStorage.getItem('gyewon_appState_cache');
+      if (cache) {
+        const parsed = JSON.parse(cache);
+        if (parsed.records) appState.records = parsed.records;
+        if (parsed.categoryRules) appState.categoryRules = parsed.categoryRules;
+        if (parsed.customTypes) appState.customTypes = parsed.customTypes;
+        if (parsed.masterCategories) appState.masterCategories = parsed.masterCategories;
+        if (parsed.deletedSignatures) appState.deletedSignatures = new Set(parsed.deletedSignatures);
+        if (parsed.notificationLogs) appState.notificationLogs = parsed.notificationLogs;
+        if (parsed.cardConfig) CARD_CONFIG = parsed.cardConfig;
+        return true;
+      }
+    } catch (e) { console.error('Local cache load failed', e); }
+    return false;
+  }
+
+  function saveLocalCache() {
+    try {
+      localStorage.setItem('gyewon_appState_cache', JSON.stringify({
+        records: appState.records,
+        categoryRules: appState.categoryRules,
+        customTypes: appState.customTypes,
+        masterCategories: appState.masterCategories,
+        deletedSignatures: Array.from(appState.deletedSignatures),
+        notificationLogs: appState.notificationLogs,
+        cardConfig: CARD_CONFIG
+      }));
+    } catch (e) { console.error('Local cache save failed', e); }
+  }
+
   async function init() {
-    await loadData();
     initTheme();
-    populateFilterDropdowns();
-    if (typeof renderTypeFilter === 'function') renderTypeFilter();
-    attachEventListeners();
-    renderAll();
+    const hasCache = loadLocalCache();
+    
+    if (hasCache) {
+      populateFilterDropdowns();
+      if (typeof renderTypeFilter === 'function') renderTypeFilter();
+      attachEventListeners();
+      renderAll();
+      
+      // Background sync
+      loadData().then(() => {
+        saveLocalCache();
+        populateFilterDropdowns();
+        if (typeof renderTypeFilter === 'function') renderTypeFilter();
+        renderAll();
+      });
+    } else {
+      await loadData();
+      saveLocalCache();
+      populateFilterDropdowns();
+      if (typeof renderTypeFilter === 'function') renderTypeFilter();
+      attachEventListeners();
+      renderAll();
+    }
   }
 
   // --- Auth Management ---
@@ -333,6 +383,7 @@
   }
 
   async function saveData() {
+    saveLocalCache();
     try {
       await supabase.from('app_settings').upsert([
         { key: 'records', value: appState.records },
@@ -345,6 +396,7 @@
   }
 
   async function saveRules() {
+    saveLocalCache();
     try {
       await supabase.from('app_settings').upsert({ key: 'rules', value: appState.categoryRules });
     } catch (e) {
@@ -353,6 +405,7 @@
   }
 
   async function saveCustomTypes() {
+    saveLocalCache();
     try {
       await supabase.from('app_settings').upsert({ key: 'custom_types', value: appState.customTypes });
     } catch (e) {
@@ -363,6 +416,7 @@
   
 
   async function saveMasterCategories() {
+    saveLocalCache();
     await supabase.from('app_settings').upsert({ key: 'master_categories', value: appState.masterCategories });
   }
 
@@ -1097,6 +1151,9 @@
         }]
       },
       options: {
+        layout: {
+          padding: { right: 80 }
+        },
         responsive: true,
         maintainAspectRatio: false,
         indexAxis: 'y',
@@ -1121,7 +1178,25 @@
             }
           }
         }
-      }
+      },
+      plugins: [{
+        id: 'categoryDataLabels',
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          ctx.save();
+          ctx.font = 'bold 11px Outfit';
+          ctx.fillStyle = textColor;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          const meta = chart.getDatasetMeta(0);
+          meta.data.forEach((bar, index) => {
+            const value = data.datasets[0].data[index];
+            const text = formatCurrency(value) + '원';
+            ctx.fillText(text, bar.x + 6, bar.y);
+          });
+          ctx.restore();
+        }
+      }]
     });
   }
 
@@ -2052,15 +2127,45 @@
       }
     });
 
+    let ruleSortConfig = { key: 'id', dir: 'desc' };
+
     function renderRulesTable() {
       const tbody = document.getElementById('rulesTableBody');
       if (!tbody) return;
       tbody.innerHTML = '';
       if (appState.categoryRules.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: var(--text-muted);">등록된 규칙이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: var(--text-muted);">등록된 규칙이 없습니다.</td></tr>';
         return;
       }
-      appState.categoryRules.forEach(rule => {
+
+      // Update header indicators
+      document.querySelectorAll('.rule-sort-header').forEach(th => {
+        const span = th.querySelector('span');
+        if (span) {
+          if (th.dataset.sort === ruleSortConfig.key) {
+            span.textContent = ruleSortConfig.dir === 'asc' ? '↑' : '↓';
+            span.style.color = 'var(--primary-color)';
+          } else {
+            span.textContent = '↕';
+            span.style.color = 'var(--text-muted)';
+          }
+        }
+      });
+
+      const sortedRules = [...appState.categoryRules].sort((a, b) => {
+        let valA = a[ruleSortConfig.key] || '';
+        let valB = b[ruleSortConfig.key] || '';
+        if (ruleSortConfig.key === 'keyword' || ruleSortConfig.key === 'category' || ruleSortConfig.key === 'subCategory') {
+          valA = valA.toString().toLowerCase();
+          valB = valB.toString().toLowerCase();
+          if (valA < valB) return ruleSortConfig.dir === 'asc' ? -1 : 1;
+          if (valA > valB) return ruleSortConfig.dir === 'asc' ? 1 : -1;
+          return 0;
+        }
+        return ruleSortConfig.dir === 'asc' ? valA - valB : valB - valA;
+      });
+
+      sortedRules.forEach(rule => {
         const tr = document.createElement('tr');
         const amountDisplay = rule.amount ? formatCurrency(rule.amount) + '원' : '<span style="color:var(--text-muted);font-size:0.8rem;">(금액무관)</span>';
         tr.innerHTML = `
@@ -2076,6 +2181,19 @@
         tbody.appendChild(tr);
       });
     }
+
+    document.querySelectorAll('.rule-sort-header').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort;
+        if (ruleSortConfig.key === key) {
+          ruleSortConfig.dir = ruleSortConfig.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          ruleSortConfig.key = key;
+          ruleSortConfig.dir = 'asc';
+        }
+        renderRulesTable();
+      });
+    });
 
     // Category cascading for Modals
     document.getElementById('newCategory')?.addEventListener('change', function() {
@@ -2654,6 +2772,13 @@
     }
   }
 
+  function getRecordTypeLabel(rec) {
+    for (const t in appState.customTypes) {
+      if (appState.customTypes[t].includes(rec.category) || rec.category === t) return t;
+    }
+    return rec.isFixed === 'Y' ? '고정비' : '변동비';
+  }
+
   // --- Excel Export (SheetJS) ---
   function exportToExcel() {
     if (typeof XLSX === 'undefined') {
@@ -2662,15 +2787,17 @@
     }
 
     // 1. Transaction Sheet
+    // 뱅크샐러드와 동일하게 지출은 음수(-), 취소는 양수(+)로 내보냄 (업로드 시 부호를 다시 뒤집어 읽으므로 왕복 일치)
     const txHeaders = [
       'No.', '날짜', '시간', '월', '대분류', '소분류', '내용(가맹점)',
-      '지출금액', '원본 결제수단', '실제 결제카드 (수정 가능)',
-      '할부 개월', '이번달 청구액', '제외 여부', '메모'
+      '금액', '실제 결제카드 (수정 가능)',
+      '할부 유무', '할부 개월', '결제 (완료/대기)', '메모', '유형'
     ];
 
     const txRows = appState.records.map(r => [
       r.id, r.date, r.time, r.month, r.category, r.subCategory, r.merchant,
-      r.amount, r.origPay, r.actualCard, r.installment, r.billingAmount, r.exclude, r.memo
+      -(Number(r.amount) || 0), r.actualCard, (r.isInstallment === 'Y' ? 'Y' : 'N'), r.installment,
+      (r.exclude === 'Y' ? '완료' : '대기'), r.memo, getRecordTypeLabel(r)
     ]);
 
     const wsTx = XLSX.utils.aoa_to_sheet([txHeaders, ...txRows]);
@@ -2678,7 +2805,7 @@
     // 2. Summary Sheet
     const summaryRows = [
       ['카드별 지출 현황 및 가계부 대시보드 요약'],
-      ['기준일자', new Date().toLocaleDateString('ko-KR')],
+      ['기준일시', new Date().toLocaleString('ko-KR', { hour12: false })],
       ['총 거래건수', appState.records.length],
       [''],
       ['카드명', '지출금액 (원)', '건수', '비중(%)']
@@ -2767,8 +2894,9 @@
           sub: findCol(['소분류', '하위카테고리'], 4),
           merchant: findCol(['내용', '가맹점', '거래처'], 5),
           amt: findCol(['금액', '지출금액', '원화금액'], 6),
-          pay: findCol(['결제수단', '원본결제수단'], 8),
-          memo: findCol(['메모', '비고'], 9)
+          pay: findCol(['실제결제카드', '결제수단', '원본결제수단'], 8),
+          memo: findCol(['메모', '비고'], 9),
+          status: findCol(['결제(완료'], -1)
         };
 
         const parsedList = [];
@@ -2789,8 +2917,8 @@
           const rawAmt = row[col.amt];
           if (rawAmt === undefined || rawAmt === null || rawAmt === '') continue;
           const numStr = String(rawAmt).replace(/[^0-9.-]/g, '');
-          // 엑셀에서는 마이너스(-)가 실제 지출, 플러스(+)가 취소이므로 부호를 반대로 뒤집어서 저장합니다.
-          const amount = -(Number(numStr) || 0); 
+          // 뱅크샐러드 기준: 엑셀의 마이너스(-)가 실제 지출, 플러스(+)가 취소이므로 부호를 뒤집어 저장합니다.
+          // 구버전 앱 내보내기 파일(헤더가 '지출금액')은 지출이 +이므로 뒤집지 않음\r\n          const isLegacyExport = String(headerRow[col.amt] || '').replace(/\s+/g, '').includes('지출금액');\r\n          const amount = isLegacyExport ? (Number(numStr) || 0) : -(Number(numStr) || 0);
           if (amount === 0) continue;
 
           let dateRaw = row[col.date];
@@ -2859,7 +2987,7 @@
             actualCard: actualCard,
             installment: instVal,
             billingAmount: amount,
-            exclude: 'N',
+            exclude: (col.status !== -1 && String(row[col.status] || '').trim() === '완료') ? 'Y' : 'N',
             memo: memoRaw,
             originalSignature: `${dateStr}|${timeStr}|${rawMerchant}|${amount}`
           });
@@ -3005,6 +3133,7 @@
       addedCount = pendingUploadedRecords.length;
     }
 
+
     // --- 마이너스 금액 헷징(상계) 처리 ---
     let toRemove = new Set();
     let negatives = appState.records.filter(r => r.amount < 0);
@@ -3012,18 +3141,17 @@
 
     negatives.forEach(neg => {
       // 동일 가맹점, 동일 절대값 금액을 가진 양수 결제 내역 찾기 (이미 제거 대상이 아닌 것만)
-      const posIndex = appState.records.findIndex(r => 
-        !toRemove.has(r) && 
-        r !== neg && 
-        r.amount === Math.abs(neg.amount) && 
+      const posRec = appState.records.find(r =>
+        !toRemove.has(r) &&
+        r !== neg &&
+        r.amount === Math.abs(neg.amount) &&
         r.merchant.trim() === neg.merchant.trim()
       );
-      
-      if (posIndex !== -1) {
-        const posRec = appState.records[posIndex];
+
+      if (posRec) {
         toRemove.add(neg);
         toRemove.add(posRec);
-        
+
         // 상계된 내역도 휴지통(블랙리스트)에 추가하여 이후 중복 업로드 방지 및 내역 투명성 제공
         const negSig = getSignature(neg);
         const posSig = getSignature(posRec);
@@ -3034,7 +3162,7 @@
         hedgeCount++;
       }
     });
-    
+
     if (toRemove.size > 0) {
       appState.records = appState.records.filter(r => !toRemove.has(r));
     }

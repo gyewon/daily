@@ -211,8 +211,8 @@
               <p>카테고리 및 카드 점유율 실시간 차트</p>
             </div>
             <div class="chart-tab-group">
-              <button class="chart-tab-btn active" data-chart-tab="cards">카드 비중</button>
-              <button class="chart-tab-btn" data-chart-tab="categories">카테고리</button>
+              <button class="chart-tab-btn" data-chart-tab="cards">카드 비중</button>
+              <button class="chart-tab-btn active" data-chart-tab="categories">카테고리</button>
               <button class="chart-tab-btn" data-chart-tab="trends">누적 추이</button>
               <button class="chart-tab-btn" data-chart-tab="daily">일자별 비교</button>
             </div>
@@ -221,7 +221,7 @@
           <!-- Chart Views Container -->
           <div class="chart-display-area">
             <!-- View 1: Card Share Doughnut -->
-            <div class="chart-view active" id="chartViewCards">
+            <div class="chart-view" id="chartViewCards">
               <div class="chart-canvas-box doughnut-box">
                 <canvas id="cardDoughnutChart"></canvas>
               </div>
@@ -229,7 +229,7 @@
             </div>
 
             <!-- View 2: Category Bar Chart -->
-            <div class="chart-view" id="chartViewCategories">
+            <div class="chart-view active" id="chartViewCategories">
               <div class="chart-canvas-box bar-box">
                 <canvas id="categoryBarChart"></canvas>
               </div>
@@ -348,7 +348,7 @@
                 <th class="col-actual">실제 결제카드 (수정 가능) ✏️</th>
                 <th class="col-inst">할부</th>
                 <th class="col-exclude">결제</th>
-                <th class="col-fixed" style="width: 70px; text-align: center;">유형</th>
+                <th class="col-fixed">유형</th>
                 <th class="col-memo">메모</th>
                 <th class="col-action">관리</th>
               </tr>
@@ -489,10 +489,10 @@
           <table class="tx-table">
             <thead>
               <tr>
-                <th style="padding: 12px; text-align: left;">가맹점 키워드</th>
+                <th class="rule-sort-header" data-sort="keyword" style="padding: 12px; text-align: left; cursor: pointer; user-select: none;">가맹점 키워드 <span style="font-size:0.8em; color:var(--text-muted);">↕</span></th>
                 <th style="padding: 12px; text-align: right;">금액 조건</th>
-                <th style="padding: 12px; text-align: left;">변경될 대분류</th>
-                <th style="padding: 12px; text-align: left;">변경될 소분류</th>
+                <th class="rule-sort-header" data-sort="category" style="padding: 12px; text-align: left; cursor: pointer; user-select: none;">변경될 대분류 <span style="font-size:0.8em; color:var(--text-muted);">↕</span></th>
+                <th class="rule-sort-header" data-sort="subCategory" style="padding: 12px; text-align: left; cursor: pointer; user-select: none;">변경될 소분류 <span style="font-size:0.8em; color:var(--text-muted);">↕</span></th>
                 <th style="padding: 12px; text-align: center; width: 100px;">관리(수정/삭제)</th>
               </tr>
             </thead>
