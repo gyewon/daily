@@ -59,6 +59,23 @@ async function runBackup() {
   const filePath = path.join(backupDir, `backup_${dateStr}.json`);
   fs.writeFileSync(filePath, JSON.stringify(backupData, null, 2), 'utf8');
   console.log(`Backup successfully saved to: ${filePath}`);
+
+  // Git 자동 커밋 및 푸시
+  console.log('Committing and pushing to Git...');
+  const { execSync } = require('child_process');
+  try {
+    execSync('git add .');
+    const status = execSync('git status --porcelain').toString();
+    if (status.trim() !== '') {
+      execSync(`git commit -m "Auto backup ${dateStr}"`);
+      execSync('git push');
+      console.log('Successfully pushed to Git.');
+    } else {
+      console.log('No changes to commit to Git.');
+    }
+  } catch (err) {
+    console.error('Error during Git backup:', err.message);
+  }
 }
 
 runBackup();
