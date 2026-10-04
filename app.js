@@ -712,9 +712,9 @@
       }
 
       // Installment Filter
-      if (appState.filterInstallment === 'N') {
+      if (appState.filterInstallment === 'N' || appState.filterInstallment === '일시불') {
         if (r.isInstallment === 'Y') return false;
-      } else if (appState.filterInstallment === 'Y') {
+      } else if (appState.filterInstallment === 'Y' || appState.filterInstallment === '할부') {
         if (r.isInstallment !== 'Y') return false;
       }
 
@@ -1479,6 +1479,9 @@
       }
 
       tr.innerHTML = `
+        <td class="col-check" style="text-align: center;">
+          <input type="checkbox" class="row-check" data-id="${rec.id}" data-amount="${rec.amount}">
+        </td>
         <td class="col-id">${rec.id}</td>
         <td class="col-date">
           <div>${rec.date}</div>
@@ -1873,6 +1876,76 @@
     const tableBody = document.getElementById('txTableBody');
     tableBody?.addEventListener('change', handleTableChange);
     tableBody?.addEventListener('click', handleTableClick);
+
+    // Bulk Action Logic
+    function updateBulkActionUI() {
+      const checkedBoxes = document.querySelectorAll('.row-check:checked');
+      const bulkBar = document.getElementById('bulkActionBar');
+      const bulkCount = document.getElementById('bulkCount');
+      const bulkSum = document.getElementById('bulkSum');
+      const selectAllCheckbox = document.getElementById('selectAllRows');
+
+      const totalRows = document.querySelectorAll('.row-check').length;
+      if (selectAllCheckbox) {
+        if (totalRows > 0) {
+          selectAllCheckbox.checked = (checkedBoxes.length === totalRows);
+        } else {
+          selectAllCheckbox.checked = false;
+        }
+      }
+
+      if (bulkBar) {
+        if (checkedBoxes.length > 0) {
+          bulkBar.style.display = 'flex';
+          if (bulkCount) bulkCount.textContent = checkedBoxes.length;
+          let sum = 0;
+          checkedBoxes.forEach(cb => {
+            sum += Number(cb.dataset.amount) || 0;
+          });
+          if (bulkSum) bulkSum.textContent = formatCurrency(sum);
+        } else {
+          bulkBar.style.display = 'none';
+        }
+      }
+    }
+
+    document.getElementById('txTable')?.addEventListener('change', e => {
+      if (e.target.id === 'selectAllRows') {
+        const isChecked = e.target.checked;
+        document.querySelectorAll('.row-check').forEach(cb => {
+          cb.checked = isChecked;
+        });
+        updateBulkActionUI();
+      } else if (e.target.classList.contains('row-check')) {
+        updateBulkActionUI();
+      }
+    });
+
+    document.getElementById('btnBulkComplete')?.addEventListener('click', () => {
+      const checkedBoxes = document.querySelectorAll('.row-check:checked');
+      if (checkedBoxes.length === 0) return;
+
+      let updatedCount = 0;
+      checkedBoxes.forEach(cb => {
+        const id = Number(cb.dataset.id);
+        const rec = appState.records.find(r => r.id === id);
+        if (rec && rec.exclude !== 'Y') {
+          rec.exclude = 'Y';
+          updatedCount++;
+        }
+      });
+
+      if (updatedCount > 0) {
+        saveData();
+        renderAll();
+        showToast(`${updatedCount}건의 내역이 결제 완료로 변경되었습니다.`, 'success');
+        const selectAll = document.getElementById('selectAllRows');
+        if (selectAll) selectAll.checked = false;
+        updateBulkActionUI();
+      } else {
+        showToast('이미 결제 완료 상태인 항목만 선택되었습니다.', 'info');
+      }
+    });
 
     // Table Inline Edit (Category, SubCategory)
     tableBody?.addEventListener('change', e => {

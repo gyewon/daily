@@ -340,10 +340,15 @@
         </div>
 
         <!-- Transactions Table Wrapper -->
+        <div id="bulkActionBar" style="display: none; background: var(--bg-secondary); padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; align-items: center; justify-content: space-between; border: 1px solid var(--border-color);">
+          <div style="font-size: 0.95rem;"><span id="bulkCount" style="font-weight: bold; color: var(--primary-color);">0</span>건 선택됨 | 합계: <strong id="bulkSum" style="color: var(--accent-color); font-size: 1.1rem;">0</strong>원</div>
+          <button id="btnBulkComplete" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;">일괄 결제 완료(대기->완료)</button>
+        </div>
         <div class="table-responsive">
           <table class="tx-table" id="txTable">
             <thead>
               <tr>
+                <th class="col-check" style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllRows"></th>
                 <th class="col-id" data-sort="id">No. <span class="sort-indicator">↕</span></th>
                 <th class="col-date" data-sort="date">날짜/시간 <span class="sort-indicator">↕</span></th>
                 <th class="col-cat" data-sort="category">분류 <span class="sort-indicator">↕</span></th>
