@@ -61,6 +61,7 @@
 
   // --- State ---
   let appState = {
+    chartExcludedCategories: new Set(),
     records: [],
     categoryRules: [],
     masterCategories: {},
@@ -1037,18 +1038,67 @@
 
   // --- Charts Logic ---
   function updateCharts(records) {
+    // 1. 카테고리 필터 체크박스 생성
+    const categories = [...new Set(records.map(r => r.category))].filter(Boolean).sort();
+    const filterContainer = document.getElementById('chartCategoryFilters');
+    if (filterContainer) {
+      filterContainer.innerHTML = '';
+      categories.forEach(cat => {
+        const isExcluded = appState.chartExcludedCategories.has(cat);
+        const label = document.createElement('label');
+        label.style.display = 'inline-flex';
+        label.style.alignItems = 'center';
+        label.style.gap = '4px';
+        label.style.background = isExcluded ? 'var(--bg-input)' : 'var(--accent-color)';
+        label.style.color = isExcluded ? 'var(--text-muted)' : '#fff';
+        label.style.padding = '4px 10px';
+        label.style.borderRadius = '16px';
+        label.style.fontSize = '0.8rem';
+        label.style.cursor = 'pointer';
+        label.style.transition = 'all 0.2s ease';
+        label.style.border = isExcluded ? '1px solid var(--border-color)' : '1px solid var(--accent-color)';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = !isExcluded;
+        checkbox.style.display = 'none';
+        
+        checkbox.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            appState.chartExcludedCategories.delete(cat);
+          } else {
+            appState.chartExcludedCategories.add(cat);
+          }
+          // 전체 다시 렌더링하면 체크박스도 재생성되므로, updateCharts를 다시 부르되 현재 레코드 그대로
+          updateCharts(records);
+        });
+        
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(cat));
+        filterContainer.appendChild(label);
+      });
+    }
+
+    // 2. 선택된 카테고리만 필터링
+    const filteredRecords = records.filter(r => !appState.chartExcludedCategories.has(r.category));
+
+    // 3. 총합계 계산 및 표시
+    const totalSum = filteredRecords.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    const sumEl = document.getElementById('chartTotalSum');
+    if (sumEl) sumEl.textContent = formatCurrency(totalSum);
+
     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
     const textColor = isDark ? '#94a3b8' : '#475569';
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
 
     // 1. Doughnut: Card Breakdown
-    renderCardDoughnut(records, textColor);
+    renderCardDoughnut(filteredRecords, textColor);
 
     // 2. Bar: Category Breakdown
-    renderCategoryBar(records, textColor, gridColor);
+    renderCategoryBar(filteredRecords, textColor, gridColor);
 
     // 3. Line: Daily Spend Trend
-    renderTrendLine(records, textColor, gridColor);
+    renderTrendLine(filteredRecords, textColor, gridColor);
 
     // 4. Bar: Daily Spend Breakdown (Sep 1 to Sep 10)
     renderDailyBar(textColor, gridColor);
