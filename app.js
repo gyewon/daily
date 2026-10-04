@@ -1039,7 +1039,11 @@
   // --- Charts Logic ---
   function updateCharts(records) {
     // 1. 카테고리 필터 체크박스 생성
-    const categories = [...new Set(records.map(r => r.category))].filter(Boolean).sort();
+    // 사용자가 설정한 전체 마스터 카테고리와 현재 레코드에 존재하는 카테고리를 합쳐서 표시
+    const activeCategories = records.map(r => r.category).filter(Boolean);
+    const masterCats = Object.keys(appState.masterCategories || {});
+    const categories = [...new Set([...masterCats, ...activeCategories])].sort();
+    
     const filterContainer = document.getElementById('chartCategoryFilters');
     if (filterContainer) {
       filterContainer.innerHTML = '';
