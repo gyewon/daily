@@ -1055,9 +1055,10 @@
         label.style.gap = '4px';
         label.style.background = isExcluded ? 'var(--bg-input)' : 'var(--accent-color)';
         label.style.color = isExcluded ? 'var(--text-muted)' : '#fff';
-        label.style.padding = '4px 10px';
-        label.style.borderRadius = '16px';
-        label.style.fontSize = '0.8rem';
+        label.style.padding = '6px 14px';
+        label.style.borderRadius = '20px';
+        label.style.fontSize = '1rem';
+        label.style.fontWeight = '500';
         label.style.cursor = 'pointer';
         label.style.transition = 'all 0.2s ease';
         label.style.border = isExcluded ? '1px solid var(--border-color)' : '1px solid var(--accent-color)';
@@ -1216,12 +1217,13 @@
             grid: { color: gridColor },
             ticks: {
               color: textColor,
+              font: { size: 12 },
               callback: val => formatCurrency(val) + '원'
             }
           },
           y: {
             grid: { display: false },
-            ticks: { color: textColor, font: { weight: '600' } }
+            ticks: { color: textColor, font: { weight: '600', size: 13 } }
           }
         },
         plugins: {
@@ -1238,7 +1240,7 @@
         afterDatasetsDraw(chart) {
           const { ctx, data } = chart;
           ctx.save();
-          ctx.font = 'bold 11px Outfit';
+          ctx.font = 'bold 13px Outfit';
           ctx.fillStyle = textColor;
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
