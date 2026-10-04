@@ -1190,6 +1190,12 @@
     const labels = sortedCats;
     const data = sortedCats.map(c => catSums[c]);
 
+    // 카테고리 수에 따라 차트 컨테이너 높이를 동적으로 조정하여 간격 확보
+    const container = canvas.parentElement;
+    if (container) {
+      container.style.height = Math.max(320, labels.length * 40) + 'px';
+    }
+
     if (charts.categoryBar) {
       charts.categoryBar.destroy();
     }
@@ -1202,7 +1208,9 @@
           label: '지출 금액',
           data: data,
           backgroundColor: labels.map((_, i) => CATEGORY_COLORS[i % CATEGORY_COLORS.length]),
-          borderRadius: 6
+          borderRadius: 6,
+          barPercentage: 0.6,
+          categoryPercentage: 0.8
         }]
       },
       options: {
@@ -1379,13 +1387,17 @@
             label: '실물 카드 지출',
             data: cardData,
             backgroundColor: '#2563eb',
-            borderRadius: 4
+            borderRadius: 4,
+            barPercentage: 0.6,
+            categoryPercentage: 0.8
           },
           {
             label: '간편결제/계좌 지출',
             data: payData,
             backgroundColor: '#f59e0b',
-            borderRadius: 4
+            borderRadius: 4,
+            barPercentage: 0.6,
+            categoryPercentage: 0.8
           }
         ]
       },
