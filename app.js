@@ -1185,7 +1185,7 @@
       catSums[cat] = (catSums[cat] || 0) + (Number(r.amount) || 0);
     });
 
-    const sortedCats = Object.keys(catSums).sort((a, b) => catSums[b] - catSums[a]).slice(0, 10);
+    const sortedCats = Object.keys(catSums).filter(c => catSums[c] > 0).sort((a, b) => catSums[b] - catSums[a]);
     const labels = sortedCats;
     const data = sortedCats.map(c => catSums[c]);
 
@@ -1200,7 +1200,7 @@
         datasets: [{
           label: '지출 금액',
           data: data,
-          backgroundColor: CATEGORY_COLORS.slice(0, labels.length),
+          backgroundColor: labels.map((_, i) => CATEGORY_COLORS[i % CATEGORY_COLORS.length]),
           borderRadius: 6
         }]
       },
