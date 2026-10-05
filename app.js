@@ -3458,6 +3458,8 @@
       // Find the most recent matching record from history
       const oldRec = sortedPrev.find(r => 
         r !== newRec &&
+        r.merchant && typeof r.merchant === 'string' &&
+        newRec.merchant && typeof newRec.merchant === 'string' &&
         r.merchant.trim() === newRec.merchant.trim() &&
         r.amount === newRec.amount &&
         r.actualCard === newRec.actualCard &&
@@ -3537,7 +3539,7 @@
         renderTable();
         renderCardsBreakdown();
         updateCharts(getFilteredRecords(true));
-        showToast(\`\${applied}건의 내역이 과거 이력을 바탕으로 자동 분류되었습니다!\`, 'success');
+        showToast(`${applied}건의 내역이 과거 이력을 바탕으로 자동 분류되었습니다!`, 'success');
       }
       closeModal();
     };
