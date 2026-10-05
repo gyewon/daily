@@ -2843,7 +2843,11 @@
 
     // Excel Upload Mode Modal Handlers
     document.getElementById('btnUploadAppend')?.addEventListener('click', () => applyExcelData(true));
-    document.getElementById('btnUploadOverwrite')?.addEventListener('click', () => applyExcelData(false));
+    document.getElementById('btnUploadOverwrite')?.addEventListener('click', () => {
+      if (confirm('⚠️ [경고] 기존 데이터를 덮어쓰시겠습니까?\n\n- 이전에 수동으로 작성하신 메모, 결제상태, 변경한 카테고리 내역이 모두 초기화(삭제)됩니다.\n- [기존 데이터에 추가하기]를 권장합니다.\n\n정말 덮어쓰시겠습니까?')) {
+        applyExcelData(false);
+      }
+    });
     document.getElementById('btnCloseUploadModal')?.addEventListener('click', () => {
       document.getElementById('excelModeModal')?.classList.remove('show');
       pendingUploadedRecords = [];
@@ -3142,6 +3146,14 @@
           }
           const instFlag = (col.instYn !== -1) ? (String(row[col.instYn] || '').trim().toUpperCase() === 'Y' ? 'Y' : 'N') : undefined;
 
+          let excludeVal = 'N';
+          if (col.status !== -1) {
+            const rawEx = String(row[col.status] || '').trim();
+            if (rawEx.includes('제외') || rawEx === '완료' || rawEx === 'Y') {
+              excludeVal = 'Y';
+            }
+          }
+
           parsedList.push({
             id: Date.now() + r,
             origId: r,
@@ -3157,7 +3169,8 @@
             installment: instVal,
             ...(instFlag !== undefined ? { isInstallment: instFlag } : {}),
             billingAmount: amount,
-            exclude: (col.status !== -1 && String(row[col.status] || '').trim() === '완료') ? 'Y' : 'N',
+            status: '결제완료',
+            exclude: excludeVal,
             memo: memoRaw,
             originalSignature: `${dateStr}|${timeStr}|${rawMerchant}|${amount}`
           });
