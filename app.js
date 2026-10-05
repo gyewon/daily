@@ -1003,7 +1003,13 @@
         } else {
           appState.filterCard = cardName;
         }
-        document.getElementById('filterCard').value = appState.filterCard;
+        const fSelect = document.getElementById('filterCard');
+        if (fSelect) {
+          fSelect.value = appState.filterCard;
+          Array.from(fSelect.options).forEach(opt => {
+            opt.selected = (opt.value === appState.filterCard);
+          });
+        }
         appState.currentPage = 1;
         renderCardsBreakdown();
         renderTable();
@@ -1045,7 +1051,13 @@
         } else {
           appState.filterCard = payName;
         }
-        document.getElementById('filterCard').value = appState.filterCard;
+        const fSelect = document.getElementById('filterCard');
+        if (fSelect) {
+          fSelect.value = appState.filterCard;
+          Array.from(fSelect.options).forEach(opt => {
+            opt.selected = (opt.value === appState.filterCard);
+          });
+        }
         appState.currentPage = 1;
         renderCardsBreakdown();
         renderTable();
@@ -3280,6 +3292,8 @@
   async function applyExcelData(isAppend) {
     try {
       if (!pendingUploadedRecords || pendingUploadedRecords.length === 0) return;
+      
+      const previousRecordsSnapshot = [...appState.records];
 
       // 결제수단 필터 적용 및 체크 상태 저장
     const container = document.getElementById('paymentCheckboxContainer');
@@ -3417,6 +3431,14 @@
       showUploadSummaryModal(appState.records);
     }
 
+      // 스마트 자동 분류 팝업 로직 실행
+      if (addedCount > 0) {
+        processSmartAutoClassification(
+          isAppend ? pendingUploadedRecords.filter(r => appState.records.includes(r)) : appState.records, 
+          previousRecordsSnapshot
+        );
+      }
+
       pendingUploadedRecords = [];
       const modal = document.getElementById('excelModeModal');
       if (modal) modal.classList.remove('show');
@@ -3424,6 +3446,107 @@
       console.error(err);
       alert('엑셀 데이터 적용 중 오류가 발생했습니다: ' + (err.message || err));
     }
+  }
+
+  function processSmartAutoClassification(newRecords, previousRecords) {
+    const suggestions = [];
+    
+    // Sort previous records to prefer the most recent classification
+    const sortedPrev = [...previousRecords].sort((a, b) => b.id - a.id);
+    
+    newRecords.forEach(newRec => {
+      // Find the most recent matching record from history
+      const oldRec = sortedPrev.find(r => 
+        r !== newRec &&
+        r.merchant.trim() === newRec.merchant.trim() &&
+        r.amount === newRec.amount &&
+        r.actualCard === newRec.actualCard &&
+        r.category && r.category !== '기타' && r.category !== '미분류'
+      );
+      
+      if (oldRec && (newRec.category !== oldRec.category || newRec.subCategory !== oldRec.subCategory)) {
+        suggestions.push({ newRec, oldRec });
+      }
+    });
+
+    if (suggestions.length === 0) return;
+
+    // Remove duplicates from suggestions (multiple new records matching the same pattern)
+    // Actually, we want to suggest for all matching new records.
+    
+    const modal = document.getElementById('smartClassificationModal');
+    const listDiv = document.getElementById('smartSuggestionsList');
+    if (!modal || !listDiv) return;
+
+    listDiv.innerHTML = '';
+    suggestions.forEach((s, idx) => {
+      const item = document.createElement('div');
+      item.style.padding = '10px';
+      item.style.background = 'var(--bg-card)';
+      item.style.border = '1px solid var(--border-color)';
+      item.style.borderRadius = '6px';
+      item.style.display = 'flex';
+      item.style.justifyContent = 'space-between';
+      item.style.alignItems = 'center';
+      
+      item.innerHTML = `
+        <div style="flex: 1;">
+          <div style="font-weight: 600; color: var(--text-main); font-size: 0.95rem;">${s.newRec.merchant}</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+            ${s.newRec.date} · ${formatCurrency(s.newRec.amount)}원 · ${s.newRec.actualCard}
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.75rem; color: var(--text-muted);">자동 지정 카테고리</div>
+          <div style="color: var(--primary-color); font-weight: 600; font-size: 0.95rem;">
+            ${s.oldRec.category} > ${s.oldRec.subCategory || '없음'}
+          </div>
+        </div>
+      `;
+      listDiv.appendChild(item);
+    });
+
+    // Event Handlers for modal
+    const btnSkip = document.getElementById('btnSkipSmartModal');
+    const btnApply = document.getElementById('btnApplySmartModal');
+    const btnClose = document.getElementById('btnCloseSmartModal');
+
+    const closeModal = () => {
+      modal.classList.remove('show');
+      btnSkip.removeEventListener('click', skipHandler);
+      btnApply.removeEventListener('click', applyHandler);
+      btnClose.removeEventListener('click', skipHandler);
+    };
+
+    const skipHandler = () => closeModal();
+
+    const applyHandler = () => {
+      let applied = 0;
+      suggestions.forEach(s => {
+        const targetRec = appState.records.find(r => r.id === s.newRec.id);
+        if (targetRec) {
+          targetRec.category = s.oldRec.category;
+          targetRec.subCategory = s.oldRec.subCategory;
+          targetRec.isFixed = s.oldRec.isFixed;
+          targetRec.type = s.oldRec.type;
+          applied++;
+        }
+      });
+      if (applied > 0) {
+        saveData();
+        renderTable();
+        renderCardsBreakdown();
+        updateCharts(getFilteredRecords(true));
+        showToast(\`\${applied}건의 내역이 과거 이력을 바탕으로 자동 분류되었습니다!\`, 'success');
+      }
+      closeModal();
+    };
+
+    btnSkip.addEventListener('click', skipHandler);
+    btnApply.addEventListener('click', applyHandler);
+    btnClose.addEventListener('click', skipHandler);
+
+    modal.classList.add('show');
   }
 
   function showUploadSummaryModal(newRecords) {
