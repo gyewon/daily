@@ -1028,7 +1028,7 @@ body {
 .col-inst { width: 60px; text-align: center; }
 .col-exclude { width: 70px; text-align: center; }
 .col-fixed { width: 90px; text-align: center; white-space: nowrap; }
-.col-memo { min-width: 120px; }
+.col-memo { min-width: 200px; }
 .col-action { width: 60px; text-align: center; }
 
 [data-theme="light"] .col-merchant { color: #0f172a; }

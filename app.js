@@ -2272,7 +2272,7 @@
             new Date(r.date) < new Date(current.date)
           ).pop();
 
-          if (prev && (current.isInstallment !== 'Y' || current.memo === prev.memo)) {
+          if (prev && (current.isInstallment !== 'Y' || current.memo === prev.memo || !current.memo)) {
             let nextMemo = current.memo;
             if (prev.memo) {
               const fractionMatch = prev.memo.match(/(.*?)(\d+)(\s*\/\s*\d+)(.*)/);
