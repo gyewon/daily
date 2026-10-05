@@ -2131,12 +2131,12 @@
     document.getElementById('newTxForm')?.addEventListener('submit', e => {
       e.preventDefault();
       const date = document.getElementById('newDate').value;
-      const time = document.getElementById('newTime').value;
+      const time = "12:00:00";
       const category = document.getElementById('newCategory').value;
       const subCategory = document.getElementById('newSubCategory').value;
       const merchant = document.getElementById('newMerchant').value;
       const amount = Number(document.getElementById('newAmount').value) || 0;
-      const origPay = document.getElementById('newOrigPay').value || '기타';
+      const origPay = '수동입력';
       const actualCard = document.getElementById('newActualCard').value;
       const isInstallment = document.getElementById('newInstallment').value === 'Y' ? 'Y' : 'N';
       const memo = document.getElementById('newMemo').value;
