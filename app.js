@@ -2264,7 +2264,7 @@
       let pendingChanges = [];
 
       appState.records.forEach(current => {
-        if (current.isInstallment !== 'Y' && current.amount > 0) {
+        if (current.amount > 0) {
           const prev = sortedRecords.filter(r => 
             r.merchant === current.merchant && 
             r.amount === current.amount && 
@@ -2272,7 +2272,7 @@
             new Date(r.date) < new Date(current.date)
           ).pop();
 
-          if (prev) {
+          if (prev && (current.isInstallment !== 'Y' || current.memo === prev.memo)) {
             let nextMemo = current.memo;
             if (prev.memo) {
               const fractionMatch = prev.memo.match(/(.*?)(\d+)(\s*\/\s*\d+)(.*)/);
@@ -2287,11 +2287,15 @@
                 }
               }
             }
-            pendingChanges.push({
-              record: current,
-              prev: prev,
-              newMemo: nextMemo
-            });
+            
+            // Only push if there's actually a change to be made
+            if (current.isInstallment !== 'Y' || current.memo !== nextMemo || current.category !== prev.category || current.actualCard !== prev.actualCard) {
+              pendingChanges.push({
+                record: current,
+                prev: prev,
+                newMemo: nextMemo
+              });
+            }
           }
         }
       });
