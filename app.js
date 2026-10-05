@@ -50,7 +50,8 @@
     '토스 간편결제': { color: '#3b82f6', dot: '#2563eb', type: 'pay' },
     '신한 SOL LINK (쏠편한 입출금)': { color: '#475569', dot: '#94a3b8', type: 'pay' },
     'Sh평생주거래우대통장(스페셜플러스예금-잔액구간별)': { color: '#475569', dot: '#94a3b8', type: 'pay' },
-    '상상모바일통장': { color: '#475569', dot: '#94a3b8', type: 'pay' }
+    '상상모바일통장': { color: '#475569', dot: '#94a3b8', type: 'pay' },
+    '현금': { color: '#10b981', dot: '#059669', type: 'pay' }
   };
 
   const CATEGORY_COLORS = [
@@ -781,7 +782,7 @@
       const bAmt = Number(r.billingAmount) || amt;
       const isExclude = r.exclude === 'Y';
       const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
-      const isPayOrAccount = !isPhysical;
+      const isPayOrAccount = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'pay';
 
       totalValidAmt += amt;
       totalValidCount++;
@@ -792,7 +793,7 @@
 
       if (isPhysical) {
         cardAmt += amt;
-      } else {
+      } else if (isPayOrAccount) {
         payAmt += amt;
         payCount++;
       }
