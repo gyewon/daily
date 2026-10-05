@@ -978,15 +978,22 @@
           </div>
         </div>
         <div class="card-item-bottom">
-          <div class="card-bar-bg">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="card-meta-text" style="font-size: 0.85rem; font-weight: 500;">
+              결제 완료: <strong style="color: var(--primary-color); font-size: 0.95rem;">${completedCnt}</strong> <span style="color: var(--text-muted);">/ ${cnt}건</span>
+            </span>
+            ${conf.target > 0 ? `
+            <span class="card-meta-text" style="background: var(--bg-input); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; border: 1px solid var(--border-color);">
+              목표 ${formatCurrency(conf.target)}원 <strong style="color:${isTargetMet ? 'var(--danger-color)' : 'var(--text-main)'};">(${targetPercent}%)</strong>
+            </span>
+            ` : ''}
+          </div>
+          <div class="card-bar-bg" style="margin-bottom: 4px;">
             <div class="card-bar-fill" style="width: ${share}%; background: ${conf.color};"></div>
           </div>
-          <span class="card-meta-text">
-            총 ${cnt}건 ${conf.target > 0 ? `· 목표 ${formatCurrency(conf.target)}원 (${targetPercent}% ${isTargetMet ? '달성✨' : ''})` : ''}
-          </span>
-          <span class="card-meta-text" style="color: var(--primary-color); display:block; margin-top:4px; font-weight:bold;">
-            ✅ 결제 완료: ${completedCnt}건 / ${formatCurrency(completedAmt)}원
-          </span>
+          <div style="text-align: right; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+            (완료 금액: ${formatCurrency(completedAmt)}원)
+          </div>
         </div>
       `;
 
@@ -1024,7 +1031,12 @@
           <span class="pay-mini-dot" style="background: ${conf.dot || conf.color};"></span>
           <span>${payName.replace('[간편결제] ', '')}</span>
         </div>
-        <div class="pay-mini-amount">${formatCurrency(amt)}원 <small style="font-weight:400; font-size:0.75rem; color:var(--text-muted);">(${cnt}건)</small></div>
+        <div class="pay-mini-amount" style="text-align: right;">
+          <div>${formatCurrency(amt)}원</div>
+          <div style="font-size:0.8rem; font-weight:500; margin-top:4px; color:var(--text-main);">
+            완료: <strong style="color:var(--primary-color);">${completedCnt}</strong> <span style="color:var(--text-muted); font-size:0.75rem;">/ ${cnt}건</span>
+          </div>
+        </div>
       `;
 
       payEl.addEventListener('click', () => {
