@@ -1584,8 +1584,7 @@
         </td>
         <td class="col-id">${rec.id}</td>
         <td class="col-date">
-          <div>${rec.date}</div>
-          <small style="color:var(--text-muted); font-size:0.75rem;">${rec.time || ''}</small>
+          <div>${rec.date ? rec.date.substring(5) : ''}</div>
         </td>
         <td class="col-cat">
           <select class="input-table-category badge-cat-input" data-id="${rec.id}" title="대분류 선택">
