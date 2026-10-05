@@ -202,6 +202,7 @@
         if (parsed.deletedSignatures) appState.deletedSignatures = new Set(parsed.deletedSignatures);
         if (parsed.notificationLogs) appState.notificationLogs = parsed.notificationLogs;
         if (parsed.cardConfig) CARD_CONFIG = parsed.cardConfig;
+        if (parsed.chartExcludedCategories) appState.chartExcludedCategories = new Set(parsed.chartExcludedCategories);
         return true;
       }
     } catch (e) { console.error('Local cache load failed', e); }
@@ -217,7 +218,8 @@
         masterCategories: appState.masterCategories,
         deletedSignatures: Array.from(appState.deletedSignatures),
         notificationLogs: appState.notificationLogs,
-        cardConfig: CARD_CONFIG
+        cardConfig: CARD_CONFIG,
+        chartExcludedCategories: Array.from(appState.chartExcludedCategories)
       }));
     } catch (e) { console.error('Local cache save failed', e); }
   }
@@ -1113,7 +1115,7 @@
           } else {
             appState.chartExcludedCategories.add(cat);
           }
-          // 전체 다시 렌더링하면 체크박스도 재생성되므로, updateCharts를 다시 부르되 현재 레코드 그대로
+          saveLocalCache(); // Save state
           updateCharts(records);
         });
         
