@@ -1764,7 +1764,8 @@
         updateCharts(getFilteredRecords(true));
         renderTable(); // 실시간 필터 적용을 위해 테이블 다시 그리기
 
-        showToast(`[#${id}] '${rec.merchant}' 카드가 '${newCard}'(으)로 변경되었습니다!`, 'success');
+        const dateStr = rec.date ? rec.date.substring(5) : '';
+        showToast(`[${dateStr} ${rec.merchant}] 카드가 '${newCard}'(으)로 변경되었습니다!`, 'success');
       }
     }
 
@@ -1786,7 +1787,8 @@
         rec.isInstallment = rec.isInstallment === 'Y' ? 'N' : 'Y';
         saveData();
         renderAll();
-        showToast(`[#${id}] 할부 여부가 '${rec.isInstallment}'(으)로 변경되었습니다.`);
+        const dateStr = rec.date ? rec.date.substring(5) : '';
+        showToast(`[${dateStr} ${rec.merchant}] 할부 여부가 '${rec.isInstallment}'(으)로 변경되었습니다.`);
       }
       return;
     }
@@ -1815,10 +1817,11 @@
         renderCardsBreakdown();
         updateCharts(getFilteredRecords(true));
         renderTable();
+        const logPrefix = `[${rec.date ? rec.date.substring(5) : ''} ${rec.merchant}]`;
         showToast(
           rec.exclude === 'Y'
-            ? `[#${id}] 항목이 통계 및 지출에서 제외(Y) 처리되었습니다.`
-            : `[#${id}] 항목이 다시 통계에 포함(N)되었습니다.`,
+            ? `${logPrefix} 항목이 통계 및 지출에서 제외(Y) 처리되었습니다.`
+            : `${logPrefix} 항목이 다시 통계에 포함(N)되었습니다.`,
           rec.exclude === 'Y' ? 'warn' : 'info'
         );
       }
@@ -2139,7 +2142,8 @@
           renderKPIs();
           updateCharts(getFilteredRecords(true));
           renderTable(); // 필터 즉각 반영
-          showToast(`[#${id}] 카테고리가 변경되었습니다.`);
+          const dateStr = rec.date ? rec.date.substring(5) : '';
+          showToast(`[${dateStr} ${rec.merchant}] 카테고리가 변경되었습니다.`);
         }
       }
     });
@@ -2256,48 +2260,65 @@
 
     // Auto Match Installments
     document.getElementById('btnAutoInstallment')?.addEventListener('click', () => {
-      let matchedCount = 0;
-      // Sort records by date ascending so we can look back in time
       const sortedRecords = [...appState.records].sort((a, b) => new Date(a.date) - new Date(b.date));
-      
+      let pendingChanges = [];
+
       appState.records.forEach(current => {
         if (current.isInstallment !== 'Y' && current.amount > 0) {
-          // Find a previous record with the same merchant and amount that is an installment
           const prev = sortedRecords.filter(r => 
             r.merchant === current.merchant && 
             r.amount === current.amount && 
             r.isInstallment === 'Y' && 
             new Date(r.date) < new Date(current.date)
-          ).pop(); // Get the most recent one
+          ).pop();
 
           if (prev) {
-            current.isInstallment = 'Y';
-            current.category = prev.category;
-            current.subCategory = prev.subCategory;
-            current.actualCard = prev.actualCard;
-            
-            // Auto increment memo if it has a number at the end
+            let nextMemo = current.memo;
             if (prev.memo) {
-              const match = prev.memo.match(/(.*?)(\d+)$/);
-              if (match) {
-                const prefix = match[1];
-                const num = parseInt(match[2], 10);
-                current.memo = `${prefix}${num + 1}`;
+              const fractionMatch = prev.memo.match(/(.*?)(\d+)(\s*\/\s*\d+)(.*)/);
+              if (fractionMatch) {
+                nextMemo = `${fractionMatch[1]}${parseInt(fractionMatch[2], 10) + 1}${fractionMatch[3]}${fractionMatch[4]}`;
               } else {
-                current.memo = prev.memo;
+                const match = prev.memo.match(/(.*?)(\d+)([^\d]*)$/);
+                if (match) {
+                  nextMemo = `${match[1]}${parseInt(match[2], 10) + 1}${match[3]}`;
+                } else {
+                  nextMemo = prev.memo;
+                }
               }
             }
-            matchedCount++;
+            pendingChanges.push({
+              record: current,
+              prev: prev,
+              newMemo: nextMemo
+            });
           }
         }
       });
 
-      if (matchedCount > 0) {
+      if (pendingChanges.length === 0) {
+        showToast('매칭할 수 있는 할부 내역이 없습니다.', 'info');
+        return;
+      }
+
+      let confirmMsg = `총 ${pendingChanges.length}건의 자동 매칭 항목을 찾았습니다. 적용하시겠습니까?\n\n[변경 예정 항목]\n`;
+      pendingChanges.slice(0, 10).forEach(c => {
+        const d = c.record.date ? c.record.date.substring(5) : '';
+        confirmMsg += `- [${d} ${c.record.merchant}] 할부 N -> Y, 메모: '${c.record.memo}' -> '${c.newMemo}'\n`;
+      });
+      if (pendingChanges.length > 10) confirmMsg += `...외 ${pendingChanges.length - 10}건\n`;
+
+      if (confirm(confirmMsg)) {
+        pendingChanges.forEach(c => {
+          c.record.isInstallment = 'Y';
+          c.record.category = c.prev.category;
+          c.record.subCategory = c.prev.subCategory;
+          c.record.actualCard = c.prev.actualCard;
+          c.record.memo = c.newMemo;
+        });
         saveData();
         renderRecords();
-        showToast(`총 ${matchedCount}건의 할부 결제를 자동으로 매칭했습니다!`, 'success');
-      } else {
-        showToast('매칭할 수 있는 할부 내역이 없습니다.', 'info');
+        showToast(`총 ${pendingChanges.length}건의 할부 결제를 자동으로 매칭했습니다!`, 'success');
       }
     });
 
