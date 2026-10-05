@@ -2119,6 +2119,13 @@
       modal.classList.add('show');
     });
 
+    document.getElementById('btnNewCashTransaction')?.addEventListener('click', () => {
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('newDate').value = today;
+      document.getElementById('newCard').value = '현금';
+      modal.classList.add('show');
+    });
+
     document.getElementById('btnCloseModal')?.addEventListener('click', () => modal.classList.remove('show'));
     document.getElementById('btnCancelModal')?.addEventListener('click', () => modal.classList.remove('show'));
 
