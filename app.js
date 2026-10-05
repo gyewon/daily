@@ -191,6 +191,44 @@
     });
   }
 
+  function saveUIState() {
+    try {
+      localStorage.setItem('gyewon_ui_state_v1', JSON.stringify({
+        filterCard: appState.filterCard,
+        filterCategory: appState.filterCategory,
+        filterType: appState.filterType,
+        filterExclude: appState.filterExclude,
+        filterInstallment: appState.filterInstallment,
+        globalMonth: appState.globalMonth,
+        sortBy: appState.sortBy,
+        sortOrder: appState.sortOrder,
+        currentPage: appState.currentPage,
+        pageSize: appState.pageSize,
+        activeChartTab: appState.activeChartTab
+      }));
+    } catch(e) {}
+  }
+
+  function loadUIState() {
+    try {
+      const state = localStorage.getItem('gyewon_ui_state_v1');
+      if (state) {
+        const parsed = JSON.parse(state);
+        Object.assign(appState, parsed);
+      }
+    } catch(e) {}
+  }
+
+  function syncDOMFilters() {
+    const ids = ['filterCard', 'filterCategory', 'filterType', 'filterExclude', 'filterInstallment'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = appState[id] || 'ALL';
+    });
+    const pSize = document.getElementById('pageSizeSelect');
+    if (pSize) pSize.value = appState.pageSize;
+  }
+
   function loadLocalCache() {
     try {
       const cache = localStorage.getItem('gyewon_appState_cache');
@@ -227,10 +265,12 @@
 
   async function init() {
     initTheme();
+    loadUIState();
     const hasCache = loadLocalCache();
     
     if (hasCache) {
       populateFilterDropdowns();
+      syncDOMFilters();
       if (typeof renderTypeFilter === 'function') renderTypeFilter();
       attachEventListeners();
       renderAll();
@@ -239,6 +279,7 @@
       loadData().then(() => {
         saveLocalCache();
         populateFilterDropdowns();
+        syncDOMFilters();
         if (typeof renderTypeFilter === 'function') renderTypeFilter();
         renderAll();
       });
@@ -246,6 +287,7 @@
       await loadData();
       saveLocalCache();
       populateFilterDropdowns();
+      syncDOMFilters();
       if (typeof renderTypeFilter === 'function') renderTypeFilter();
       attachEventListeners();
       renderAll();
@@ -1476,6 +1518,7 @@
 
   // --- Render Transactions Table ---
   function renderTable() {
+    saveUIState();
     const tableBody = document.getElementById('txTableBody');
     if (!tableBody) return;
 
