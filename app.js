@@ -996,6 +996,7 @@
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <span class="card-meta-text" style="font-size: 0.85rem; font-weight: 500;">
               결제 완료: <strong style="color: var(--primary-color); font-size: 0.95rem;">${completedCnt}</strong> <span style="color: var(--text-muted);">/ ${cnt}건</span>
+              ${cnt > 0 && completedCnt === cnt ? '<span style="color: #10b981; font-weight: 700; margin-left: 6px; font-size: 0.85rem;">✅ 결제완료</span>' : ''}
             </span>
           </div>
           <div class="card-bar-bg" style="margin-bottom: 4px;">
