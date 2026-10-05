@@ -980,9 +980,16 @@
             <span class="card-brand-chip" style="background: ${conf.color};"></span>
             <span class="card-title">${cardName}</span>
           </div>
-          <div class="card-amount-group">
-            <span class="card-amount">${formatCurrency(amt)}원</span>
-            <span class="card-share">(${share}%)</span>
+          <div class="card-amount-group" style="display: flex; align-items: center; gap: 10px;">
+            ${conf.target > 0 ? `
+            <span class="card-meta-text" style="background: var(--bg-input); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; border: 1px solid var(--border-color);">
+              목표 ${formatCurrency(conf.target)}원 <strong style="color:${isTargetMet ? 'var(--danger-color)' : 'var(--text-main)'};">(${targetPercent}%) ${isTargetMet ? '👑' : ''}</strong>
+            </span>
+            ` : ''}
+            <div>
+              <span class="card-amount">${formatCurrency(amt)}원</span>
+              <span class="card-share">(${share}%)</span>
+            </div>
           </div>
         </div>
         <div class="card-item-bottom">
@@ -990,11 +997,6 @@
             <span class="card-meta-text" style="font-size: 0.85rem; font-weight: 500;">
               결제 완료: <strong style="color: var(--primary-color); font-size: 0.95rem;">${completedCnt}</strong> <span style="color: var(--text-muted);">/ ${cnt}건</span>
             </span>
-            ${conf.target > 0 ? `
-            <span class="card-meta-text" style="background: var(--bg-input); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; border: 1px solid var(--border-color);">
-              목표 ${formatCurrency(conf.target)}원 <strong style="color:${isTargetMet ? 'var(--danger-color)' : 'var(--text-main)'};">(${targetPercent}%)</strong>
-            </span>
-            ` : ''}
           </div>
           <div class="card-bar-bg" style="margin-bottom: 4px;">
             <div class="card-bar-fill" style="width: ${share}%; background: ${conf.color};"></div>
