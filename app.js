@@ -2254,6 +2254,53 @@
     // Export to Excel
     document.getElementById('btnExportExcel')?.addEventListener('click', exportToExcel);
 
+    // Auto Match Installments
+    document.getElementById('btnAutoInstallment')?.addEventListener('click', () => {
+      let matchedCount = 0;
+      // Sort records by date ascending so we can look back in time
+      const sortedRecords = [...appState.records].sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      appState.records.forEach(current => {
+        if (current.isInstallment !== 'Y' && current.amount > 0) {
+          // Find a previous record with the same merchant and amount that is an installment
+          const prev = sortedRecords.filter(r => 
+            r.merchant === current.merchant && 
+            r.amount === current.amount && 
+            r.isInstallment === 'Y' && 
+            new Date(r.date) < new Date(current.date)
+          ).pop(); // Get the most recent one
+
+          if (prev) {
+            current.isInstallment = 'Y';
+            current.category = prev.category;
+            current.subCategory = prev.subCategory;
+            current.actualCard = prev.actualCard;
+            
+            // Auto increment memo if it has a number at the end
+            if (prev.memo) {
+              const match = prev.memo.match(/(.*?)(\d+)$/);
+              if (match) {
+                const prefix = match[1];
+                const num = parseInt(match[2], 10);
+                current.memo = `${prefix}${num + 1}`;
+              } else {
+                current.memo = prev.memo;
+              }
+            }
+            matchedCount++;
+          }
+        }
+      });
+
+      if (matchedCount > 0) {
+        saveData();
+        renderRecords();
+        showToast(`총 ${matchedCount}건의 할부 결제를 자동으로 매칭했습니다!`, 'success');
+      } else {
+        showToast('매칭할 수 있는 할부 내역이 없습니다.', 'info');
+      }
+    });
+
     // Category Rules Modal
     const rulesModal = document.getElementById('categoryRulesModal');
     
