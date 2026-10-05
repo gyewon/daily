@@ -780,25 +780,25 @@
       const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
       const isPayOrAccount = !isPhysical;
 
+      totalValidAmt += amt;
+      totalValidCount++;
+
+      if (isPhysical) {
+        cardAmt += amt;
+      } else {
+        payAmt += amt;
+        payCount++;
+      }
+
+      billingAmt += bAmt;
+
+      if (r.installment && r.installment !== '일시불') {
+        installmentCount++;
+      }
+
       if (isExclude) {
         excludedAmt += amt;
         excludedCount++;
-      } else {
-        totalValidAmt += amt;
-        totalValidCount++;
-
-        if (isPhysical) {
-          cardAmt += amt;
-        } else {
-          payAmt += amt;
-          payCount++;
-        }
-
-        billingAmt += bAmt;
-
-        if (r.installment && r.installment !== '일시불') {
-          installmentCount++;
-        }
       }
 
       let matchedAnyType = false;
@@ -818,7 +818,8 @@
           }
         }
       }
-      if (matchedAnyType && !isExclude) {
+      
+      if (matchedAnyType) {
         validCustomTypeAmt += amt;
       }
     });
