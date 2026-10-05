@@ -405,6 +405,12 @@
       if (appState.records && appState.records.length > 0) {
         let changed = autoFlagInstallments();
         appState.records.forEach(r => {
+          if (r.date && r.date.includes('-')) {
+            const mNum = parseInt(r.date.split('-')[1], 10);
+            if (!isNaN(mNum)) {
+              r.month = `${mNum}월`;
+            }
+          }
           if (r.isFixed === undefined || r.isFixed === null) {
             checkFixedCategory(r);
             changed = true;
