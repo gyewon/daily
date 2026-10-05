@@ -838,8 +838,6 @@
     if (kpiTotalAmountEl) kpiTotalAmountEl.textContent = formatCurrency(totalValidAmt);
     const kpiTxCountEl = document.getElementById('kpiTxCount');
     if (kpiTxCountEl) kpiTxCountEl.textContent = `${totalValidCount}건 지출 반영`;
-    const kpiCashAmountEl = document.getElementById('kpiCashAmount');
-    if (kpiCashAmountEl) kpiCashAmountEl.textContent = `(현금: ${formatCurrency(cashAmt)}원)`;
 
     // Dynamic Custom Types KPIs
     const dynamicKpiContainer = document.getElementById('dynamicKpiContainer');
