@@ -766,6 +766,7 @@
     let excludedAmt = 0;
     let excludedCount = 0;
     let validCustomTypeAmt = 0;
+    let cashAmt = 0;
     const customTypeSums = {};
     const customTypeCounts = {};
     for (const t in appState.customTypes) {
@@ -782,6 +783,10 @@
 
       totalValidAmt += amt;
       totalValidCount++;
+
+      if (r.actualCard === '현금') {
+        cashAmt += amt;
+      }
 
       if (isPhysical) {
         cardAmt += amt;
@@ -833,6 +838,8 @@
     if (kpiTotalAmountEl) kpiTotalAmountEl.textContent = formatCurrency(totalValidAmt);
     const kpiTxCountEl = document.getElementById('kpiTxCount');
     if (kpiTxCountEl) kpiTxCountEl.textContent = `${totalValidCount}건 지출 반영`;
+    const kpiCashAmountEl = document.getElementById('kpiCashAmount');
+    if (kpiCashAmountEl) kpiCashAmountEl.textContent = `(현금: ${formatCurrency(cashAmt)}원)`;
 
     // Dynamic Custom Types KPIs
     const dynamicKpiContainer = document.getElementById('dynamicKpiContainer');
@@ -2115,13 +2122,6 @@
     document.getElementById('btnNewTransaction')?.addEventListener('click', () => {
       const today = new Date().toISOString().slice(0, 10);
       document.getElementById('newDate').value = today;
-      modal.classList.add('show');
-    });
-
-    document.getElementById('btnNewCashTransaction')?.addEventListener('click', () => {
-      const today = new Date().toISOString().slice(0, 10);
-      document.getElementById('newDate').value = today;
-      document.getElementById('newCard').value = '현금';
       modal.classList.add('show');
     });
 
