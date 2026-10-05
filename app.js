@@ -1254,7 +1254,7 @@
       },
       options: {
         layout: {
-          padding: { right: 80 }
+          padding: { right: 120 }
         },
         responsive: true,
         maintainAspectRatio: false,

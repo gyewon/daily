@@ -661,9 +661,7 @@ body {
 }
 
 .card-item-bottom {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: block;
 }
 
 .card-bar-bg {
