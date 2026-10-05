@@ -5,6 +5,11 @@ Bank Salad to Supabase Auto-Sync Service
 
 import os
 import sys
+import codecs
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 import time
 import json
 import email
@@ -273,6 +278,12 @@ def sync_records_to_supabase(new_raw_records):
     settings = get_supabase_app_settings()
     existing_records = settings.get('records') or []
     deleted_signatures = set(settings.get('deleted_signatures') or [])
+    deleted_fuzzy_sigs = set()
+    for ds in deleted_signatures:
+        parts = ds.split('|')
+        if len(parts) >= 4:
+            deleted_fuzzy_sigs.add(f"{parts[0]}|{parts[2]}|{parts[3]}")
+
     rules = settings.get('rules') or []
     notification_logs = settings.get('notification_logs') or []
 
@@ -294,7 +305,7 @@ def sync_records_to_supabase(new_raw_records):
         fuzzy = r['_fuzzy_sig']
         
         # Skip if already deleted by user or already present in Supabase
-        if sig in deleted_signatures or fuzzy in deleted_signatures:
+        if sig in deleted_signatures or fuzzy in deleted_fuzzy_sigs:
             continue
         if sig in existing_sigs or fuzzy in existing_fuzzy_sigs:
             continue

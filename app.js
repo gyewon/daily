@@ -1645,6 +1645,7 @@
         <td class="col-id">${rec.id}</td>
         <td class="col-date">
           <div>${rec.date ? rec.date.substring(5) : ''}</div>
+          <small style="color:var(--text-muted); font-size:0.75rem;">${rec.time || ''}</small>
         </td>
         <td class="col-cat">
           <select class="input-table-category badge-cat-input" data-id="${rec.id}" title="대분류 선택">
@@ -2970,26 +2971,44 @@
         return;
       }
 
-      Array.from(appState.deletedSignatures).forEach(sig => {
-        // signature format: date|time|merchant|amount
+      const sigsArray = Array.from(appState.deletedSignatures).map(sig => {
         const parts = sig.split('|');
-        const dateStr = parts[0] || '-';
-        const timeStr = parts[1] || '-';
-        const merchant = parts[2] || '-';
-        const amount = Number(parts[3]) || 0;
+        return {
+          sig: sig,
+          dateStr: parts[0] || '-',
+          timeStr: parts[1] || '-',
+          merchant: parts[2] || '-',
+          amount: Number(parts[3]) || 0
+        };
+      });
+
+      sigsArray.sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+
+      let currentMonth = null;
+
+      sigsArray.forEach(item => {
+        const monthMatch = item.dateStr.match(/^(\d{4})-(\d{2})/);
+        const itemMonth = monthMatch ? `${monthMatch[1]}년 ${parseInt(monthMatch[2], 10)}월` : '알 수 없음';
+
+        if (currentMonth !== itemMonth) {
+          currentMonth = itemMonth;
+          const trGroup = document.createElement('tr');
+          trGroup.innerHTML = `<td colspan="4" style="background-color: var(--bg-hover); padding: 8px 16px; font-weight: bold; font-size: 0.95rem; color: var(--accent); border-bottom: 1px solid var(--border-color); text-align: left;">${currentMonth}</td>`;
+          tbody.appendChild(trGroup);
+        }
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td style="padding: 12px;">
-            <div>${dateStr}</div>
-            <small style="color:var(--text-muted); font-size:0.75rem;">${timeStr}</small>
+          <td style="padding: 12px; border-bottom: 1px solid var(--border-color);">
+            <div>${item.dateStr}</div>
+            <small style="color:var(--text-muted); font-size:0.75rem;">${item.timeStr}</small>
           </td>
-          <td style="padding: 12px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${merchant}">
-            ${merchant}
+          <td style="padding: 12px; border-bottom: 1px solid var(--border-color); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.merchant}">
+            ${item.merchant}
           </td>
-          <td style="padding: 12px; text-align: right;">${formatCurrency(amount)}원</td>
-          <td style="padding: 12px; text-align: center;">
-            <button type="button" class="btn-restore-sig" data-sig="${sig}" style="background:none; border:none; cursor:pointer; font-size: 1.2rem;" title="복구하기">♻️</button>
+          <td style="padding: 12px; border-bottom: 1px solid var(--border-color); text-align: right;">${formatCurrency(item.amount)}원</td>
+          <td style="padding: 12px; border-bottom: 1px solid var(--border-color); text-align: center;">
+            <button type="button" class="btn-restore-sig" data-sig="${item.sig}" style="background:none; border:none; cursor:pointer; font-size: 1.2rem;" title="복구하기">♻️</button>
           </td>
         `;
         tbody.appendChild(tr);
