@@ -341,6 +341,11 @@
         });
       }
 
+      // Ensure "현금" is always in CARD_CONFIG
+      if (!CARD_CONFIG['현금']) {
+        CARD_CONFIG['현금'] = { color: '#22c55e', dot: '#16a34a', type: 'pay' };
+      }
+
       if (Object.keys(appState.masterCategories).length === 0) {
         appState.masterCategories = JSON.parse(JSON.stringify(DEFAULT_MASTER_CATEGORIES));
       }
@@ -568,7 +573,9 @@
     // Modal Card options
     if (newActualCard) {
       newActualCard.innerHTML = '';
-      allCards.forEach(card => {
+      const modalCards = [...allCards];
+      if (!modalCards.includes('현금')) modalCards.push('현금');
+      modalCards.forEach(card => {
         const opt = document.createElement('option');
         opt.value = card;
         opt.textContent = card;
@@ -625,7 +632,7 @@
   }
 
   function populateCategorySelects() {
-    const mainCats = Object.keys(appState.masterCategories);
+    const mainCats = Object.keys(appState.masterCategories).sort();
     
     // For Modals: newCategory, ruleCategory
     const newMain = document.getElementById('newCategory');
@@ -657,7 +664,7 @@
     subSelect.innerHTML = '<option value="">소분류 선택</option>';
     
     if (mainCat && appState.masterCategories[mainCat]) {
-      appState.masterCategories[mainCat].forEach(sub => {
+      [...appState.masterCategories[mainCat]].sort().forEach(sub => {
         const opt = document.createElement('option');
         opt.value = sub;
         opt.textContent = sub;
@@ -1521,7 +1528,7 @@
       
 
       // Category Options for Table Select
-      const mainCats = Object.keys(appState.masterCategories);
+      const mainCats = Object.keys(appState.masterCategories).sort();
       let catOptionsHtml = '<option value="">대분류</option>';
       let isValidCat = false;
       mainCats.forEach(cat => {
@@ -1536,7 +1543,7 @@
       // SubCategory Options for Table Select
       let subOptionsHtml = '<option value="">소분류</option>';
       let isValidSub = false;
-      const validSubCats = appState.masterCategories[rec.category] || [];
+      const validSubCats = [...(appState.masterCategories[rec.category] || [])].sort();
       validSubCats.forEach(sub => {
         const isSelected = sub === rec.subCategory;
         if (isSelected) isValidSub = true;
@@ -2030,7 +2037,7 @@
             const subSelect = e.target.closest('td').querySelector('.input-table-subcategory');
             if (subSelect) {
               subSelect.innerHTML = '<option value="">소분류 선택</option>';
-              const subCats = appState.masterCategories[rec.category] || [];
+              const subCats = [...(appState.masterCategories[rec.category] || [])].sort();
               subCats.forEach(sub => {
                 const opt = document.createElement('option');
                 opt.value = sub;
@@ -2571,7 +2578,7 @@
       const container = document.getElementById('mainCategoryList');
       if (!container) return;
       container.innerHTML = '';
-      const mainCats = Object.keys(appState.masterCategories);
+      const mainCats = Object.keys(appState.masterCategories).sort();
       if (mainCats.length === 0) {
         container.innerHTML = '<div style="color:var(--text-muted); font-size:0.9rem; padding:10px;">대분류가 없습니다.</div>';
         return;
@@ -2628,7 +2635,7 @@
       textTitle.textContent = `(${mainCat})`;
       document.getElementById('newSubCategoryName').disabled = false;
       
-      const subCats = appState.masterCategories[mainCat] || [];
+      const subCats = [...(appState.masterCategories[mainCat] || [])].sort();
       if (subCats.length === 0) {
         container.innerHTML = '<div style="color:var(--text-muted); font-size:0.9rem; padding:10px;">등록된 소분류가 없습니다.</div>';
         return;
@@ -2682,7 +2689,7 @@
       let removedMainCount = 0;
       let removedSubCount = 0;
       
-      Object.keys(appState.masterCategories).forEach(cat => {
+      Object.keys(appState.masterCategories).sort().forEach(cat => {
         // 소분류 정리
         const originalSubs = [...appState.masterCategories[cat]];
         const newSubs = originalSubs.filter(sub => {
@@ -3010,9 +3017,9 @@
           return;
         }
 
-        // Find header row in top 10 rows
+        // Find header row in top 100 rows
         let headerRowIdx = 0;
-        for (let i = 0; i < Math.min(10, rows.length); i++) {
+        for (let i = 0; i < Math.min(100, rows.length); i++) {
           const rowStr = (rows[i] || []).join(' ');
           if (['날짜', '금액', '내용', '가맹점', '결제수단', '분류', '거래일시'].some(k => rowStr.includes(k))) {
             headerRowIdx = i;

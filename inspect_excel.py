@@ -9,7 +9,7 @@ for name in wb.sheetnames:
     sheet_info = {
         "name": name,
         "rows": ws.max_row,
-        "cols": ws.max_column,
+        "cols": ws.max
         "preview": []
     }
     for r in range(1, min(ws.max_row + 1, 15)):
