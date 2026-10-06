@@ -759,8 +759,7 @@
 
       // Card Filter
       if (appState.filterCard === 'UNMAPPED') {
-        const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
-        if (isPhysical) return false;
+        if (CARD_CONFIG[r.actualCard]) return false;
       } else if (appState.filterCard !== 'ALL') {
         if (r.actualCard !== appState.filterCard) return false;
       }
@@ -1617,7 +1616,7 @@
       }
 
       const isExcluded = rec.exclude === 'Y';
-      const isUnmapped = !CARD_CONFIG[rec.actualCard] || CARD_CONFIG[rec.actualCard].type !== 'physical';
+      const isUnmapped = !CARD_CONFIG[rec.actualCard];
       const isCanceledClass = rec.isCanceled ? 'is-canceled' : '';
 
       const tr = document.createElement('tr');
@@ -1626,12 +1625,15 @@
 
       // Card Select Options
       let cardOptionsHtml = '';
+      let isValidCard = false;
       allCards.forEach(card => {
         const isSelected = card === rec.actualCard;
+        if (isSelected) isValidCard = true;
         cardOptionsHtml += `<option value="${card}" ${isSelected ? 'selected' : ''}>${card}</option>`;
       });
-
-      
+      if (rec.actualCard && !isValidCard) {
+        cardOptionsHtml += `<option value="${rec.actualCard}" selected>${rec.actualCard} (미등록)</option>`;
+      }
 
       // Category Options for Table Select
       const mainCats = Object.keys(appState.masterCategories).sort();
@@ -1927,8 +1929,8 @@
       appState.currentPage = 1;
       renderCardsBreakdown();
       renderTable();
-      const unmappedCount = appState.records.filter(r =>  (!CARD_CONFIG[r.actualCard] || CARD_CONFIG[r.actualCard].type !== 'physical')).length;
-      showToast(`미매핑된 간편결제/계좌 내역 ${unmappedCount}건을 표시합니다.`, 'info');
+      const unmappedCount = appState.records.filter(r => !CARD_CONFIG[r.actualCard]).length;
+      showToast(`등록되지 않은 결제수단 내역 ${unmappedCount}건을 표시합니다.`, 'info');
     });
 
     document.getElementById('btnFilterFixed')?.addEventListener('click', () => {
