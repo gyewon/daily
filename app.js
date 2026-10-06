@@ -2917,8 +2917,9 @@
 
     document.getElementById('newCardForm')?.addEventListener('submit', (e) => {
       e.preventDefault();
+      const cardTypeSelect = document.getElementById('newCardType');
+      const cardType = cardTypeSelect ? cardTypeSelect.value : 'physical';
       const cardName = document.getElementById('newCardName').value.trim();
-      const cardType = 'physical';
       if (!cardName) return;
 
       if (CARD_CONFIG[cardName]) {
@@ -2961,6 +2962,12 @@
             <input type="text" class="input-card-name" data-old-card="${card}" value="${card}" style="width: 100%; max-width: 200px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); font-size: 1.05rem; font-weight: bold;">
           </td>
           <td style="padding: 12px; text-align: center; white-space: nowrap;">
+            <select class="select-card-type" data-card="${card}" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main);">
+              <option value="physical" ${conf.type === 'physical' ? 'selected' : ''}>실물 카드</option>
+              <option value="pay" ${conf.type === 'pay' ? 'selected' : ''}>간편결제 / 계좌</option>
+            </select>
+          </td>
+          <td style="padding: 12px; text-align: center; white-space: nowrap;">
             <input type="text" class="input-card-target" data-card="${card}" value="${displayVal}" placeholder="목표 없음" style="width: 140px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); text-align: right; font-size: 1.05rem; font-weight: bold;">
           </td>
           <td style="padding: 12px; text-align: center; white-space: nowrap;">
@@ -2999,6 +3006,19 @@
         });
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') e.target.blur();
+        });
+      });
+
+      tbody.querySelectorAll('.select-card-type').forEach(select => {
+        select.addEventListener('change', (e) => {
+          const card = e.target.dataset.card;
+          const newType = e.target.value;
+          if (CARD_CONFIG[card] && CARD_CONFIG[card].type !== newType) {
+            CARD_CONFIG[card].type = newType;
+            saveCards();
+            renderAll();
+            showToast(`'${card}' 배치 유형이 변경되었습니다.`, 'success');
+          }
         });
       });
 
