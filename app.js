@@ -2944,12 +2944,24 @@
       showToast(`'${cardName}' 결제수단이 추가되었습니다.`, 'success');
     });
 
+    let cardManageSortDesc = false;
+    document.getElementById('sortCardTypeHeader')?.addEventListener('click', () => {
+      cardManageSortDesc = !cardManageSortDesc;
+      renderManageCards();
+    });
+
     function renderManageCards() {
       const tbody = document.getElementById('cardsTableBody');
       if (!tbody) return;
       tbody.innerHTML = '';
       
-      const cardNames = Object.keys(CARD_CONFIG);
+      let cardNames = Object.keys(CARD_CONFIG);
+      cardNames.sort((a, b) => {
+        const typeA = CARD_CONFIG[a].type === 'physical' ? 0 : 1;
+        const typeB = CARD_CONFIG[b].type === 'physical' ? 0 : 1;
+        if (typeA !== typeB) return cardManageSortDesc ? typeB - typeA : typeA - typeB;
+        return a.localeCompare(b);
+      });
       cardNames.forEach(card => {
         const tr = document.createElement('tr');
         const conf = CARD_CONFIG[card];
