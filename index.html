@@ -577,10 +577,6 @@
       <div class="modal-body" style="padding: 20px;">
         <form id="newCardForm" style="display: flex; gap: 8px; margin-bottom: 20px;">
           <input type="text" id="newCardName" placeholder="새 수단 이름 (예: 카카오페이)" required style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main);">
-          <select id="newCardType" required style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main);">
-            <option value="physical">실물 카드 (신용/체크)</option>
-            <option value="pay">간편결제 / 계좌</option>
-          </select>
           <button type="submit" class="btn btn-primary" style="white-space: nowrap;">추가</button>
         </form>
         
@@ -589,7 +585,6 @@
             <thead>
               <tr>
                 <th style="padding: 12px; text-align: left; width: auto;">결제수단 이름</th>
-                <th style="padding: 12px; text-align: center; width: 140px; white-space: nowrap;">분류</th>
                 <th style="padding: 12px; text-align: center; width: 140px; white-space: nowrap;">실적 목표 (원)</th>
                 <th style="padding: 12px; text-align: center; width: 60px; white-space: nowrap;">관리</th>
               </tr>

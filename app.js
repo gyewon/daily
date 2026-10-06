@@ -2916,7 +2916,7 @@
     document.getElementById('newCardForm')?.addEventListener('submit', (e) => {
       e.preventDefault();
       const cardName = document.getElementById('newCardName').value.trim();
-      const cardType = document.getElementById('newCardType').value;
+      const cardType = 'physical';
       if (!cardName) return;
 
       if (CARD_CONFIG[cardName]) {
@@ -2955,8 +2955,9 @@
         const targetVal = conf.target || 0;
         const displayVal = targetVal > 0 ? targetVal.toLocaleString('ko-KR') : '';
         tr.innerHTML = `
-          <td style="padding: 12px; white-space: nowrap; font-size: 1.15rem;"><strong>${card}</strong></td>
-          <td style="padding: 12px; text-align: center; white-space: nowrap;"><span class="kpi-badge ${conf.type === 'physical' ? 'positive' : 'neutral'}" style="white-space: nowrap; font-size: 1rem; padding: 6px 12px;">${typeStr}</span></td>
+          <td style="padding: 12px; white-space: nowrap;">
+            <input type="text" class="input-card-name" data-old-card="${card}" value="${card}" style="width: 100%; max-width: 200px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); font-size: 1.05rem; font-weight: bold;">
+          </td>
           <td style="padding: 12px; text-align: center; white-space: nowrap;">
             <input type="text" class="input-card-target" data-card="${card}" value="${displayVal}" placeholder="목표 없음" style="width: 140px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); text-align: right; font-size: 1.05rem; font-weight: bold;">
           </td>
@@ -2965,6 +2966,38 @@
           </td>
         `;
         tbody.appendChild(tr);
+      });
+      
+      tbody.querySelectorAll('.input-card-name').forEach(input => {
+        input.addEventListener('blur', (e) => {
+          const oldCard = e.target.dataset.oldCard;
+          const newCard = e.target.value.trim();
+          if (!newCard) {
+            e.target.value = oldCard;
+            return;
+          }
+          if (newCard !== oldCard) {
+            if (CARD_CONFIG[newCard]) {
+              alert('이미 존재하는 결제수단입니다.');
+              e.target.value = oldCard;
+              return;
+            }
+            CARD_CONFIG[newCard] = CARD_CONFIG[oldCard];
+            delete CARD_CONFIG[oldCard];
+            appState.records.forEach(r => {
+              if (r.actualCard === oldCard) r.actualCard = newCard;
+            });
+            saveCards();
+            saveData();
+            renderManageCards();
+            populateFilterDropdowns();
+            renderAll();
+            showToast(`'${oldCard}' 이름이 변경되었습니다.`, 'success');
+          }
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') e.target.blur();
+        });
       });
 
       tbody.querySelectorAll('.input-card-target').forEach(input => {
