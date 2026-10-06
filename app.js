@@ -538,6 +538,18 @@
           match = (amount === Math.abs(Number(rule.amount) || 0));
         }
         
+        // If rule has a date condition, it must match the day of the month
+        if (match && rule.ruleDate && rec.date) {
+          // Extracts "DD" from "YYYY-MM-DD" or handles Date objects
+          let recDay = 0;
+          if (typeof rec.date === 'string' && rec.date.length >= 10) {
+            recDay = parseInt(rec.date.substring(8, 10), 10);
+          } else {
+            recDay = new Date(rec.date).getDate();
+          }
+          match = (recDay === Number(rule.ruleDate));
+        }
+        
         if (match) {
           if (rec.category !== rule.category || rec.subCategory !== rule.subCategory) {
             const oldCat = rec.category;
@@ -2342,6 +2354,8 @@
       const keyword = document.getElementById('ruleKeyword').value.trim();
       const amountVal = document.getElementById('ruleAmount').value.trim();
       const amount = amountVal ? Number(amountVal) : null;
+      const dateVal = document.getElementById('ruleDate').value.trim();
+      const ruleDate = dateVal ? Number(dateVal) : null;
       const category = document.getElementById('ruleCategory').value.trim();
       const subCategory = document.getElementById('ruleSubCategory').value.trim();
       
@@ -2352,14 +2366,14 @@
         const id = Number(editId);
         const ruleIdx = appState.categoryRules.findIndex(r => r.id === id);
         if (ruleIdx > -1) {
-          appState.categoryRules[ruleIdx] = { id, keyword, amount, category, subCategory };
+          appState.categoryRules[ruleIdx] = { id, keyword, amount, ruleDate, category, subCategory };
         }
         delete e.target.dataset.editId;
         const btn = document.getElementById('ruleSubmitBtn');
         if (btn) btn.textContent = '추가';
         showToast(`'${keyword}' 규칙이 수정되었습니다.`, 'success');
       } else {
-        appState.categoryRules.push({ id: Date.now(), keyword, amount, category, subCategory });
+        appState.categoryRules.push({ id: Date.now(), keyword, amount, ruleDate, category, subCategory });
         showToast(`'${keyword}' 규칙이 추가되었습니다.`, 'success');
       }
       
@@ -2382,6 +2396,7 @@
         if (rule) {
           document.getElementById('ruleKeyword').value = rule.keyword;
           document.getElementById('ruleAmount').value = rule.amount || '';
+          document.getElementById('ruleDate').value = rule.ruleDate || '';
           document.getElementById('ruleCategory').value = rule.category;
           updateSubCategoryOptions(document.getElementById('ruleCategory'), 'ruleSubCategory');
           document.getElementById('ruleSubCategory').value = rule.subCategory || '';
@@ -2472,10 +2487,12 @@
 
       sortedRules.forEach(rule => {
         const tr = document.createElement('tr');
-        const amountDisplay = rule.amount ? formatCurrency(rule.amount) + '원' : '<span style="color:var(--text-muted);font-size:0.8rem;">(금액무관)</span>';
+        const amountDisplay = rule.amount ? formatCurrency(rule.amount) + '원' : '<span style="color:var(--text-muted);font-size:0.8rem;">(무관)</span>';
+        const dateDisplay = rule.ruleDate ? rule.ruleDate + '일' : '<span style="color:var(--text-muted);font-size:0.8rem;">(무관)</span>';
         tr.innerHTML = `
           <td style="padding: 10px;">${rule.keyword}</td>
           <td style="padding: 10px; text-align: right;">${amountDisplay}</td>
+          <td style="padding: 10px; text-align: center;">${dateDisplay}</td>
           <td style="padding: 10px;"><span class="badge-cat">${rule.category}</span></td>
           <td style="padding: 10px;">${rule.subCategory || '-'}</td>
           <td style="padding: 10px; text-align: center;">
