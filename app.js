@@ -817,8 +817,78 @@
     identifyCanceledPairs(appState.records);
     renderKPIs();
     renderCardsBreakdown();
+    renderInstallmentTracking();
     updateCharts(getFilteredRecords(true));
     renderTable();
+  }
+
+  function renderInstallmentTracking() {
+    const panel = document.getElementById('installmentTrackerPanel');
+    if (!panel) return;
+    
+    // Find all installment records that have a fraction in memo like "(1/3)"
+    const installmentRecords = appState.records.filter(r => r.isInstallment === 'Y' && r.exclude !== 'Y');
+    
+    const trackingMap = {};
+    
+    installmentRecords.forEach(r => {
+      if (!r.memo) return;
+      const match = r.memo.match(/(.*?)(\d+)\s*\/\s*(\d+)(.*)/);
+      if (match) {
+        const currentIdx = parseInt(match[2], 10);
+        const totalIdx = parseInt(match[3], 10);
+        
+        // Group by merchant and card and total months and amount
+        const key = `${r.merchant}_${r.actualCard}_${totalIdx}_${r.amount}`;
+        
+        if (!trackingMap[key] || new Date(r.date) > new Date(trackingMap[key].lastDate)) {
+          trackingMap[key] = {
+            merchant: r.merchant,
+            card: r.actualCard,
+            amount: r.amount,
+            currentIdx: currentIdx,
+            totalIdx: totalIdx,
+            lastDate: r.date
+          };
+        }
+      }
+    });
+    
+    let totalLeft = 0;
+    let activeCount = 0;
+    let html = '';
+    
+    Object.values(trackingMap).forEach(item => {
+      if (item.currentIdx < item.totalIdx) {
+        const monthsLeft = item.totalIdx - item.currentIdx;
+        const leftAmt = monthsLeft * item.amount;
+        totalLeft += leftAmt;
+        activeCount++;
+        
+        const dateStr = item.lastDate ? item.lastDate.substring(5).replace('-', '/') : '';
+        html += `
+          <li style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <strong style="color: var(--text-main);">${item.merchant}</strong>
+              <span style="color: var(--text-muted); font-size: 0.85em;">[${item.card}]</span>
+            </div>
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 4px;">
+              <div style="font-weight: bold; color: var(--danger);">${formatCurrency(leftAmt)}원 남음</div>
+              <div style="color: var(--text-muted); font-size: 0.8em;">(진행: ${item.currentIdx}/${item.totalIdx}회, 최근청구: ${dateStr}, 월 ${formatCurrency(item.amount)}원)</div>
+            </div>
+          </li>
+        `;
+      }
+    });
+    
+    if (activeCount > 0) {
+      panel.style.display = 'block';
+      document.getElementById('kpiTotalInstallmentLeft').textContent = formatCurrency(totalLeft);
+      document.getElementById('kpiInstallmentCount').textContent = `진행 중인 할부 ${activeCount}건`;
+      document.getElementById('installmentTrackingList').innerHTML = html;
+    } else {
+      panel.style.display = 'none';
+    }
   }
 
   // --- Render KPIs ---

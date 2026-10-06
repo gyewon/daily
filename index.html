@@ -181,7 +181,6 @@
           <button id="btnBannerFilter" class="btn btn-sm btn-accent">간편결제 내역 모아보기</button>
         </div>
       </section>
-
       <!-- Section: Visual Analytics & Card Breakdown -->
       <div class="dashboard-split-layout">
 
@@ -259,6 +258,36 @@
             <div class="chart-view" id="chartViewDaily">
               <div class="chart-canvas-box bar-box">
                 <canvas id="dailyBarChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Installment Tracking Panel -->
+          <div id="installmentTrackerPanel" style="margin-top: 24px; border-top: 1px dashed var(--border-color); padding-top: 16px; display: none;">
+            <div class="panel-header" style="margin-bottom: 12px; padding-bottom: 0; border-bottom: none;">
+              <div class="panel-title-group">
+                <h3>📆 할부 잔액 추적</h3>
+                <p>앞으로 더 갚아야 할 남은 할부 총액 (가장 최근 청구된 날짜 기준 자동 계산)</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch;">
+              <div class="kpi-card" style="flex: 1; min-width: 200px; margin: 0; background: var(--bg-secondary); border: 1px solid var(--border-color);">
+                <div class="kpi-header">
+                  <span class="kpi-label">남은 할부 원금 총액</span>
+                  <span class="kpi-icon-pill">📉</span>
+                </div>
+                <div class="kpi-value-row">
+                  <span class="kpi-value" id="kpiTotalInstallmentLeft" style="color: var(--danger);">0</span>
+                  <span class="kpi-unit">원</span>
+                </div>
+                <div class="kpi-footer">
+                  <span class="kpi-subtext" id="kpiInstallmentCount">진행 중인 할부 0건</span>
+                </div>
+              </div>
+              <div style="flex: 2; min-width: 300px; border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; background: var(--bg-card); max-height: 300px; overflow-y: auto;">
+                <ul id="installmentTrackingList" style="list-style: none; margin: 0; padding: 0; font-size: 0.95rem; display: flex; flex-direction: column; gap: 8px;">
+                  <!-- dynamically injected -->
+                </ul>
               </div>
             </div>
           </div>
