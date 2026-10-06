@@ -215,6 +215,13 @@
       if (state) {
         const parsed = JSON.parse(state);
         Object.assign(appState, parsed);
+        
+        // 새로고침 시 페이지네이션은 유지하되 필터는 모두 해제
+        appState.filterCard = 'ALL';
+        appState.filterCategory = 'ALL';
+        appState.filterType = 'ALL';
+        appState.filterExclude = 'ALL';
+        appState.filterInstallment = 'ALL';
       }
     } catch(e) {}
   }
@@ -957,9 +964,11 @@
       kpiLivingLabelEl.textContent = `순 생활비 ${excludeText}`;
     }
 
-    // KPI 4: 결제 완료 금액
-    document.getElementById('kpiExcludedAmount').textContent = formatCurrency(excludedAmt);
-    document.getElementById('kpiExcludedCount').textContent = `${excludedCount}건 완료`;
+    // KPI 4: 남은 결제 금액 (총 지출 - 결제 완료)
+    const remainingAmt = totalValidAmt - excludedAmt;
+    const remainingCount = totalValidCount - excludedCount;
+    document.getElementById('kpiExcludedAmount').textContent = formatCurrency(remainingAmt);
+    document.getElementById('kpiExcludedCount').textContent = `${remainingCount}건 남음`;
 
     // Subtotals in Panel
     document.getElementById('cardSubtotalBadge').textContent = `카드 합계: ${formatCurrency(cardAmt)}원`;
@@ -1942,11 +1951,11 @@
     });
 
     document.getElementById('btnFilterExcluded')?.addEventListener('click', () => {
-      appState.filterExclude = 'Y';
-      document.getElementById('filterExclude').value = 'Y';
+      appState.filterExclude = 'N';
+      document.getElementById('filterExclude').value = 'N';
       appState.currentPage = 1;
       renderTable();
-      showToast('제외(Y)된 항목만 표시합니다.');
+      showToast('미완료(N)된 항목만 표시합니다.');
     });
 
     // Search Input

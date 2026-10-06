@@ -1020,7 +1020,7 @@ body {
 /* Table Columns */
 .col-id { width: 50px; text-align: center; color: var(--text-muted); font-size: 0.82rem; }
 .col-date { width: 105px; white-space: nowrap; font-size: 0.82rem; color: #e2e8f0; }
-.col-cat { width: 160px; min-width: 95px; }
+.col-cat { width: 160px; min-width: 115px; }
 .col-merchant { min-width: 160px; font-weight: 600; color: #ffffff; }
 .col-amt { width: 110px; text-align: right; font-family: 'Outfit', sans-serif; font-weight: 700; color: #ffffff; font-size: 0.92rem; }
 .col-orig { width: 140px; font-size: 0.82rem; color: #94a3b8; }
