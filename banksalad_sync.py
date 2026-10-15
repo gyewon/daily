@@ -246,7 +246,7 @@ def get_supabase_app_settings():
             return settings
     except Exception as e:
         print(f"[Supabase] Error loading app_settings: {e}")
-    return {}
+    return None
 
 def apply_rules_to_record(rec, rules):
     """
@@ -276,6 +276,10 @@ def sync_records_to_supabase(new_raw_records):
     User's manually edited cards and fields are strictly preserved!
     """
     settings = get_supabase_app_settings()
+    if settings is None:
+        print("[Sync] ❌ Supabase 서버에 연결할 수 없어 동기화를 중단합니다. (나중에 자동 재시도)")
+        return 0, False
+
     existing_records = settings.get('records') or []
     deleted_signatures = set(settings.get('deleted_signatures') or [])
     deleted_fuzzy_sigs = set()
@@ -326,7 +330,7 @@ def sync_records_to_supabase(new_raw_records):
 
     if not added_records:
         print("[Sync] 신규 추가할 새로운 내역이 없습니다 (이미 등록되어 있거나 중복).")
-        return 0
+        return 0, True
 
     print(f"[Sync] 신규 지출 {len(added_records)}건을 Supabase에 안전하게 추가 중...")
     all_records = existing_records + added_records
@@ -358,13 +362,13 @@ def sync_records_to_supabase(new_raw_records):
         )
         if resp.status_code in (200, 201, 204):
             print(f"[Sync] ✅ Supabase 동기화 성공! ({len(added_records)}건 추가)")
-            return len(added_records)
+            return len(added_records), True
         else:
             print(f"[Sync] ❌ Supabase 저장 실패: {resp.status_code} {resp.text}")
     except Exception as e:
         print(f"[Sync] 네트워크 오류: {e}")
 
-    return 0
+    return 0, False
 
 def fetch_gmail_banksalad_attachments(cfg, check_all=False):
     """
@@ -450,10 +454,13 @@ def fetch_gmail_banksalad_attachments(cfg, check_all=False):
                 if xlsx_path and os.path.exists(xlsx_path):
                     raw_recs = parse_banksalad_excel(xlsx_path)
                     if raw_recs:
-                        count = sync_records_to_supabase(raw_recs)
-                        new_records_count += count
-                        zip_success = True
-                        print(f"[Gmail] ✅ {fn} 파일 처리 및 동기화 성공! (신규 {count}건 반영)")
+                        count, ok = sync_records_to_supabase(raw_recs)
+                        if ok:
+                            new_records_count += count
+                            zip_success = True
+                            print(f"[Gmail] ✅ {fn} 파일 처리 및 동기화 성공! (신규 {count}건 반영)")
+                        else:
+                            print(f"[Gmail] ⚠️ {fn} Supabase 동기화 실패. 메일을 미완료 상태로 유지하여 다음에 재시도합니다.")
                 else:
                     print(f"[Gmail] ❌ {fn} 압축 해제 실패: 압축 비밀번호(생년월일 6자리)가 맞는지 확인해주세요. (현재 입력값: {zip_pwd})")
 
