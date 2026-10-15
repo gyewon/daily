@@ -764,9 +764,11 @@
         if (r.actualCard !== appState.filterCard) return false;
       }
 
-      // Category Filter
+      // Category Filter (단독 필터 및 제외 필터 연동)
       if (appState.filterCategory !== 'ALL') {
         if (r.category !== appState.filterCategory) return false;
+      } else if (appState.chartExcludedCategories && appState.chartExcludedCategories.has(r.category)) {
+        return false;
       }
 
       // Type Filter
@@ -1216,6 +1218,11 @@
       showToast('전체 카테고리 내역을 표시합니다.', 'info');
     } else {
       appState.filterCategory = categoryName;
+      // If this category was excluded, re-include it
+      if (appState.chartExcludedCategories && appState.chartExcludedCategories.has(categoryName)) {
+        appState.chartExcludedCategories.delete(categoryName);
+        saveLocalCache();
+      }
       showToast(`'${categoryName}' 카테고리 내역 필터가 적용되었습니다.`, 'info');
     }
     const fSelect = document.getElementById('filterCategory');
@@ -1230,6 +1237,43 @@
     renderTable();
   }
   window.toggleCategoryFilter = toggleCategoryFilter;
+
+  function toggleCategoryExclude(categoryName, e) {
+    if (e) e.stopPropagation();
+    if (!appState.chartExcludedCategories) {
+      appState.chartExcludedCategories = new Set();
+    }
+    if (appState.chartExcludedCategories.has(categoryName)) {
+      appState.chartExcludedCategories.delete(categoryName);
+      showToast(`'${categoryName}' 카테고리가 다시 포함되었습니다.`, 'info');
+    } else {
+      appState.chartExcludedCategories.add(categoryName);
+      // If currently filtered to this category, reset filter to ALL
+      if (appState.filterCategory === categoryName) {
+        appState.filterCategory = 'ALL';
+        const fSelect = document.getElementById('filterCategory');
+        if (fSelect) fSelect.value = 'ALL';
+      }
+      showToast(`'${categoryName}' 카테고리가 제외되었습니다.`, 'info');
+    }
+    saveLocalCache();
+    appState.currentPage = 1;
+    updateCharts(getFilteredRecords(true));
+    renderTable();
+  }
+  window.toggleCategoryExclude = toggleCategoryExclude;
+
+  function restoreAllExcludedCategories() {
+    if (appState.chartExcludedCategories) {
+      appState.chartExcludedCategories.clear();
+      saveLocalCache();
+    }
+    appState.currentPage = 1;
+    updateCharts(getFilteredRecords(true));
+    renderTable();
+    showToast('제외된 카테고리가 모두 다시 포함되었습니다.', 'info');
+  }
+  window.restoreAllExcludedCategories = restoreAllExcludedCategories;
 
   // --- Charts Logic ---
   function updateCharts(records) {
@@ -1249,51 +1293,83 @@
       totalAllAmt += amt;
     });
 
+    // 제외된 카테고리 집합 및 제외되지 않은 레코드 계산
+    const excludedSet = appState.chartExcludedCategories || new Set();
+    const includedRecords = records.filter(r => !excludedSet.has(r.category));
+    const totalIncludedAmt = includedRecords.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
     // 지출 금액 순으로 정렬 (금액 있는 카테고리 우선)
     const sortedCategories = allCatNames.sort((a, b) => (catSums[b] || 0) - (catSums[a] || 0));
 
-    // 2. 카테고리 인터랙티브 필터 칩 생성 (카드 클릭 필터와 동일한 동작)
+    // 2. 카테고리 인터랙티브 칩 생성 ([모아보기] + [제외] 기능 모두 지원)
     const filterContainer = document.getElementById('chartCategoryFilters');
     if (filterContainer) {
       filterContainer.innerHTML = '';
 
-      // [전체] 버튼
-      const allChip = document.createElement('button');
-      allChip.type = 'button';
-      allChip.className = `cat-filter-chip ${appState.filterCategory === 'ALL' ? 'active' : ''}`;
+      // [전체 보기] 버튼
+      const allChip = document.createElement('div');
+      allChip.className = `cat-filter-chip ${appState.filterCategory === 'ALL' && excludedSet.size === 0 ? 'active' : ''}`;
       allChip.title = '전체 카테고리 보기';
       allChip.innerHTML = `
-        <span>전체</span>
-        <span class="cat-chip-amount">(${records.length}건)</span>
+        <button type="button" class="cat-chip-main">
+          <span>전체</span>
+          <span class="cat-chip-amount">(${records.length}건)</span>
+        </button>
       `;
-      allChip.addEventListener('click', () => {
+      allChip.querySelector('.cat-chip-main').addEventListener('click', () => {
         toggleCategoryFilter('ALL');
       });
       filterContainer.appendChild(allChip);
+
+      // 제외된 카테고리가 있는 경우 [제외 모두 해제 ↺] 버튼 제공
+      if (excludedSet.size > 0) {
+        const resetChip = document.createElement('button');
+        resetChip.type = 'button';
+        resetChip.className = 'cat-filter-chip cat-chip-reset-all';
+        resetChip.title = '제외된 카테고리를 모두 다시 포함합니다';
+        resetChip.innerHTML = `
+          <span>↺ 제외 해제</span>
+          <span class="cat-chip-amount">(${excludedSet.size}개 제외중)</span>
+        `;
+        resetChip.addEventListener('click', () => {
+          restoreAllExcludedCategories();
+        });
+        filterContainer.appendChild(resetChip);
+      }
 
       // 개별 카테고리 버튼들
       sortedCategories.forEach((cat, idx) => {
         const amt = catSums[cat] || 0;
         const cnt = catCounts[cat] || 0;
-        if (amt === 0 && cnt === 0 && appState.filterCategory !== cat) return;
+        if (amt === 0 && cnt === 0 && appState.filterCategory !== cat && !excludedSet.has(cat)) return;
 
+        const isExcluded = excludedSet.has(cat);
         const isSelected = (appState.filterCategory === cat);
         const color = CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
 
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = `cat-filter-chip ${isSelected ? 'active' : ''}`;
+        const chip = document.createElement('div');
+        chip.className = `cat-filter-chip ${isExcluded ? 'is-excluded' : ''} ${isSelected ? 'active' : ''}`;
         chip.dataset.cat = cat;
-        chip.title = isSelected ? `'${cat}' 필터 해제 (클릭 시 전체 보기)` : `'${cat}' 카테고리만 모아보기`;
+
         chip.innerHTML = `
-          <span class="cat-chip-dot" style="background: ${color};"></span>
-          <span>${cat}</span>
-          <span class="cat-chip-amount">${formatCurrency(amt)}원</span>
-          ${isSelected ? '<span class="cat-chip-close">✕</span>' : ''}
+          <button type="button" class="cat-chip-main" title="${isExcluded ? `'${cat}' 다시 포함하고 모아보기` : `'${cat}' 내역만 모아보기 (클릭)`}">
+            <span class="cat-chip-dot" style="background: ${isExcluded ? '#64748b' : color};"></span>
+            <span class="cat-chip-name">${cat}</span>
+            <span class="cat-chip-amount">${formatCurrency(amt)}원</span>
+          </button>
+          <button type="button" class="cat-chip-del-btn" title="${isExcluded ? `'${cat}' 다시 포함하기` : `'${cat}' 계산 및 목록에서 제외하기`}">
+            ${isExcluded ? '+ 포함' : '✕'}
+          </button>
         `;
 
-        chip.addEventListener('click', () => {
+        // 메인 영역 클릭 -> 모아보기 (카드 클릭과 동일)
+        chip.querySelector('.cat-chip-main').addEventListener('click', () => {
           toggleCategoryFilter(cat);
+        });
+
+        // ✕ 또는 +포함 버튼 클릭 -> 제외/포함 토글
+        chip.querySelector('.cat-chip-del-btn').addEventListener('click', (e) => {
+          toggleCategoryExclude(cat, e);
         });
 
         filterContainer.appendChild(chip);
@@ -1321,6 +1397,21 @@
         document.getElementById('btnResetCatFilter')?.addEventListener('click', () => {
           toggleCategoryFilter('ALL');
         });
+      } else if (excludedSet.size > 0) {
+        summaryRow.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div style="font-size: 1.25rem;">
+              📈 현재 차트 총합계: <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(totalIncludedAmt)}</strong>원 
+              <span style="font-size: 0.88rem; color: #f59e0b; margin-left: 8px; font-weight: 600;">(${excludedSet.size}개 카테고리 제외됨 / 전체: ${formatCurrency(totalAllAmt)}원)</span>
+            </div>
+            <button id="btnRestoreExcludesHeader" class="btn btn-secondary btn-sm" style="padding: 4px 12px; font-size: 0.85rem; border-radius: 12px;">
+              제외 모두 해제 ↺
+            </button>
+          </div>
+        `;
+        document.getElementById('btnRestoreExcludesHeader')?.addEventListener('click', () => {
+          restoreAllExcludedCategories();
+        });
       } else {
         summaryRow.innerHTML = `
           <div style="font-size: 1.25rem;">
@@ -1330,7 +1421,7 @@
       }
     } else {
       const sumEl = document.getElementById('chartTotalSum');
-      if (sumEl) sumEl.textContent = formatCurrency(totalAllAmt);
+      if (sumEl) sumEl.textContent = formatCurrency(totalIncludedAmt);
     }
 
     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
@@ -1338,13 +1429,13 @@
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
 
     // 1. Doughnut: Card Breakdown
-    renderCardDoughnut(records, textColor);
+    renderCardDoughnut(includedRecords, textColor);
 
     // 2. Bar: Category Breakdown
-    renderCategoryBar(records, textColor, gridColor);
+    renderCategoryBar(includedRecords, textColor, gridColor);
 
     // 3. Line: Daily Spend Trend
-    renderTrendLine(records, textColor, gridColor);
+    renderTrendLine(includedRecords, textColor, gridColor);
 
     // 4. Bar: Daily Spend Breakdown
     renderDailyBar(textColor, gridColor);
@@ -2247,6 +2338,10 @@
       appState.filterType = 'ALL';
       appState.filterExclude = 'ALL';
       appState.filterInstallment = 'ALL';
+      if (appState.chartExcludedCategories) {
+        appState.chartExcludedCategories.clear();
+        saveLocalCache();
+      }
       if (searchInput) searchInput.value = '';
       if (btnClearSearch) btnClearSearch.style.display = 'none';
       document.getElementById('filterCard').value = 'ALL';
@@ -2258,7 +2353,7 @@
       renderCardsBreakdown();
       updateCharts(getFilteredRecords(true));
       renderTable();
-      showToast('모든 필터가 초기화되었습니다.');
+      showToast('모든 필터 및 제외 설정이 초기화되었습니다.');
     });
 
     // Table Header Sorting

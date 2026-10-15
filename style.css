@@ -1827,25 +1827,38 @@ select option:hover {
 .cat-filter-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   background: var(--bg-card);
   color: var(--text-secondary);
-  padding: 6px 14px;
   border-radius: 20px;
   font-size: 0.88rem;
   font-weight: 500;
-  cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid var(--border-color);
   user-select: none;
-  line-height: 1.2;
+  overflow: hidden;
+  padding: 0;
 }
 
 .cat-filter-chip:hover {
-  background: var(--bg-card-hover);
-  color: var(--text-primary);
   border-color: rgba(99, 102, 241, 0.4);
-  transform: translateY(-1px);
+}
+
+.cat-chip-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 6px 10px 6px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cat-chip-main:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .cat-filter-chip.active {
@@ -1856,14 +1869,18 @@ select option:hover {
   font-weight: 700;
 }
 
-.cat-filter-chip .cat-chip-dot {
+.cat-filter-chip.active .cat-chip-main {
+  color: #ffffff;
+}
+
+.cat-chip-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.cat-filter-chip .cat-chip-amount {
+.cat-chip-amount {
   font-size: 0.78rem;
   opacity: 0.85;
 }
@@ -1873,13 +1890,81 @@ select option:hover {
   color: #ffffff;
 }
 
-.cat-filter-chip .cat-chip-close {
+.cat-chip-del-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 2px;
-  font-size: 0.8rem;
-  opacity: 0.9;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 6px 9px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.cat-chip-del-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.cat-filter-chip.active .cat-chip-del-btn {
+  border-left-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cat-filter-chip.active .cat-chip-del-btn:hover {
+  background: rgba(0, 0, 0, 0.25);
+  color: #ffffff;
+}
+
+/* Excluded chip style */
+.cat-filter-chip.is-excluded {
+  background: var(--bg-input) !important;
+  border-color: var(--border-color) !important;
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.cat-filter-chip.is-excluded:hover {
+  opacity: 1;
+}
+
+.cat-filter-chip.is-excluded .cat-chip-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.cat-filter-chip.is-excluded .cat-chip-amount {
+  color: var(--text-muted);
+}
+
+.cat-filter-chip.is-excluded .cat-chip-del-btn {
+  color: #10b981;
+  font-weight: 600;
+  border-left: 1px dashed var(--border-color);
+  padding: 6px 10px;
+}
+
+.cat-filter-chip.is-excluded .cat-chip-del-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+/* Reset all excluded button */
+.cat-filter-chip.cat-chip-reset-all {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: #f59e0b !important;
+  cursor: pointer;
+  padding: 6px 14px;
+}
+
+.cat-filter-chip.cat-chip-reset-all:hover {
+  background: rgba(245, 158, 11, 0.25) !important;
+  color: #fbbf24 !important;
 }
 
 .legend-item.active-legend-filter {
