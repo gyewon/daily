@@ -1148,22 +1148,7 @@
       `;
 
       cardEl.addEventListener('click', () => {
-        if (appState.filterCard === cardName) {
-          appState.filterCard = 'ALL';
-        } else {
-          appState.filterCard = cardName;
-        }
-        const fSelect = document.getElementById('filterCard');
-        if (fSelect) {
-          fSelect.value = appState.filterCard;
-          Array.from(fSelect.options).forEach(opt => {
-            opt.selected = (opt.value === appState.filterCard);
-          });
-        }
-        appState.currentPage = 1;
-        renderCardsBreakdown();
-        renderTable();
-        showToast(`'${cardName}' 내역 필터가 적용되었습니다.`);
+        toggleCardFilter(cardName);
       });
 
       physicalCardsContainer.appendChild(cardEl);
@@ -1196,97 +1181,172 @@
       `;
 
       payEl.addEventListener('click', () => {
-        if (appState.filterCard === payName) {
-          appState.filterCard = 'ALL';
-        } else {
-          appState.filterCard = payName;
-        }
-        const fSelect = document.getElementById('filterCard');
-        if (fSelect) {
-          fSelect.value = appState.filterCard;
-          Array.from(fSelect.options).forEach(opt => {
-            opt.selected = (opt.value === appState.filterCard);
-          });
-        }
-        appState.currentPage = 1;
-        renderCardsBreakdown();
-        renderTable();
+        toggleCardFilter(payName);
       });
 
       payAccountsContainer.appendChild(payEl);
     });
   }
 
+  // --- Toggle Filter Functions ---
+  function toggleCardFilter(cardName) {
+    if (appState.filterCard === cardName) {
+      appState.filterCard = 'ALL';
+      showToast('전체 결제수단 내역을 표시합니다.', 'info');
+    } else {
+      appState.filterCard = cardName;
+      showToast(`'${cardName}' 내역 필터가 적용되었습니다.`, 'info');
+    }
+    const fSelect = document.getElementById('filterCard');
+    if (fSelect) {
+      fSelect.value = appState.filterCard;
+      Array.from(fSelect.options).forEach(opt => {
+        opt.selected = (opt.value === appState.filterCard);
+      });
+    }
+    appState.currentPage = 1;
+    renderCardsBreakdown();
+    renderTable();
+  }
+  window.toggleCardFilter = toggleCardFilter;
+
+  function toggleCategoryFilter(categoryName) {
+    if (appState.filterCategory === categoryName || categoryName === 'ALL') {
+      appState.filterCategory = 'ALL';
+      showToast('전체 카테고리 내역을 표시합니다.', 'info');
+    } else {
+      appState.filterCategory = categoryName;
+      showToast(`'${categoryName}' 카테고리 내역 필터가 적용되었습니다.`, 'info');
+    }
+    const fSelect = document.getElementById('filterCategory');
+    if (fSelect) {
+      fSelect.value = appState.filterCategory;
+      Array.from(fSelect.options).forEach(opt => {
+        opt.selected = (opt.value === appState.filterCategory);
+      });
+    }
+    appState.currentPage = 1;
+    updateCharts(getFilteredRecords(true));
+    renderTable();
+  }
+  window.toggleCategoryFilter = toggleCategoryFilter;
+
   // --- Charts Logic ---
   function updateCharts(records) {
-    // 1. 카테고리 필터 체크박스 생성
-    // 사용자가 설정한 전체 마스터 카테고리와 현재 레코드에 존재하는 카테고리를 합쳐서 표시
+    // 1. 카테고리별 지출 금액 및 건수 집계 (전체 레코드 기준)
     const activeCategories = records.map(r => r.category).filter(Boolean);
     const masterCats = Object.keys(appState.masterCategories || {});
-    const categories = [...new Set([...masterCats, ...activeCategories])].sort();
-    
+    const allCatNames = [...new Set([...masterCats, ...activeCategories])];
+
+    const catSums = {};
+    const catCounts = {};
+    let totalAllAmt = 0;
+    records.forEach(r => {
+      const cat = r.category || '기타';
+      const amt = Number(r.amount) || 0;
+      catSums[cat] = (catSums[cat] || 0) + amt;
+      catCounts[cat] = (catCounts[cat] || 0) + 1;
+      totalAllAmt += amt;
+    });
+
+    // 지출 금액 순으로 정렬 (금액 있는 카테고리 우선)
+    const sortedCategories = allCatNames.sort((a, b) => (catSums[b] || 0) - (catSums[a] || 0));
+
+    // 2. 카테고리 인터랙티브 필터 칩 생성 (카드 클릭 필터와 동일한 동작)
     const filterContainer = document.getElementById('chartCategoryFilters');
     if (filterContainer) {
       filterContainer.innerHTML = '';
-      categories.forEach(cat => {
-        const isExcluded = appState.chartExcludedCategories.has(cat);
-        const label = document.createElement('label');
-        label.style.display = 'inline-flex';
-        label.style.alignItems = 'center';
-        label.style.gap = '4px';
-        label.style.background = isExcluded ? 'var(--bg-input)' : 'var(--accent-color)';
-        label.style.color = isExcluded ? 'var(--text-muted)' : '#fff';
-        label.style.padding = '6px 14px';
-        label.style.borderRadius = '20px';
-        label.style.fontSize = '1rem';
-        label.style.fontWeight = '500';
-        label.style.cursor = 'pointer';
-        label.style.transition = 'all 0.2s ease';
-        label.style.border = isExcluded ? '1px solid var(--border-color)' : '1px solid var(--accent-color)';
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = !isExcluded;
-        checkbox.style.display = 'none';
-        
-        checkbox.addEventListener('change', (e) => {
-          if (e.target.checked) {
-            appState.chartExcludedCategories.delete(cat);
-          } else {
-            appState.chartExcludedCategories.add(cat);
-          }
-          saveLocalCache(); // Save state
-          updateCharts(records);
+
+      // [전체] 버튼
+      const allChip = document.createElement('button');
+      allChip.type = 'button';
+      allChip.className = `cat-filter-chip ${appState.filterCategory === 'ALL' ? 'active' : ''}`;
+      allChip.title = '전체 카테고리 보기';
+      allChip.innerHTML = `
+        <span>전체</span>
+        <span class="cat-chip-amount">(${records.length}건)</span>
+      `;
+      allChip.addEventListener('click', () => {
+        toggleCategoryFilter('ALL');
+      });
+      filterContainer.appendChild(allChip);
+
+      // 개별 카테고리 버튼들
+      sortedCategories.forEach((cat, idx) => {
+        const amt = catSums[cat] || 0;
+        const cnt = catCounts[cat] || 0;
+        if (amt === 0 && cnt === 0 && appState.filterCategory !== cat) return;
+
+        const isSelected = (appState.filterCategory === cat);
+        const color = CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
+
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `cat-filter-chip ${isSelected ? 'active' : ''}`;
+        chip.dataset.cat = cat;
+        chip.title = isSelected ? `'${cat}' 필터 해제 (클릭 시 전체 보기)` : `'${cat}' 카테고리만 모아보기`;
+        chip.innerHTML = `
+          <span class="cat-chip-dot" style="background: ${color};"></span>
+          <span>${cat}</span>
+          <span class="cat-chip-amount">${formatCurrency(amt)}원</span>
+          ${isSelected ? '<span class="cat-chip-close">✕</span>' : ''}
+        `;
+
+        chip.addEventListener('click', () => {
+          toggleCategoryFilter(cat);
         });
-        
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(cat));
-        filterContainer.appendChild(label);
+
+        filterContainer.appendChild(chip);
       });
     }
 
-    // 2. 선택된 카테고리만 필터링
-    const filteredRecords = records.filter(r => !appState.chartExcludedCategories.has(r.category));
-
-    // 3. 총합계 계산 및 표시
-    const totalSum = filteredRecords.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-    const sumEl = document.getElementById('chartTotalSum');
-    if (sumEl) sumEl.textContent = formatCurrency(totalSum);
+    // 3. 차트 요약 총합계 헤더 업데이트
+    const summaryRow = document.getElementById('chartTotalSummaryRow');
+    if (summaryRow) {
+      if (appState.filterCategory !== 'ALL') {
+        const selectedAmt = catSums[appState.filterCategory] || 0;
+        const selectedCnt = catCounts[appState.filterCategory] || 0;
+        summaryRow.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div style="font-size: 1.15rem;">
+              📈 <strong style="color: var(--primary); font-size: 1.3rem;">[${appState.filterCategory}]</strong> 카테고리 합계: 
+              <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(selectedAmt)}</strong>원 
+              <span style="font-size: 0.9rem; color: var(--text-muted); margin-left: 6px;">(${selectedCnt}건 / 전체: ${formatCurrency(totalAllAmt)}원)</span>
+            </div>
+            <button id="btnResetCatFilter" class="btn btn-secondary btn-sm" style="padding: 4px 12px; font-size: 0.85rem; border-radius: 12px;">
+              전체 카테고리 보기 ✕
+            </button>
+          </div>
+        `;
+        document.getElementById('btnResetCatFilter')?.addEventListener('click', () => {
+          toggleCategoryFilter('ALL');
+        });
+      } else {
+        summaryRow.innerHTML = `
+          <div style="font-size: 1.25rem;">
+            📈 현재 차트 총합계: <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(totalAllAmt)}</strong>원
+          </div>
+        `;
+      }
+    } else {
+      const sumEl = document.getElementById('chartTotalSum');
+      if (sumEl) sumEl.textContent = formatCurrency(totalAllAmt);
+    }
 
     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
     const textColor = isDark ? '#94a3b8' : '#475569';
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
 
     // 1. Doughnut: Card Breakdown
-    renderCardDoughnut(filteredRecords, textColor);
+    renderCardDoughnut(records, textColor);
 
     // 2. Bar: Category Breakdown
-    renderCategoryBar(filteredRecords, textColor, gridColor);
+    renderCategoryBar(records, textColor, gridColor);
 
     // 3. Line: Daily Spend Trend
-    renderTrendLine(filteredRecords, textColor, gridColor);
+    renderTrendLine(records, textColor, gridColor);
 
-    // 4. Bar: Daily Spend Breakdown (Sep 1 to Sep 10)
+    // 4. Bar: Daily Spend Breakdown
     renderDailyBar(textColor, gridColor);
   }
 
@@ -1326,6 +1386,21 @@
         responsive: true,
         maintainAspectRatio: false,
         cutout: '65%',
+        onClick: (evt, activeElements) => {
+          if (activeElements && activeElements.length > 0) {
+            const index = activeElements[0].index;
+            const clickedCard = labels[index];
+            if (clickedCard) {
+              toggleCardFilter(clickedCard);
+            }
+          }
+        },
+        onHover: (evt, activeElements) => {
+          const target = evt.native ? evt.native.target : (evt.chart ? evt.chart.canvas : null);
+          if (target) {
+            target.style.cursor = (activeElements && activeElements.length > 0) ? 'pointer' : 'default';
+          }
+        },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -1334,7 +1409,7 @@
                 const val = ctx.parsed;
                 const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
                 const percent = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-                return ` ${ctx.label}: ${formatCurrency(val)}원 (${percent}%)`;
+                return ` ${ctx.label}: ${formatCurrency(val)}원 (${percent}%) - 클릭 시 필터링`;
               }
             }
           }
@@ -1347,11 +1422,16 @@
       legendBox.innerHTML = '';
       labels.forEach((lbl, idx) => {
         const item = document.createElement('div');
-        item.className = 'legend-item';
+        item.className = `legend-item ${appState.filterCard === lbl ? 'active-legend-filter' : ''}`;
+        item.style.cursor = 'pointer';
+        item.title = `${lbl} 내역 필터링`;
         item.innerHTML = `
           <span class="legend-color-dot" style="background: ${bgColors[idx]};"></span>
           <span>${lbl.replace('[간편결제] ', '')} (${formatCurrency(data[idx])}원)</span>
         `;
+        item.addEventListener('click', () => {
+          toggleCardFilter(lbl);
+        });
         legendBox.appendChild(item);
       });
     }
@@ -1381,6 +1461,21 @@
       charts.categoryBar.destroy();
     }
 
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const activeCat = appState.filterCategory;
+
+    // 카테고리 선택 시 활성 카테고리 강조, 나머지 반투명 처리
+    const bgColors = labels.map((c, i) => {
+      const baseColor = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
+      if (activeCat === 'ALL') return baseColor;
+      return c === activeCat ? baseColor : (isDark ? 'rgba(148, 163, 184, 0.22)' : 'rgba(148, 163, 184, 0.35)');
+    });
+    const borderColors = labels.map((c) => {
+      if (activeCat === 'ALL') return 'transparent';
+      return c === activeCat ? (isDark ? '#ffffff' : '#1e293b') : 'transparent';
+    });
+    const borderWidths = labels.map(c => (c === activeCat ? 2 : 0));
+
     charts.categoryBar = new Chart(canvas, {
       type: 'bar',
       data: {
@@ -1388,15 +1483,42 @@
         datasets: [{
           label: '지출 금액',
           data: data,
-          backgroundColor: labels.map((_, i) => CATEGORY_COLORS[i % CATEGORY_COLORS.length]),
+          backgroundColor: bgColors,
+          borderColor: borderColors,
+          borderWidth: borderWidths,
           borderRadius: 6,
           barPercentage: 0.6,
           categoryPercentage: 0.8
         }]
       },
       options: {
+        onClick: (evt, activeElements) => {
+          if (activeElements && activeElements.length > 0) {
+            const index = activeElements[0].index;
+            const clickedCat = labels[index];
+            if (clickedCat) {
+              toggleCategoryFilter(clickedCat);
+            }
+            return;
+          }
+          if (charts.categoryBar) {
+            const points = charts.categoryBar.getElementsAtEventForMode(evt.native || evt, 'nearest', { intersect: false }, true);
+            if (points && points.length > 0) {
+              const clickedCat = labels[points[0].index];
+              if (clickedCat) {
+                toggleCategoryFilter(clickedCat);
+              }
+            }
+          }
+        },
+        onHover: (evt, activeElements) => {
+          const target = evt.native ? evt.native.target : (evt.chart ? evt.chart.canvas : null);
+          if (target) {
+            target.style.cursor = (activeElements && activeElements.length > 0) ? 'pointer' : 'default';
+          }
+        },
         layout: {
-          padding: { right: 120 }
+          padding: { right: 140 }
         },
         responsive: true,
         maintainAspectRatio: false,
@@ -1412,14 +1534,30 @@
           },
           y: {
             grid: { display: false },
-            ticks: { color: textColor, font: { weight: '600', size: 13 } }
+            ticks: {
+              color: (ctx) => {
+                const catName = labels[ctx.index];
+                if (activeCat !== 'ALL' && catName === activeCat) {
+                  return 'var(--primary)';
+                }
+                return textColor;
+              },
+              font: (ctx) => {
+                const catName = labels[ctx.index];
+                const isSelected = (activeCat !== 'ALL' && catName === activeCat);
+                return { weight: isSelected ? '800' : '600', size: isSelected ? 14 : 13 };
+              }
+            }
           }
         },
         plugins: {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: ctx => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.x)}원`
+              label: ctx => {
+                const isSelected = activeCat === ctx.label;
+                return ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.x)}원 (${isSelected ? '클릭 시 필터 해제' : '클릭 시 이 카테고리만 보기'})`;
+              }
             }
           }
         }
@@ -1429,15 +1567,22 @@
         afterDatasetsDraw(chart) {
           const { ctx, data } = chart;
           ctx.save();
-          ctx.font = 'bold 13px Outfit';
-          ctx.fillStyle = textColor;
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
           const meta = chart.getDatasetMeta(0);
           meta.data.forEach((bar, index) => {
             const value = data.datasets[0].data[index];
-            const text = formatCurrency(value) + '원';
-            ctx.fillText(text, bar.x + 6, bar.y);
+            const catName = labels[index];
+            const isSelected = (activeCat !== 'ALL' && catName === activeCat);
+            if (isSelected) {
+              ctx.font = 'bold 13px Outfit';
+              ctx.fillStyle = isDark ? '#818cf8' : '#4f46e5';
+              ctx.fillText(`${formatCurrency(value)}원 👑 [선택됨]`, bar.x + 6, bar.y);
+            } else {
+              ctx.font = 'bold 13px Outfit';
+              ctx.fillStyle = textColor;
+              ctx.fillText(`${formatCurrency(value)}원`, bar.x + 6, bar.y);
+            }
           });
           ctx.restore();
         }
@@ -2067,7 +2212,13 @@
     document.getElementById('filterCategory')?.addEventListener('change', e => {
       appState.filterCategory = e.target.value;
       appState.currentPage = 1;
+      updateCharts(getFilteredRecords(true));
       renderTable();
+      if (appState.filterCategory === 'ALL') {
+        showToast('전체 카테고리 내역을 표시합니다.', 'info');
+      } else {
+        showToast(`'${appState.filterCategory}' 카테고리 내역 필터가 적용되었습니다.`, 'info');
+      }
     });
 
     document.getElementById('filterType')?.addEventListener('change', e => {
@@ -2105,6 +2256,7 @@
       document.getElementById('filterInstallment').value = 'ALL';
       appState.currentPage = 1;
       renderCardsBreakdown();
+      updateCharts(getFilteredRecords(true));
       renderTable();
       showToast('모든 필터가 초기화되었습니다.');
     });
