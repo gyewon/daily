@@ -764,11 +764,9 @@
         if (r.actualCard !== appState.filterCard) return false;
       }
 
-      // Category Filter (단독 필터 및 제외 필터 연동)
+      // Category Filter (지출 상세 테이블은 차트 시각화 제외와 무관하게 항상 표시)
       if (appState.filterCategory !== 'ALL') {
         if (r.category !== appState.filterCategory) return false;
-      } else if (appState.chartExcludedCategories && appState.chartExcludedCategories.has(r.category)) {
-        return false;
       }
 
       // Type Filter
@@ -1357,7 +1355,7 @@
             <span class="cat-chip-name">${cat}</span>
             <span class="cat-chip-amount">${formatCurrency(amt)}원</span>
           </button>
-          <button type="button" class="cat-chip-del-btn" title="${isExcluded ? `'${cat}' 다시 포함하기` : `'${cat}' 계산 및 목록에서 제외하기`}">
+          <button type="button" class="cat-chip-del-btn" title="${isExcluded ? `'${cat}' 차트 분석에 다시 포함하기` : `'${cat}' 차트 분석에서 제외하기`}">
             ${isExcluded ? '+ 포함' : '✕'}
           </button>
         `;
