@@ -826,8 +826,9 @@
     const panel = document.getElementById('installmentTrackerPanel');
     if (!panel) return;
     
-    // Find all installment records that have a fraction in memo like "(1/3)"
-    const installmentRecords = appState.records.filter(r => r.isInstallment === 'Y' && r.exclude !== 'Y');
+    // 할부(isInstallment === 'Y')이며 취소되지 않은 유효 지출 내역 전체 조회
+    // (당월 청구분 결제 완료 여부(exclude === 'Y')와 상관없이 앞으로 갚아야 할 남은 회차가 있는 한 추적)
+    const installmentRecords = appState.records.filter(r => r.isInstallment === 'Y' && !r.isCanceled && (Number(r.amount) || 0) > 0);
     
     const trackingMap = {};
     
@@ -838,17 +839,19 @@
         const currentIdx = parseInt(match[2], 10);
         const totalIdx = parseInt(match[3], 10);
         
-        // Group by merchant and card and total months and amount
+        // 가맹점, 카드, 총 할부개월수, 월 청구금액 기준으로 할부 건 그룹화
         const key = `${r.merchant}_${r.actualCard}_${totalIdx}_${r.amount}`;
         
-        if (!trackingMap[key] || new Date(r.date) > new Date(trackingMap[key].lastDate)) {
+        // 더 최신 회차이거나, 동일 회차라도 더 최근 날짜인 경우 갱신
+        if (!trackingMap[key] || currentIdx > trackingMap[key].currentIdx || (currentIdx === trackingMap[key].currentIdx && new Date(r.date) > new Date(trackingMap[key].lastDate))) {
           trackingMap[key] = {
             merchant: r.merchant,
             card: r.actualCard,
-            amount: r.amount,
+            amount: Number(r.amount) || 0,
             currentIdx: currentIdx,
             totalIdx: totalIdx,
-            lastDate: r.date
+            lastDate: r.date,
+            memo: r.memo
           };
         }
       }
@@ -858,7 +861,14 @@
     let activeCount = 0;
     let html = '';
     
-    Object.values(trackingMap).forEach(item => {
+    // 남은 잔여 금액이 큰 순서대로 정렬하여 표시
+    const sortedItems = Object.values(trackingMap).sort((a, b) => {
+      const leftA = (a.totalIdx - a.currentIdx) * a.amount;
+      const leftB = (b.totalIdx - b.currentIdx) * b.amount;
+      return leftB - leftA;
+    });
+
+    sortedItems.forEach(item => {
       if (item.currentIdx < item.totalIdx) {
         const monthsLeft = item.totalIdx - item.currentIdx;
         const leftAmt = monthsLeft * item.amount;
@@ -866,15 +876,16 @@
         activeCount++;
         
         const dateStr = item.lastDate ? item.lastDate.substring(5).replace('-', '/') : '';
+        const memoLabel = item.memo ? item.memo.replace(/\(\d+\s*\/\s*\d+\)/, '').replace(/할부\s*\d+\/\d+/, '').trim() : '';
         html += `
           <li style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
             <div style="display: flex; flex-direction: column; gap: 4px;">
-              <strong style="color: var(--text-main);">${item.merchant}</strong>
+              <strong style="color: var(--text-main); font-size: 0.95rem;">${item.merchant}${memoLabel ? ` <span style="font-size:0.85em; font-weight:normal; color:var(--text-secondary);">(${memoLabel})</span>` : ''}</strong>
               <span style="color: var(--text-muted); font-size: 0.85em;">[${item.card}]</span>
             </div>
             <div style="text-align: right; display: flex; flex-direction: column; gap: 4px;">
-              <div style="font-weight: bold; color: var(--danger);">${formatCurrency(leftAmt)}원 남음</div>
-              <div style="color: var(--text-muted); font-size: 0.8em;">(진행: ${item.currentIdx}/${item.totalIdx}회, 최근청구: ${dateStr}, 월 ${formatCurrency(item.amount)}원)</div>
+              <div style="font-weight: bold; color: var(--danger); font-size: 1rem;">${formatCurrency(leftAmt)}원 남음</div>
+              <div style="color: var(--text-muted); font-size: 0.8em;">(진행: ${item.currentIdx}/${item.totalIdx}회, ${monthsLeft}개월 남음 · 월 ${formatCurrency(item.amount)}원, 최근청구: ${dateStr})</div>
             </div>
           </li>
         `;
@@ -2142,6 +2153,7 @@
         saveData();
         renderKPIs();
         renderCardsBreakdown();
+        renderInstallmentTracking();
         updateCharts(getFilteredRecords(true));
         renderTable();
         const logPrefix = `[${rec.date ? rec.date.substring(5) : ''} ${rec.merchant}]`;
@@ -2659,7 +2671,7 @@
           c.record.memo = c.newMemo;
         });
         saveData();
-        renderRecords();
+        renderAll();
         showToast(`총 ${pendingChanges.length}건의 할부 결제를 자동으로 매칭했습니다!`, 'success');
       }
     });
