@@ -1130,9 +1130,15 @@
       }
     });
 
-    // Render Physical Cards
+    // Render Physical Cards (사용금액 높은 순 정렬)
     physicalCardsContainer.innerHTML = '';
-    const physicalCardNames = Object.keys(CARD_CONFIG).filter(c => CARD_CONFIG[c].type === 'physical');
+    const physicalCardNames = Object.keys(CARD_CONFIG)
+      .filter(c => CARD_CONFIG[c].type === 'physical')
+      .sort((a, b) => {
+        const diff = (cardSums[b] || 0) - (cardSums[a] || 0);
+        if (diff !== 0) return diff;
+        return a.localeCompare(b, 'ko');
+      });
 
     physicalCardNames.forEach(cardName => {
       const conf = CARD_CONFIG[cardName] || { color: '#64748b', chip: '#475569', target: 300000 };
@@ -1188,9 +1194,15 @@
       physicalCardsContainer.appendChild(cardEl);
     });
 
-    // Render Pay & Accounts mini-cards
+    // Render Pay & Accounts mini-cards (사용금액 높은 순 정렬)
     payAccountsContainer.innerHTML = '';
-    const payNames = Object.keys(CARD_CONFIG).filter(c => CARD_CONFIG[c].type === 'pay');
+    const payNames = Object.keys(CARD_CONFIG)
+      .filter(c => CARD_CONFIG[c].type === 'pay')
+      .sort((a, b) => {
+        const diff = (cardSums[b] || 0) - (cardSums[a] || 0);
+        if (diff !== 0) return diff;
+        return a.localeCompare(b, 'ko');
+      });
 
     payNames.forEach(payName => {
       const conf = CARD_CONFIG[payName] || { color: '#64748b', dot: '#94a3b8' };
