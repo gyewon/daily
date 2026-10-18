@@ -230,7 +230,19 @@
     const ids = ['filterCard', 'filterCategory', 'filterType', 'filterExclude', 'filterInstallment'];
     ids.forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.value = appState[id] || 'ALL';
+      if (el) {
+        const targetVal = appState[id] || 'ALL';
+        if (targetVal !== 'ALL' && !Array.from(el.options).some(o => o.value === targetVal)) {
+          const opt = document.createElement('option');
+          opt.value = targetVal;
+          opt.textContent = targetVal;
+          el.appendChild(opt);
+        }
+        el.value = targetVal;
+        Array.from(el.options).forEach(opt => {
+          opt.selected = (opt.value === targetVal);
+        });
+      }
     });
     const pSize = document.getElementById('pageSizeSelect');
     if (pSize) pSize.value = appState.pageSize;
@@ -653,21 +665,32 @@
       });
     }
 
-    // Categories
-    const categoriesSet = new Set();
-    appState.records.forEach(r => {
-      if (r.category) categoriesSet.add(r.category);
-    });
+    // Categories: merge masterCategories, records, and '미분류'
+    const masterCats = Object.keys(appState.masterCategories || {});
+    const recordCats = (appState.records || []).map(r => r.category).filter(Boolean);
+    const categoriesSet = new Set([...masterCats, ...recordCats, '미분류']);
     const sortedCats = Array.from(categoriesSet).sort();
 
     if (filterCategory) {
+      const currentSelected = appState.filterCategory || 'ALL';
       filterCategory.innerHTML = '<option value="ALL">모든 카테고리</option>';
       sortedCats.forEach(cat => {
         const opt = document.createElement('option');
         opt.value = cat;
         opt.textContent = cat;
+        if (cat === currentSelected) {
+          opt.selected = true;
+        }
         filterCategory.appendChild(opt);
       });
+      if (currentSelected !== 'ALL' && !categoriesSet.has(currentSelected)) {
+        const opt = document.createElement('option');
+        opt.value = currentSelected;
+        opt.textContent = currentSelected;
+        opt.selected = true;
+        filterCategory.appendChild(opt);
+      }
+      filterCategory.value = currentSelected;
     }
 
     populateCategorySelects();
@@ -1208,13 +1231,7 @@
       appState.filterCard = cardName;
       showToast(`'${cardName}' 내역 필터가 적용되었습니다.`, 'info');
     }
-    const fSelect = document.getElementById('filterCard');
-    if (fSelect) {
-      fSelect.value = appState.filterCard;
-      Array.from(fSelect.options).forEach(opt => {
-        opt.selected = (opt.value === appState.filterCard);
-      });
-    }
+    syncDOMFilters();
     appState.currentPage = 1;
     renderCardsBreakdown();
     renderTable();
@@ -1234,13 +1251,7 @@
       }
       showToast(`'${categoryName}' 카테고리 내역 필터가 적용되었습니다.`, 'info');
     }
-    const fSelect = document.getElementById('filterCategory');
-    if (fSelect) {
-      fSelect.value = appState.filterCategory;
-      Array.from(fSelect.options).forEach(opt => {
-        opt.selected = (opt.value === appState.filterCategory);
-      });
-    }
+    syncDOMFilters();
     appState.currentPage = 1;
     updateCharts(getFilteredRecords(true));
     renderTable();
@@ -1260,8 +1271,7 @@
       // If currently filtered to this category, reset filter to ALL
       if (appState.filterCategory === categoryName) {
         appState.filterCategory = 'ALL';
-        const fSelect = document.getElementById('filterCategory');
-        if (fSelect) fSelect.value = 'ALL';
+        syncDOMFilters();
       }
       showToast(`'${categoryName}' 카테고리가 제외되었습니다.`, 'info');
     }
@@ -1860,6 +1870,7 @@
   // --- Render Transactions Table ---
   function renderTable() {
     saveUIState();
+    syncDOMFilters();
     const tableBody = document.getElementById('txTableBody');
     if (!tableBody) return;
 
