@@ -818,15 +818,17 @@
         if (r.isInstallment !== 'Y') return false;
       }
 
-      // Search Query (merchant, memo)
+      // Search Query (merchant, memo, settleNote, settleAmount)
       if (appState.searchQuery.trim()) {
         const q = appState.searchQuery.trim().toLowerCase();
         const m = (r.merchant || '').toLowerCase();
         const memo = (r.memo || '').toLowerCase();
+        const settleNote = (r.settleNote || '').toLowerCase();
         const cat = (r.category || '').toLowerCase();
         const sub = (r.subCategory || '').toLowerCase();
         const amtStr = (r.amount || '').toString();
-        if (!m.includes(q) && !memo.includes(q) && !cat.includes(q) && !sub.includes(q) && !amtStr.includes(q)) {
+        const settleAmtStr = (r.settleAmount || '').toString();
+        if (!m.includes(q) && !memo.includes(q) && !settleNote.includes(q) && !cat.includes(q) && !sub.includes(q) && !amtStr.includes(q) && !settleAmtStr.includes(q)) {
           return false;
         }
       }
@@ -931,6 +933,9 @@
 
     let totalValidAmt = 0;
     let totalValidCount = 0;
+    let totalSettleAmt = 0;
+    let totalPhysicalSettleAmt = 0;
+    let totalPaySettleAmt = 0;
     let cardAmt = 0;
     let payAmt = 0;
     let payCount = 0;
@@ -950,12 +955,14 @@
     records.forEach(r => {
       const amt = Number(r.amount) || 0;
       const bAmt = Number(r.billingAmount) || amt;
+      const settle = Number(r.settleAmount) || 0;
       const isExclude = r.exclude === 'Y';
       const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
       const isPayOrAccount = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'pay';
 
       totalValidAmt += amt;
       totalValidCount++;
+      totalSettleAmt += settle;
 
       if (r.actualCard === '현금') {
         cashAmt += amt;
@@ -963,9 +970,11 @@
 
       if (isPhysical) {
         cardAmt += amt;
+        totalPhysicalSettleAmt += settle;
       } else if (isPayOrAccount) {
         payAmt += amt;
         payCount++;
+        totalPaySettleAmt += settle;
       }
 
       billingAmt += bAmt;
@@ -1004,13 +1013,19 @@
 
     // Update KPI Elements
     const fixedAmt = customTypeSums['고정비'] || 0;
-    const livingAmt = totalValidAmt - validCustomTypeAmt;
+    const livingAmt = Math.max(0, totalValidAmt - validCustomTypeAmt - totalSettleAmt);
     
     // KPI 1: 총 지출
     const kpiTotalAmountEl = document.getElementById('kpiTotalAmount');
     if (kpiTotalAmountEl) kpiTotalAmountEl.textContent = formatCurrency(totalValidAmt);
     const kpiTxCountEl = document.getElementById('kpiTxCount');
-    if (kpiTxCountEl) kpiTxCountEl.textContent = `${totalValidCount}건 지출 반영`;
+    if (kpiTxCountEl) {
+      if (totalSettleAmt > 0) {
+        kpiTxCountEl.innerHTML = `${totalValidCount}건 지출 반영 <span style="color:#10b981; font-weight:600; margin-left:4px;">(👥 정산 -${formatCurrency(totalSettleAmt)}원)</span>`;
+      } else {
+        kpiTxCountEl.textContent = `${totalValidCount}건 지출 반영`;
+      }
+    }
 
     // Dynamic Custom Types KPIs
     const dynamicKpiContainer = document.getElementById('dynamicKpiContainer');
@@ -1054,7 +1069,7 @@
       }
     }
 
-    // KPI 4: 순 생활비
+    // KPI 4: 순 생활비 (정산 회수액 차감)
     const kpiLivingAmountEl = document.getElementById('kpiLivingAmount');
     if (kpiLivingAmountEl) kpiLivingAmountEl.textContent = formatCurrency(livingAmt);
     const livingRatio = totalValidAmt > 0 ? Math.round((livingAmt / totalValidAmt) * 100) : 0;
@@ -1063,7 +1078,9 @@
     const kpiLivingLabelEl = document.getElementById('kpiLivingLabel');
     if (kpiLivingLabelEl) {
       const typeNames = Object.keys(appState.customTypes);
-      const excludeText = typeNames.length > 0 ? `(총 지출 - ${typeNames.join(', ')})` : '(총 지출)';
+      const extraList = [...typeNames];
+      if (totalSettleAmt > 0) extraList.push('정산회수');
+      const excludeText = extraList.length > 0 ? `(총 지출 - ${extraList.join(', ')})` : '(총 지출)';
       kpiLivingLabelEl.textContent = `순 생활비 ${excludeText}`;
     }
 
@@ -1073,9 +1090,18 @@
     document.getElementById('kpiExcludedAmount').textContent = formatCurrency(remainingAmt);
     document.getElementById('kpiExcludedCount').textContent = `${remainingCount}건 남음`;
 
-    // Subtotals in Panel
-    document.getElementById('cardSubtotalBadge').textContent = `카드 합계: ${formatCurrency(cardAmt)}원`;
-    document.getElementById('paySubtotalBadge').textContent = `소계: ${formatCurrency(payAmt)}원`;
+    // Subtotals in Panel (카드 청구액 원금과 실부담액 병기)
+    if (totalPhysicalSettleAmt > 0) {
+      document.getElementById('cardSubtotalBadge').innerHTML = `카드 청구 합계: ${formatCurrency(cardAmt)}원 <span style="font-size:0.8rem; color:#10b981; font-weight:600;">(👥 정산 -${formatCurrency(totalPhysicalSettleAmt)}원 → 실부담 ${formatCurrency(cardAmt - totalPhysicalSettleAmt)}원)</span>`;
+    } else {
+      document.getElementById('cardSubtotalBadge').textContent = `카드 합계: ${formatCurrency(cardAmt)}원`;
+    }
+
+    if (totalPaySettleAmt > 0) {
+      document.getElementById('paySubtotalBadge').innerHTML = `소계: ${formatCurrency(payAmt)}원 <span style="font-size:0.8rem; color:#10b981; font-weight:600;">(👥 정산 -${formatCurrency(totalPaySettleAmt)}원 → 실부담 ${formatCurrency(payAmt - totalPaySettleAmt)}원)</span>`;
+    } else {
+      document.getElementById('paySubtotalBadge').textContent = `소계: ${formatCurrency(payAmt)}원`;
+    }
 
     // Period info
     const countInfo = document.getElementById('periodTxCount');
@@ -1112,13 +1138,16 @@
     const cardCounts = {};
     const cardCompletedSums = {};
     const cardCompletedCounts = {};
+    const cardSettleSums = {};
     let totalPhysicalAmt = 0;
 
     records.forEach(r => {
       const card = r.actualCard || '기타 카드';
       const amt = Number(r.amount) || 0;
+      const settle = Number(r.settleAmount) || 0;
       cardSums[card] = (cardSums[card] || 0) + amt;
       cardCounts[card] = (cardCounts[card] || 0) + 1;
+      cardSettleSums[card] = (cardSettleSums[card] || 0) + settle;
 
       if (r.exclude === 'Y') {
         cardCompletedSums[card] = (cardCompletedSums[card] || 0) + amt;
@@ -1143,6 +1172,7 @@
     physicalCardNames.forEach(cardName => {
       const conf = CARD_CONFIG[cardName] || { color: '#64748b', chip: '#475569', target: 300000 };
       const amt = cardSums[cardName] || 0;
+      const settleAmt = cardSettleSums[cardName] || 0;
       const cnt = cardCounts[cardName] || 0;
       const completedAmt = cardCompletedSums[cardName] || 0;
       const completedCnt = cardCompletedCounts[cardName] || 0;
@@ -1168,6 +1198,11 @@
             <div>
               <span class="card-amount">${formatCurrency(amt)}원</span>
               <span class="card-share">(${share}%)</span>
+              ${settleAmt > 0 ? `
+              <div style="font-size: 0.78rem; color: #10b981; font-weight: 600; text-align: right; margin-top: 2px;">
+                👥 정산 -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)
+              </div>
+              ` : ''}
             </div>
           </div>
         </div>
@@ -1207,6 +1242,7 @@
     payNames.forEach(payName => {
       const conf = CARD_CONFIG[payName] || { color: '#64748b', dot: '#94a3b8' };
       const amt = cardSums[payName] || 0;
+      const settleAmt = cardSettleSums[payName] || 0;
       const cnt = cardCounts[payName] || 0;
       const completedAmt = cardCompletedSums[payName] || 0;
       const completedCnt = cardCompletedCounts[payName] || 0;
@@ -1220,6 +1256,11 @@
         </div>
         <div class="pay-mini-amount" style="text-align: right;">
           <div>${formatCurrency(amt)}원</div>
+          ${settleAmt > 0 ? `
+          <div style="font-size:0.75rem; color:#10b981; font-weight:600; margin-top:2px;">
+            👥 정산 -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)
+          </div>
+          ` : ''}
           <div style="font-size:0.8rem; font-weight:500; margin-top:4px; color:var(--text-main);">
             완료: <strong style="color:var(--primary-color);">${completedCnt}</strong> <span style="color:var(--text-muted); font-size:0.75rem;">/ ${cnt}건</span>
           </div>
@@ -1908,8 +1949,13 @@
 
     // Update stats summary in header
     const totalFilteredAmt = filtered.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    const totalFilteredSettle = filtered.reduce((sum, r) => sum + (Number(r.settleAmount) || 0), 0);
     document.getElementById('filteredCountBadge').textContent = `검색/필터 결과: ${filtered.length}건`;
-    document.getElementById('filteredSumBadge').textContent = `합계: ${formatCurrency(totalFilteredAmt)}원`;
+    if (totalFilteredSettle > 0) {
+      document.getElementById('filteredSumBadge').innerHTML = `합계: ${formatCurrency(totalFilteredAmt)}원 <span style="font-size:0.85em; color:#10b981; font-weight:600;">(👥 정산 -${formatCurrency(totalFilteredSettle)}원 → 실부담 ${formatCurrency(totalFilteredAmt - totalFilteredSettle)}원)</span>`;
+    } else {
+      document.getElementById('filteredSumBadge').textContent = `합계: ${formatCurrency(totalFilteredAmt)}원`;
+    }
 
     // Pagination
     const pageSize = appState.pageSize;
@@ -2019,7 +2065,15 @@
         <td class="col-merchant" title="${rec.merchant}">
           ${rec.merchant}
         </td>
-        <td class="col-amt">${formatCurrency(rec.amount)}</td>
+        <td class="col-amt">
+          <div>${formatCurrency(rec.amount)}</div>
+          ${(Number(rec.settleAmount) > 0) ? `
+            <div class="badge-settle" data-id="${rec.id}" title="${rec.settleNote || '더치페이/모임 정산 내역 (클릭하여 수정)'}">
+              <span>👥 정산 -${formatCurrency(rec.settleAmount)}원</span>
+              <span class="badge-settle-net">(실부담 ${formatCurrency(rec.amount - rec.settleAmount)}원)</span>
+            </div>
+          ` : ''}
+        </td>
         <td class="col-actual">
           <select class="select-table-card ${isUnmapped ? 'highlight-unmapped' : ''}" data-field="actualCard" data-id="${rec.id}">
             ${cardOptionsHtml}
@@ -2043,7 +2097,10 @@
         <td class="col-memo">
           <input type="text" class="input-table-memo" data-id="${rec.id}" value="${rec.memo || ''}" placeholder="메모 입력...">
         </td>
-        <td class="col-action">
+        <td class="col-action" style="white-space: nowrap;">
+          <button type="button" class="btn-split-row ${Number(rec.settleAmount) > 0 ? 'active' : ''}" data-id="${rec.id}" title="${Number(rec.settleAmount) > 0 ? '정산 수정/확인' : '더치페이/모임 정산 입력'}">
+            ${Number(rec.settleAmount) > 0 ? '👥' : '➗'}
+          </button>
           <button class="btn-delete-row" data-id="${rec.id}" title="내역 삭제">🗑️</button>
         </td>
       `;
@@ -2136,6 +2193,14 @@
   function handleTableClick(e) {
     const target = e.target;
 
+    // 0. Dutch pay / Split payment modal trigger
+    const splitBtn = target.closest('.btn-split-row') || target.closest('.badge-settle');
+    if (splitBtn) {
+      const id = Number(splitBtn.dataset.id);
+      openSplitModal(id);
+      return;
+    }
+
     // 1. Toggle Exclude (Y / N)
     
     // Toggle Fixed/Variable
@@ -2214,10 +2279,186 @@
     }
   }
 
+  // --- Dutch Pay / Split Payment Modal Logic ---
+  let currentSplitTxId = null;
+
+  function openSplitModal(id) {
+    const rec = appState.records.find(r => r.id === id);
+    if (!rec) return;
+    currentSplitTxId = id;
+
+    const modal = document.getElementById('modalSplitPayment');
+    if (!modal) return;
+
+    const metaEl = document.getElementById('splitTxMeta');
+    const merchantEl = document.getElementById('splitTxMerchant');
+    const origAmountEl = document.getElementById('splitTxOrigAmount');
+    const countInput = document.getElementById('splitCountInput');
+    const settleInput = document.getElementById('splitSettleInput');
+    const noteInput = document.getElementById('splitNoteInput');
+    const previewEl = document.getElementById('splitMySharePreview');
+    const btnRemove = document.getElementById('btnRemoveSplit');
+
+    const origAmt = Number(rec.amount) || 0;
+    if (metaEl) metaEl.textContent = `${rec.date || ''} ${rec.time || ''} | ${rec.actualCard || '결제수단 미지정'}`;
+    if (merchantEl) merchantEl.textContent = rec.merchant || '상호명 없음';
+    if (origAmountEl) origAmountEl.textContent = `${formatCurrency(origAmt)}원`;
+
+    if (countInput) countInput.value = '';
+    
+    // Check existing settle amount or pre-fill from memo
+    let existingSettle = Number(rec.settleAmount) || 0;
+    let existingNote = rec.settleNote || '';
+
+    if (existingSettle <= 0 && rec.memo) {
+      // Auto-detect pattern in memo like '69,454원정산' or '69454원 정산' or '정산 69,454'
+      const match = rec.memo.match(/([0-9,]+)\s*원?\s*정산/) || rec.memo.match(/정산\s*([0-9,]+)\s*원?/);
+      if (match && match[1]) {
+        const parsed = parseInt(match[1].replace(/,/g, ''), 10);
+        if (parsed > 0 && parsed < origAmt) {
+          existingSettle = parsed;
+          if (!existingNote) {
+            existingNote = rec.memo.trim();
+          }
+        }
+      }
+    }
+
+    if (settleInput) settleInput.value = existingSettle > 0 ? existingSettle : '';
+    if (noteInput) noteInput.value = existingNote;
+
+    const myShare = Math.max(0, origAmt - existingSettle);
+    if (previewEl) previewEl.textContent = `${formatCurrency(myShare)}원`;
+
+    if (btnRemove) {
+      btnRemove.style.display = Number(rec.settleAmount) > 0 ? 'inline-block' : 'none';
+    }
+
+    modal.classList.add('show');
+    if (settleInput) {
+      setTimeout(() => settleInput.focus(), 60);
+    }
+  }
+
+  function closeSplitModal() {
+    const modal = document.getElementById('modalSplitPayment');
+    if (modal) modal.classList.remove('show');
+    currentSplitTxId = null;
+  }
+
+  function handleCalcSplit() {
+    if (!currentSplitTxId) return;
+    const rec = appState.records.find(r => r.id === currentSplitTxId);
+    if (!rec) return;
+
+    const countInput = document.getElementById('splitCountInput');
+    const count = parseInt(countInput?.value, 10);
+    if (!count || count < 2) {
+      showToast('인원수를 2명 이상 입력해주세요.', 'warn');
+      countInput?.focus();
+      return;
+    }
+
+    const origAmt = Number(rec.amount) || 0;
+    // 1인당 금액 (내가 낼 몫)
+    const myShare = Math.round(origAmt / count);
+    // 다른 사람들에게 회수할 총 정산 금액 = 전체 - 내 몫
+    const settleAmt = Math.max(0, origAmt - myShare);
+
+    const settleInput = document.getElementById('splitSettleInput');
+    const noteInput = document.getElementById('splitNoteInput');
+    const previewEl = document.getElementById('splitMySharePreview');
+
+    if (settleInput) settleInput.value = settleAmt;
+    if (noteInput && !noteInput.value.trim()) {
+      noteInput.value = `${count}명 더치페이 (1인당 ${formatCurrency(myShare)}원)`;
+    }
+    if (previewEl) previewEl.textContent = `${formatCurrency(myShare)}원`;
+    showToast(`총 ${count}명 기준: 1인당 ${formatCurrency(myShare)}원 (정산받을 금액: ${formatCurrency(settleAmt)}원)으로 계산되었습니다.`, 'info');
+  }
+
+  function handleSettleInputChange() {
+    if (!currentSplitTxId) return;
+    const rec = appState.records.find(r => r.id === currentSplitTxId);
+    if (!rec) return;
+
+    const origAmt = Number(rec.amount) || 0;
+    const settleInput = document.getElementById('splitSettleInput');
+    const previewEl = document.getElementById('splitMySharePreview');
+
+    const settleAmt = Math.max(0, Number(settleInput?.value) || 0);
+    const myShare = Math.max(0, origAmt - settleAmt);
+    if (previewEl) previewEl.textContent = `${formatCurrency(myShare)}원`;
+  }
+
+  function handleSaveSplit() {
+    if (!currentSplitTxId) return;
+    const rec = appState.records.find(r => r.id === currentSplitTxId);
+    if (!rec) return;
+
+    const settleInput = document.getElementById('splitSettleInput');
+    const noteInput = document.getElementById('splitNoteInput');
+
+    const settleAmt = Math.max(0, Number(settleInput?.value) || 0);
+    const note = noteInput ? noteInput.value.trim() : '';
+    const origAmt = Number(rec.amount) || 0;
+
+    if (settleAmt >= origAmt && origAmt > 0) {
+      if (!confirm(`정산받은 금액(${formatCurrency(settleAmt)}원)이 결제 원금(${formatCurrency(origAmt)}원) 이상입니다. 내가 부담한 금액이 0원이 됩니다. 그대로 저장하시겠습니까?`)) {
+        return;
+      }
+    }
+
+    rec.settleAmount = settleAmt;
+    rec.settleNote = note;
+
+    saveData();
+    closeSplitModal();
+    renderAll();
+
+    if (settleAmt > 0) {
+      showToast(`[${rec.merchant}] 정산 내역이 저장되었습니다! (정산: ${formatCurrency(settleAmt)}원 / 실부담: ${formatCurrency(origAmt - settleAmt)}원)`, 'success');
+    } else {
+      showToast(`[${rec.merchant}] 정산 금액이 0원으로 설정되었습니다.`, 'info');
+    }
+  }
+
+  function handleRemoveSplit() {
+    if (!currentSplitTxId) return;
+    const rec = appState.records.find(r => r.id === currentSplitTxId);
+    if (!rec) return;
+
+    if (confirm('이 거래의 정산 설정을 해제(초기화)하시겠습니까?')) {
+      rec.settleAmount = 0;
+      rec.settleNote = '';
+      saveData();
+      closeSplitModal();
+      renderAll();
+      showToast(`[${rec.merchant}] 정산 설정이 초기화되었습니다.`, 'info');
+    }
+  }
+
   // --- Attach Event Listeners ---
   function attachEventListeners() {
     // Theme Toggle
     document.getElementById('btnThemeToggle')?.addEventListener('click', toggleTheme);
+
+    // Modal: Dutch Pay / Split Payment
+    document.getElementById('btnCloseSplitModal')?.addEventListener('click', closeSplitModal);
+    document.getElementById('btnCancelSplit')?.addEventListener('click', closeSplitModal);
+    document.getElementById('modalSplitPayment')?.addEventListener('click', e => {
+      if (e.target.id === 'modalSplitPayment') closeSplitModal();
+    });
+    document.getElementById('splitSettleInput')?.addEventListener('input', handleSettleInputChange);
+    document.getElementById('btnCalcSplit')?.addEventListener('click', handleCalcSplit);
+    document.getElementById('splitCountInput')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleCalcSplit();
+      }
+    });
+    document.getElementById('btnSaveSplit')?.addEventListener('click', handleSaveSplit);
+    document.getElementById('btnRemoveSplit')?.addEventListener('click', handleRemoveSplit);
 
     // Notification Log Modal
     const notificationLogModal = document.getElementById('notificationLogModal');
@@ -3562,14 +3803,21 @@
     const txHeaders = [
       'No.', '날짜', '시간', '대분류', '소분류', '내용(가맹점)',
       '금액', '실제 결제카드 (수정 가능)',
-      '할부 유무', '결제 (완료/대기)', '유형', '메모', '할부 개월'
+      '할부 유무', '결제 (완료/대기)', '유형', '메모', '할부 개월',
+      '정산금액', '실부담액', '정산메모'
     ];
 
-    const txRows = appState.records.map(r => [
-      r.id, r.date, r.time, r.category, r.subCategory, r.merchant,
-      -(Number(r.amount) || 0), r.actualCard, (r.isInstallment === 'Y' ? 'Y' : 'N'),
-      (r.exclude === 'Y' ? '완료' : '대기'), getRecordTypeLabel(r), r.memo, r.installment
-    ]);
+    const txRows = appState.records.map(r => {
+      const amt = Number(r.amount) || 0;
+      const settle = Number(r.settleAmount) || 0;
+      const net = amt - settle;
+      return [
+        r.id, r.date, r.time, r.category, r.subCategory, r.merchant,
+        -amt, r.actualCard, (r.isInstallment === 'Y' ? 'Y' : 'N'),
+        (r.exclude === 'Y' ? '완료' : '대기'), getRecordTypeLabel(r), r.memo, r.installment,
+        settle > 0 ? settle : '', settle > 0 ? net : '', r.settleNote || ''
+      ];
+    });
 
     const wsTx = XLSX.utils.aoa_to_sheet([txHeaders, ...txRows]);
 
@@ -3680,7 +3928,9 @@
           memo: findCol(['메모', '비고'], 9),
           status: mode === 'backup' ? findCol(['결제(완료'], -1) : -1,
           instYn: mode === 'backup' ? findCol(['할부유무'], -1) : -1,
-          instMon: mode === 'backup' ? findCol(['할부개월'], -1) : -1
+          instMon: mode === 'backup' ? findCol(['할부개월'], -1) : -1,
+          settleAmt: mode === 'backup' ? findCol(['정산금액', '정산회수'], -1) : -1,
+          settleNote: mode === 'backup' ? findCol(['정산메모', '모임명'], -1) : -1
         };
 
         const parsedList = [];
@@ -3790,6 +4040,8 @@
             status: '결제완료',
             exclude: excludeVal,
             memo: memoRaw,
+            settleAmount: (col.settleAmt !== -1 && row[col.settleAmt]) ? (Number(String(row[col.settleAmt]).replace(/[^0-9.-]/g, '')) || 0) : 0,
+            settleNote: (col.settleNote !== -1 && row[col.settleNote]) ? String(row[col.settleNote]).trim() : '',
             originalSignature: `${dateStr}|${timeStr}|${rawMerchant}|${amount}`
           });
         }

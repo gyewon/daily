@@ -2444,3 +2444,70 @@ select option:hover {
   text-decoration: underline;
 }
 
+/* Dutch Pay / Split Payment (더치페이 / 모임 정산) */
+.badge-settle {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding: 3px 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #10b981;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  line-height: 1.25;
+  text-align: left;
+}
+
+.badge-settle:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: #10b981;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+}
+
+.badge-settle-net {
+  color: #059669;
+  font-weight: 700;
+}
+
+[data-theme="light"] .badge-settle-net {
+  color: #047857;
+}
+
+.btn-split-row {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 4px 7px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+}
+
+.btn-split-row:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-split-row.active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #10b981;
+  font-weight: 700;
+}
+
+.btn-split-row.active:hover {
+  background: rgba(16, 185, 129, 0.25);
+}
+
