@@ -2511,3 +2511,106 @@ select option:hover {
   background: rgba(16, 185, 129, 0.25);
 }
 
+/* Chart Settle Mode Toggle Group */
+.chart-settle-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  gap: 3px;
+}
+
+.btn-chart-settle {
+  border: none;
+  background: transparent;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-chart-settle:hover {
+  color: var(--text-main);
+}
+
+.btn-chart-settle.active {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.35);
+}
+
+.btn-chart-settle#btnChartSettleGross.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 1px 4px var(--primary-glow);
+}
+
+/* Settlement Analytics View */
+.settle-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.settle-stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settle-stat-card .label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.settle-stat-card .val {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.settle-progress-wrap {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.settle-progress-bar {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--bg-input);
+  display: flex;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.settle-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settle-list-item:hover {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+

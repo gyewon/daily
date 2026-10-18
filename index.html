@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 
 <body>
@@ -211,16 +211,28 @@
 
         <!-- Right: Charts & Visual Insights -->
         <section class="panel charts-panel">
-          <div class="panel-header">
+          <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div class="panel-title-group">
               <h3>📊 지출 시각화 분석</h3>
               <p>카테고리 및 카드 점유율 실시간 차트</p>
             </div>
-            <div class="chart-tab-group">
-              <button class="chart-tab-btn" data-chart-tab="cards">카드 비중</button>
-              <button class="chart-tab-btn active" data-chart-tab="categories">카테고리</button>
-              <button class="chart-tab-btn" data-chart-tab="trends">누적 추이</button>
-              <button class="chart-tab-btn" data-chart-tab="daily">일자별 비교</button>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <!-- Settle Mode Toggle (실부담 기준 vs 결제 원금 기준) -->
+              <div class="chart-settle-toggle-group">
+                <button type="button" class="btn-chart-settle active" id="btnChartSettleNet" title="정산받은 금액을 제외한 내 순수 실부담액으로 분석합니다">
+                  👥 실부담 기준 (정산 차감)
+                </button>
+                <button type="button" class="btn-chart-settle" id="btnChartSettleGross" title="정산 차감 전 결제 원금으로 분석합니다">
+                  💳 결제 원금 기준
+                </button>
+              </div>
+              <div class="chart-tab-group">
+                <button class="chart-tab-btn" data-chart-tab="cards">카드 비중</button>
+                <button class="chart-tab-btn active" data-chart-tab="categories">카테고리</button>
+                <button class="chart-tab-btn" data-chart-tab="trends">누적 추이</button>
+                <button class="chart-tab-btn" data-chart-tab="daily">일자별 비교</button>
+                <button class="chart-tab-btn" data-chart-tab="settlements">👥 정산 현황</button>
+              </div>
             </div>
           </div>
 
@@ -259,6 +271,11 @@
               <div class="chart-canvas-box bar-box">
                 <canvas id="dailyBarChart"></canvas>
               </div>
+            </div>
+
+            <!-- View 5: Dutch Pay / Group Settlements Visual Analytics -->
+            <div class="chart-view" id="chartViewSettlements">
+              <div id="settlementsVisualContainer"></div>
             </div>
           </div>
 
@@ -903,7 +920,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 
 </html>

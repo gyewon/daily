@@ -82,7 +82,8 @@
     sortOrder: 'asc',
     currentPage: 1,
     pageSize: 30,
-    activeChartTab: 'categories'
+    activeChartTab: 'categories',
+    chartSettleMode: 'net'
   };
 
   // Chart instances
@@ -204,7 +205,8 @@
         sortOrder: appState.sortOrder,
         currentPage: appState.currentPage,
         pageSize: appState.pageSize,
-        activeChartTab: appState.activeChartTab
+        activeChartTab: appState.activeChartTab,
+        chartSettleMode: appState.chartSettleMode
       }));
     } catch(e) {}
   }
@@ -215,6 +217,8 @@
       if (state) {
         const parsed = JSON.parse(state);
         Object.assign(appState, parsed);
+        if (parsed.chartSettleMode) appState.chartSettleMode = parsed.chartSettleMode;
+        if (parsed.activeChartTab) appState.activeChartTab = parsed.activeChartTab;
         
         // 새로고침 시 페이지네이션은 유지하되 필터는 모두 해제
         appState.filterCard = 'ALL';
@@ -246,6 +250,18 @@
     });
     const pSize = document.getElementById('pageSizeSelect');
     if (pSize) pSize.value = appState.pageSize;
+
+    // Chart tab DOM sync
+    const activeTab = appState.activeChartTab || 'categories';
+    document.querySelectorAll('.chart-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.chartTab === activeTab);
+    });
+    document.querySelectorAll('.chart-view').forEach(v => v.classList.remove('active'));
+    if (activeTab === 'cards') document.getElementById('chartViewCards')?.classList.add('active');
+    else if (activeTab === 'categories') document.getElementById('chartViewCategories')?.classList.add('active');
+    else if (activeTab === 'trends') document.getElementById('chartViewTrends')?.classList.add('active');
+    else if (activeTab === 'daily') document.getElementById('chartViewDaily')?.classList.add('active');
+    else if (activeTab === 'settlements') document.getElementById('chartViewSettlements')?.classList.add('active');
   }
 
   function loadLocalCache() {
@@ -1349,29 +1365,70 @@
 
   // --- Charts Logic ---
   function updateCharts(records) {
+    const isNetMode = appState.chartSettleMode === 'net';
+
+    // Synchronize Settle Mode Toggle UI
+    const btnNet = document.getElementById('btnChartSettleNet');
+    const btnGross = document.getElementById('btnChartSettleGross');
+    if (btnNet && btnGross) {
+      if (isNetMode) {
+        btnNet.classList.add('active');
+        btnGross.classList.remove('active');
+      } else {
+        btnNet.classList.remove('active');
+        btnGross.classList.add('active');
+      }
+    }
+
     // 1. 카테고리별 지출 금액 및 건수 집계 (전체 레코드 기준)
     const activeCategories = records.map(r => r.category).filter(Boolean);
     const masterCats = Object.keys(appState.masterCategories || {});
     const allCatNames = [...new Set([...masterCats, ...activeCategories])];
 
-    const catSums = {};
+    const catGrossSums = {};
+    const catSettleSums = {};
+    const catNetSums = {};
     const catCounts = {};
-    let totalAllAmt = 0;
+    let totalAllGrossAmt = 0;
+    let totalAllSettleAmt = 0;
+
     records.forEach(r => {
       const cat = r.category || '기타';
-      const amt = Number(r.amount) || 0;
-      catSums[cat] = (catSums[cat] || 0) + amt;
+      const gross = Number(r.amount) || 0;
+      const settle = Number(r.settleAmount) || 0;
+      const net = Math.max(0, gross - settle);
+
+      catGrossSums[cat] = (catGrossSums[cat] || 0) + gross;
+      catSettleSums[cat] = (catSettleSums[cat] || 0) + settle;
+      catNetSums[cat] = (catNetSums[cat] || 0) + net;
       catCounts[cat] = (catCounts[cat] || 0) + 1;
-      totalAllAmt += amt;
+
+      totalAllGrossAmt += gross;
+      totalAllSettleAmt += settle;
     });
+
+    const totalAllNetAmt = Math.max(0, totalAllGrossAmt - totalAllSettleAmt);
+    const totalAllDisplayAmt = isNetMode ? totalAllNetAmt : totalAllGrossAmt;
 
     // 제외된 카테고리 집합 및 제외되지 않은 레코드 계산
     const excludedSet = appState.chartExcludedCategories || new Set();
     const includedRecords = records.filter(r => !excludedSet.has(r.category));
-    const totalIncludedAmt = includedRecords.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+    let totalIncludedGrossAmt = 0;
+    let totalIncludedSettleAmt = 0;
+    includedRecords.forEach(r => {
+      totalIncludedGrossAmt += (Number(r.amount) || 0);
+      totalIncludedSettleAmt += (Number(r.settleAmount) || 0);
+    });
+    const totalIncludedNetAmt = Math.max(0, totalIncludedGrossAmt - totalIncludedSettleAmt);
+    const totalDisplayAmt = isNetMode ? totalIncludedNetAmt : totalIncludedGrossAmt;
 
     // 지출 금액 순으로 정렬 (금액 있는 카테고리 우선)
-    const sortedCategories = allCatNames.sort((a, b) => (catSums[b] || 0) - (catSums[a] || 0));
+    const sortedCategories = allCatNames.sort((a, b) => {
+      const valA = isNetMode ? (catNetSums[a] || 0) : (catGrossSums[a] || 0);
+      const valB = isNetMode ? (catNetSums[b] || 0) : (catGrossSums[b] || 0);
+      return valB - valA;
+    });
 
     // 2. 카테고리 인터랙티브 칩 생성 ([모아보기] + [제외] 기능 모두 지원)
     const filterContainer = document.getElementById('chartCategoryFilters');
@@ -1411,7 +1468,10 @@
 
       // 개별 카테고리 버튼들
       sortedCategories.forEach((cat, idx) => {
-        const amt = catSums[cat] || 0;
+        const gross = catGrossSums[cat] || 0;
+        const settle = catSettleSums[cat] || 0;
+        const net = catNetSums[cat] || 0;
+        const amt = isNetMode ? net : gross;
         const cnt = catCounts[cat] || 0;
         if (amt === 0 && cnt === 0 && appState.filterCategory !== cat && !excludedSet.has(cat)) return;
 
@@ -1423,11 +1483,17 @@
         chip.className = `cat-filter-chip ${isExcluded ? 'is-excluded' : ''} ${isSelected ? 'active' : ''}`;
         chip.dataset.cat = cat;
 
+        const settleBadge = settle > 0 
+          ? (isNetMode 
+              ? ` <small style="color:#10b981; font-weight:700;">(-${formatCurrency(settle)})</small>`
+              : ` <small style="color:#10b981; font-weight:700;">(실부담 ${formatCurrency(net)})</small>`)
+          : '';
+
         chip.innerHTML = `
           <button type="button" class="cat-chip-main" title="${isExcluded ? `'${cat}' 다시 포함하고 모아보기` : `'${cat}' 내역만 모아보기 (클릭)`}">
             <span class="cat-chip-dot" style="background: ${isExcluded ? '#64748b' : color};"></span>
             <span class="cat-chip-name">${cat}</span>
-            <span class="cat-chip-amount">${formatCurrency(amt)}원</span>
+            <span class="cat-chip-amount">${formatCurrency(amt)}원${settleBadge}</span>
           </button>
           <button type="button" class="cat-chip-del-btn" title="${isExcluded ? `'${cat}' 차트 분석에 다시 포함하기` : `'${cat}' 차트 분석에서 제외하기`}">
             ${isExcluded ? '+ 포함' : '✕'}
@@ -1451,15 +1517,26 @@
     // 3. 차트 요약 총합계 헤더 업데이트
     const summaryRow = document.getElementById('chartTotalSummaryRow');
     if (summaryRow) {
+      const settleNotice = totalIncludedSettleAmt > 0 ? `
+        <span style="font-size: 0.88rem; color: #10b981; margin-left: 8px; font-weight: 600;">
+          (👥 정산 회수: -${formatCurrency(totalIncludedSettleAmt)}원 | 결제 원금: ${formatCurrency(totalIncludedGrossAmt)}원 | 실부담: ${formatCurrency(totalIncludedNetAmt)}원)
+        </span>
+      ` : '';
+
       if (appState.filterCategory !== 'ALL') {
-        const selectedAmt = catSums[appState.filterCategory] || 0;
+        const catGross = catGrossSums[appState.filterCategory] || 0;
+        const catSettle = catSettleSums[appState.filterCategory] || 0;
+        const catNet = catNetSums[appState.filterCategory] || 0;
+        const catDisplay = isNetMode ? catNet : catGross;
         const selectedCnt = catCounts[appState.filterCategory] || 0;
+
         summaryRow.innerHTML = `
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <div style="font-size: 1.15rem;">
-              📈 <strong style="color: var(--primary); font-size: 1.3rem;">[${appState.filterCategory}]</strong> 카테고리 합계: 
-              <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(selectedAmt)}</strong>원 
-              <span style="font-size: 0.9rem; color: var(--text-muted); margin-left: 6px;">(${selectedCnt}건 / 전체: ${formatCurrency(totalAllAmt)}원)</span>
+              📈 <strong style="color: var(--primary); font-size: 1.3rem;">[${appState.filterCategory}]</strong> 합계 (${isNetMode ? '👥 실부담 기준' : '💳 결제 원금 기준'}): 
+              <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(catDisplay)}</strong>원 
+              ${catSettle > 0 ? `<span style="font-size: 0.88rem; color: #10b981; font-weight: 600; margin-left: 6px;">(👥 정산 -${formatCurrency(catSettle)}원 | 원금: ${formatCurrency(catGross)}원)</span>` : ''}
+              <span style="font-size: 0.9rem; color: var(--text-muted); margin-left: 6px;">(${selectedCnt}건 / 전체: ${formatCurrency(totalAllDisplayAmt)}원)</span>
             </div>
             <button id="btnResetCatFilter" class="btn btn-secondary btn-sm" style="padding: 4px 12px; font-size: 0.85rem; border-radius: 12px;">
               전체 카테고리 보기 ✕
@@ -1473,8 +1550,10 @@
         summaryRow.innerHTML = `
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <div style="font-size: 1.25rem;">
-              📈 현재 차트 총합계: <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(totalIncludedAmt)}</strong>원 
-              <span style="font-size: 0.88rem; color: #f59e0b; margin-left: 8px; font-weight: 600;">(${excludedSet.size}개 카테고리 제외됨 / 전체: ${formatCurrency(totalAllAmt)}원)</span>
+              📈 현재 차트 총합계 (${isNetMode ? '👥 실부담 기준' : '💳 결제 원금 기준'}): 
+              <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(totalDisplayAmt)}</strong>원 
+              ${settleNotice}
+              <span style="font-size: 0.88rem; color: #f59e0b; margin-left: 8px; font-weight: 600;">(${excludedSet.size}개 카테고리 제외됨)</span>
             </div>
             <button id="btnRestoreExcludesHeader" class="btn btn-secondary btn-sm" style="padding: 4px 12px; font-size: 0.85rem; border-radius: 12px;">
               제외 모두 해제 ↺
@@ -1487,13 +1566,15 @@
       } else {
         summaryRow.innerHTML = `
           <div style="font-size: 1.25rem;">
-            📈 현재 차트 총합계: <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(totalAllAmt)}</strong>원
+            📈 현재 차트 총합계 (${isNetMode ? '👥 실부담 기준' : '💳 결제 원금 기준'}): 
+            <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(totalDisplayAmt)}</strong>원
+            ${settleNotice}
           </div>
         `;
       }
     } else {
       const sumEl = document.getElementById('chartTotalSum');
-      if (sumEl) sumEl.textContent = formatCurrency(totalIncludedAmt);
+      if (sumEl) sumEl.textContent = formatCurrency(totalDisplayAmt);
     }
 
     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
@@ -1510,7 +1591,10 @@
     renderTrendLine(includedRecords, textColor, gridColor);
 
     // 4. Bar: Daily Spend Breakdown
-    renderDailyBar(textColor, gridColor);
+    renderDailyBar(includedRecords, textColor, gridColor);
+
+    // 5. Settlement Visual Analytics
+    renderSettlementsVisual(records);
   }
 
   function renderCardDoughnut(records, textColor) {
@@ -1518,13 +1602,24 @@
     const legendBox = document.getElementById('cardCustomLegend');
     if (!canvas) return;
 
+    const isNetMode = appState.chartSettleMode === 'net';
     const sums = {};
+    const grossSums = {};
+    const settleSums = {};
+
     records.forEach(r => {
       const card = r.actualCard || '기타 카드';
-      sums[card] = (sums[card] || 0) + (Number(r.amount) || 0);
+      const gross = Number(r.amount) || 0;
+      const settle = Number(r.settleAmount) || 0;
+      const net = Math.max(0, gross - settle);
+      const val = isNetMode ? net : gross;
+
+      sums[card] = (sums[card] || 0) + val;
+      grossSums[card] = (grossSums[card] || 0) + gross;
+      settleSums[card] = (settleSums[card] || 0) + settle;
     });
 
-    const sortedCards = Object.keys(sums).sort((a, b) => sums[b] - sums[a]);
+    const sortedCards = Object.keys(sums).filter(c => sums[c] > 0).sort((a, b) => sums[b] - sums[a]);
     const labels = sortedCards;
     const data = sortedCards.map(c => sums[c]);
     const bgColors = sortedCards.map(c => (CARD_CONFIG[c] ? CARD_CONFIG[c].color : '#64748b'));
@@ -1569,10 +1664,19 @@
           tooltip: {
             callbacks: {
               label: function (ctx) {
+                const cardName = ctx.label;
                 const val = ctx.parsed;
                 const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
                 const percent = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-                return ` ${ctx.label}: ${formatCurrency(val)}원 (${percent}%) - 클릭 시 필터링`;
+                const cardGross = grossSums[cardName] || 0;
+                const cardSettle = settleSums[cardName] || 0;
+                let extra = '';
+                if (cardSettle > 0) {
+                  extra = isNetMode 
+                    ? ` (원금 ${formatCurrency(cardGross)}원, 정산 -${formatCurrency(cardSettle)}원)` 
+                    : ` (정산 -${formatCurrency(cardSettle)}원, 실부담 ${formatCurrency(cardGross - cardSettle)}원)`;
+                }
+                return ` ${cardName}: ${formatCurrency(val)}원 (${percent}%)${extra} - 클릭 시 필터링`;
               }
             }
           }
@@ -1588,9 +1692,11 @@
         item.className = `legend-item ${appState.filterCard === lbl ? 'active-legend-filter' : ''}`;
         item.style.cursor = 'pointer';
         item.title = `${lbl} 내역 필터링`;
+        const settleAmt = settleSums[lbl] || 0;
+        const settleBadge = settleAmt > 0 ? ` <small style="color:#10b981; font-weight:700;">(-${formatCurrency(settleAmt)})</small>` : '';
         item.innerHTML = `
           <span class="legend-color-dot" style="background: ${bgColors[idx]};"></span>
-          <span>${lbl.replace('[간편결제] ', '')} (${formatCurrency(data[idx])}원)</span>
+          <span>${lbl.replace('[간편결제] ', '')} (${formatCurrency(data[idx])}원${settleBadge})</span>
         `;
         item.addEventListener('click', () => {
           toggleCardFilter(lbl);
@@ -1604,10 +1710,21 @@
     const canvas = document.getElementById('categoryBarChart');
     if (!canvas) return;
 
+    const isNetMode = appState.chartSettleMode === 'net';
     const catSums = {};
+    const catGrossSums = {};
+    const catSettleSums = {};
+
     records.forEach(r => {
       const cat = r.category || '기타';
-      catSums[cat] = (catSums[cat] || 0) + (Number(r.amount) || 0);
+      const gross = Number(r.amount) || 0;
+      const settle = Number(r.settleAmount) || 0;
+      const net = Math.max(0, gross - settle);
+      const val = isNetMode ? net : gross;
+
+      catSums[cat] = (catSums[cat] || 0) + val;
+      catGrossSums[cat] = (catGrossSums[cat] || 0) + gross;
+      catSettleSums[cat] = (catSettleSums[cat] || 0) + settle;
     });
 
     const sortedCats = Object.keys(catSums).filter(c => catSums[c] > 0).sort((a, b) => catSums[b] - catSums[a]);
@@ -1644,7 +1761,7 @@
       data: {
         labels: labels,
         datasets: [{
-          label: '지출 금액',
+          label: isNetMode ? '실부담 지출액' : '결제 원금',
           data: data,
           backgroundColor: bgColors,
           borderColor: borderColors,
@@ -1718,8 +1835,17 @@
           tooltip: {
             callbacks: {
               label: ctx => {
-                const isSelected = activeCat === ctx.label;
-                return ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.x)}원 (${isSelected ? '클릭 시 필터 해제' : '클릭 시 이 카테고리만 보기'})`;
+                const catName = ctx.label;
+                const isSelected = activeCat === catName;
+                const cGross = catGrossSums[catName] || 0;
+                const cSettle = catSettleSums[catName] || 0;
+                let settleInfo = '';
+                if (cSettle > 0) {
+                  settleInfo = isNetMode 
+                    ? ` (원금 ${formatCurrency(cGross)}원 - 정산 ${formatCurrency(cSettle)}원)` 
+                    : ` (정산 -${formatCurrency(cSettle)}원 → 실부담 ${formatCurrency(cGross - cSettle)}원)`;
+                }
+                return ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.x)}원${settleInfo} (${isSelected ? '클릭 시 필터 해제' : '클릭 시 이 카테고리만 보기'})`;
               }
             }
           }
@@ -1757,12 +1883,18 @@
     const canvas = document.getElementById('trendLineChart');
     if (!canvas) return;
 
+    const isNetMode = appState.chartSettleMode === 'net';
+
     // Daily cumulative spending
     const dailyMap = {};
     records.forEach(r => {
       if (!r.date) return;
       const d = r.date;
-      dailyMap[d] = (dailyMap[d] || 0) + (Number(r.amount) || 0);
+      const gross = Number(r.amount) || 0;
+      const settle = Number(r.settleAmount) || 0;
+      const net = Math.max(0, gross - settle);
+      const val = isNetMode ? net : gross;
+      dailyMap[d] = (dailyMap[d] || 0) + val;
     });
 
     const sortedDates = Object.keys(dailyMap).sort();
@@ -1782,7 +1914,7 @@
         labels: sortedDates.map(d => d.slice(5)), // MM-DD
         datasets: [
           {
-            label: '일별 지출액',
+            label: isNetMode ? '일별 실부담 지출액' : '일별 결제 원금',
             type: 'bar',
             data: sortedDates.map(d => dailyMap[d]),
             backgroundColor: 'rgba(99, 102, 241, 0.35)',
@@ -1790,7 +1922,7 @@
             yAxisID: 'y'
           },
           {
-            label: '누적 지출액',
+            label: isNetMode ? '누적 실부담 지출액' : '누적 결제 원금',
             type: 'line',
             data: cumData,
             borderColor: '#06b6d4',
@@ -1841,22 +1973,30 @@
     });
   }
 
-  function renderDailyBar(textColor, gridColor) {
+  function renderDailyBar(records, textColor, gridColor) {
     const canvas = document.getElementById('dailyBarChart');
     if (!canvas) return;
 
-    const dates = [
-      '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05',
-      '2026-09-06', '2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10'
+    const isNetMode = appState.chartSettleMode === 'net';
+
+    // Unique dates from active records
+    const uniqueDates = [...new Set(records.map(r => r.date).filter(Boolean))].sort();
+    const dates = uniqueDates.length > 0 ? uniqueDates : [
+      '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05'
     ];
+
     const cardData = dates.map(() => 0);
     const payData = dates.map(() => 0);
 
-    appState.records.forEach(r => {
+    records.forEach(r => {
       if (!r.date) return;
       const idx = dates.indexOf(r.date);
       if (idx !== -1) {
-        const amt = Number(r.amount) || 0;
+        const gross = Number(r.amount) || 0;
+        const settle = Number(r.settleAmount) || 0;
+        const net = Math.max(0, gross - settle);
+        const amt = isNetMode ? net : gross;
+
         const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
         if (isPhysical) cardData[idx] += amt;
         else payData[idx] += amt;
@@ -1873,7 +2013,7 @@
         labels: dates.map(d => `${parseInt(d.slice(8), 10)}일`),
         datasets: [
           {
-            label: '실물 카드 지출',
+            label: isNetMode ? '실물 카드 (실부담)' : '실물 카드 지출',
             data: cardData,
             backgroundColor: '#2563eb',
             borderRadius: 4,
@@ -1881,7 +2021,7 @@
             categoryPercentage: 0.8
           },
           {
-            label: '간편결제/계좌 지출',
+            label: isNetMode ? '간편결제/계좌 (실부담)' : '간편결제/계좌 지출',
             data: payData,
             backgroundColor: '#f59e0b',
             borderRadius: 4,
@@ -1917,6 +2057,130 @@
           }
         }
       }
+    });
+  }
+
+  // --- Render Dutch Pay / Settlement Visual Analytics ---
+  function renderSettlementsVisual(records) {
+    const container = document.getElementById('settlementsVisualContainer');
+    if (!container) return;
+
+    // Filter records that have settleAmount > 0
+    const settledRecords = records.filter(r => (Number(r.settleAmount) > 0));
+
+    if (settledRecords.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
+          <div style="font-size: 2.5rem; margin-bottom: 12px;">👥</div>
+          <h4 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 8px;">이번 기간에 등록된 모임 정산 / 더치페이 내역이 없습니다</h4>
+          <p style="font-size: 0.88rem; max-width: 420px; margin: 0 auto; line-height: 1.5;">
+            모임이나 친구들과 결제한 건이 있다면, 아래 <strong>지출 상세 표에서 '➗' 버튼</strong>을 눌러 정산을 등록해보세요!
+            <br>정산받은 금액을 입력하면 카드 청구액과 내 순수 지출이 자동으로 분리 분석됩니다.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    let totalCharged = 0;
+    let totalRecovered = 0;
+    let totalMyShare = 0;
+
+    settledRecords.forEach(r => {
+      const amt = Number(r.amount) || 0;
+      const settle = Number(r.settleAmount) || 0;
+      totalCharged += amt;
+      totalRecovered += settle;
+      totalMyShare += Math.max(0, amt - settle);
+    });
+
+    const recoverRate = totalCharged > 0 ? Math.round((totalRecovered / totalCharged) * 100) : 0;
+    const myShareRate = 100 - recoverRate;
+
+    let itemsHtml = '';
+    settledRecords.sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach(r => {
+      const amt = Number(r.amount) || 0;
+      const settle = Number(r.settleAmount) || 0;
+      const myShare = Math.max(0, amt - settle);
+      const note = r.settleNote || '정산 완료';
+      const dateStr = r.date ? r.date.substring(5) : '';
+
+      itemsHtml += `
+        <div class="settle-list-item" data-id="${r.id}" title="클릭하여 정산 수정/확인">
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <strong style="color: var(--text-main); font-size: 0.95rem;">${r.merchant}</strong>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${note}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+              ${dateStr} ${r.time || ''} · ${r.actualCard || ''} · ${r.category || ''}
+            </div>
+          </div>
+          <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
+            <div style="font-size: 0.95rem; font-weight: 800; color: #10b981;">
+              내 실부담: ${formatCurrency(myShare)}원
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">
+              원금 ${formatCurrency(amt)}원 - 회수 ${formatCurrency(settle)}원
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = `
+      <!-- KPI Stats -->
+      <div class="settle-summary-grid">
+        <div class="settle-stat-card">
+          <span class="label">💳 모임 결제 원금 (카드 청구)</span>
+          <span class="val" style="color: var(--text-main);">${formatCurrency(totalCharged)}<small style="font-size: 0.8rem; font-weight: normal;">원</small></span>
+        </div>
+        <div class="settle-stat-card" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.06);">
+          <span class="label" style="color: #10b981; font-weight: 600;">💰 다른 사람에게 회수한 금액</span>
+          <span class="val" style="color: #10b981;">${formatCurrency(totalRecovered)}<small style="font-size: 0.8rem; font-weight: normal;">원</small></span>
+        </div>
+        <div class="settle-stat-card">
+          <span class="label">👉 내가 실제 부담한 지출</span>
+          <span class="val" style="color: var(--primary);">${formatCurrency(totalMyShare)}<small style="font-size: 0.8rem; font-weight: normal;">원</small></span>
+        </div>
+        <div class="settle-stat-card">
+          <span class="label">📈 정산 회수율</span>
+          <span class="val" style="color: #06b6d4;">${recoverRate}<small style="font-size: 0.8rem; font-weight: normal;">%</small></span>
+        </div>
+      </div>
+
+      <!-- Ratio Bar -->
+      <div class="settle-progress-wrap">
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-main); font-weight: 600;">
+          <span>내 실부담: ${formatCurrency(totalMyShare)}원 (${myShareRate}%)</span>
+          <span style="color: #10b981;">타인 회수액: ${formatCurrency(totalRecovered)}원 (${recoverRate}%)</span>
+        </div>
+        <div class="settle-progress-bar">
+          <div style="width: ${myShareRate}%; background: var(--primary); height: 100%; transition: width 0.4s ease;" title="내 실부담 ${myShareRate}%"></div>
+          <div style="width: ${recoverRate}%; background: #10b981; height: 100%; transition: width 0.4s ease;" title="정산 회수 ${recoverRate}%"></div>
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); text-align: right;">
+          총 ${settledRecords.length}건의 모임/더치페이 정산 거래
+        </div>
+      </div>
+
+      <!-- Detailed List -->
+      <div>
+        <div style="font-size: 0.9rem; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">
+          📋 모임 정산 거래 목록 (${settledRecords.length}건)
+        </div>
+        <div style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
+          ${itemsHtml}
+        </div>
+      </div>
+    `;
+
+    // Clicking any item in the list opens the split modal for that item!
+    container.querySelectorAll('.settle-list-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = Number(item.dataset.id);
+        if (id) openSplitModal(id);
+      });
     });
   }
 
@@ -2491,7 +2755,31 @@
         else if (tab === 'categories') document.getElementById('chartViewCategories')?.classList.add('active');
         else if (tab === 'trends') document.getElementById('chartViewTrends')?.classList.add('active');
         else if (tab === 'daily') document.getElementById('chartViewDaily')?.classList.add('active');
+        else if (tab === 'settlements') {
+          document.getElementById('chartViewSettlements')?.classList.add('active');
+          renderSettlementsVisual(getFilteredRecords(true));
+        }
+        saveUIState();
       });
+    });
+
+    // Chart Settle Mode Toggle (👥 실부담 기준 vs 💳 결제 원금 기준)
+    document.getElementById('btnChartSettleNet')?.addEventListener('click', () => {
+      if (appState.chartSettleMode !== 'net') {
+        appState.chartSettleMode = 'net';
+        updateCharts(getFilteredRecords(true));
+        saveUIState();
+        showToast('차트가 [실부담액(정산 차감) 기준]으로 전환되었습니다.', 'info');
+      }
+    });
+
+    document.getElementById('btnChartSettleGross')?.addEventListener('click', () => {
+      if (appState.chartSettleMode !== 'gross') {
+        appState.chartSettleMode = 'gross';
+        updateCharts(getFilteredRecords(true));
+        saveUIState();
+        showToast('차트가 [결제 원금 기준]으로 전환되었습니다.', 'info');
+      }
     });
 
     // Global Month Filter
