@@ -2319,12 +2319,14 @@
           <small style="color:var(--text-muted); font-size:0.75rem;">${rec.time || ''}</small>
         </td>
         <td class="col-cat">
-          <select class="input-table-category badge-cat-input" data-id="${rec.id}" title="대분류 선택">
-            ${catOptionsHtml}
-          </select>
-          <select class="input-table-subcategory" data-id="${rec.id}" title="소분류 선택">
-            ${subOptionsHtml}
-          </select>
+          <div class="cat-select-group">
+            <select class="input-table-category badge-cat-input" data-id="${rec.id}" title="대분류 선택">
+              ${catOptionsHtml}
+            </select>
+            <select class="input-table-subcategory" data-id="${rec.id}" title="소분류 선택">
+              ${subOptionsHtml}
+            </select>
+          </div>
         </td>
         <td class="col-merchant" title="${rec.merchant}">
           ${rec.merchant}

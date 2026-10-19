@@ -1025,18 +1025,18 @@ body {
 }
 
 /* Table Columns */
-.col-id { width: 50px; text-align: center; color: var(--text-muted); font-size: 0.82rem; }
+.col-id { width: 45px; text-align: center; color: var(--text-muted); font-size: 0.82rem; }
 .col-date { width: 105px; white-space: nowrap; font-size: 0.82rem; color: #e2e8f0; }
-.col-cat { width: 160px; min-width: 115px; }
+.col-cat { width: 145px; min-width: 130px; white-space: normal; }
 .col-merchant { min-width: 160px; font-weight: 600; color: #ffffff; }
-.col-amt { width: 110px; text-align: right; font-family: 'Outfit', sans-serif; font-weight: 700; color: #ffffff; font-size: 0.92rem; }
+.col-amt { width: 130px; min-width: 125px; text-align: right; font-family: 'Outfit', sans-serif; font-weight: 700; color: #ffffff; font-size: 0.92rem; }
 .col-orig { width: 140px; font-size: 0.82rem; color: #94a3b8; }
-.col-actual { width: 200px; }
+.col-actual { width: 190px; min-width: 160px; }
 .col-inst { width: 60px; text-align: center; }
 .col-exclude { width: 70px; text-align: center; }
-.col-fixed { width: 90px; text-align: center; white-space: nowrap; }
-.col-memo { min-width: 200px; }
-.col-action { width: 60px; text-align: center; }
+.col-fixed { width: 85px; text-align: center; white-space: nowrap; }
+.col-memo { min-width: 180px; }
+.col-action { width: 80px; min-width: 80px; text-align: center; white-space: nowrap; }
 
 [data-theme="light"] .col-merchant { color: #0f172a; }
 [data-theme="light"] .col-amt { color: #0f172a; }
@@ -1433,16 +1433,28 @@ select option:hover {
 }
 
 /* Category Inputs in Table */
+.cat-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+}
+
 .input-table-category,
 .input-table-subcategory {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 2px 2px;
+  padding: 3px 5px;
   font-size: 0.8rem;
   color: var(--text-primary);
-  width: 100%;
-  margin-bottom: 1px;
+  margin-bottom: 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .input-table-category:focus,
@@ -1781,7 +1793,29 @@ select option:hover {
 
   #txTable {
     font-size: 0.78rem;
-    min-width: 780px; /* Maintains clean readable cell widths for the 12-column table */
+    min-width: 1080px; /* Maintains clean readable cell widths for the 12-column table without crushing */
+  }
+
+  .col-cat {
+    width: 135px;
+    min-width: 125px;
+    white-space: normal !important;
+  }
+
+  .cat-select-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+  }
+
+  .input-table-category,
+  .input-table-subcategory {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: 0.75rem;
+    padding: 3px 4px;
   }
 
   .modal-body .tx-table {
@@ -1789,8 +1823,17 @@ select option:hover {
     font-size: 0.8rem;
   }
 
-  .tx-table th, .tx-table td {
+  .tx-table th {
     padding: 8px 10px;
+    white-space: nowrap;
+  }
+
+  .tx-table td {
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+
+  .tx-table td:not(.col-cat) {
     white-space: nowrap;
   }
 
