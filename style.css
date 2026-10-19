@@ -113,14 +113,14 @@ body {
   box-sizing: border-box;
 }
 
-/* Top Header - Desktop 2-Column Layout */
+/* Top Header - Desktop 2-Row Balanced Layout */
 .app-header {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 24px;
-  padding: 20px 26px;
+  align-items: stretch;
+  gap: 20px;
+  padding: 16px 22px;
   background: var(--bg-card);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
@@ -132,8 +132,13 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
+  align-items: flex-start;
+}
+
+.header-left-group {
+  align-self: flex-start;
 }
 
 .brand-main {
@@ -236,12 +241,13 @@ body {
   color: #1e293b;
 }
 
-/* 🌟 우측 액션 툴바: 3단 우측 정렬 세로 배치 (사용자 요청 디자인 완벽 일치) */
+/* 🌟 우측 액션 툴바: 2단 우측 정렬 세로 배치 (1열: 작업·기록, 2열: 설정·관리) */
 .header-toolbar {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   align-items: flex-end;
-  gap: 8px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
@@ -1827,6 +1833,11 @@ select option:hover {
   }
 
   /* Header Categorized Toolbar on Mobile */
+  .header-left-group {
+    width: 100% !important;
+    margin-top: 4px !important;
+  }
+
   .header-toolbar {
     flex-direction: column;
     align-items: stretch;

@@ -2999,14 +2999,93 @@
     });
 
     // Quick Banner / KPI Filter buttons
+    function executeAutoMapPayments() {
+      const merchantCardFreq = {};
+      appState.records.forEach(r => {
+        const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
+        if (isPhysical && r.merchant) {
+          const m = r.merchant.trim();
+          if (!merchantCardFreq[m]) merchantCardFreq[m] = {};
+          merchantCardFreq[m][r.actualCard] = (merchantCardFreq[m][r.actualCard] || 0) + 1;
+        }
+      });
+
+      const currentMonthRecs = appState.globalMonth === 'ALL' 
+        ? appState.records 
+        : appState.records.filter(r => r.month === appState.globalMonth);
+
+      const candidates = [];
+      currentMonthRecs.forEach(r => {
+        const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
+        if (!isPhysical && r.merchant) {
+          const m = r.merchant.trim();
+          const freq = merchantCardFreq[m];
+          if (freq) {
+            let bestCard = null;
+            let maxCount = 0;
+            for (const c in freq) {
+              if (freq[c] > maxCount) {
+                maxCount = freq[c];
+                bestCard = c;
+              }
+            }
+            if (bestCard) {
+              candidates.push({
+                record: r,
+                suggestedCard: bestCard,
+                prevCard: r.actualCard || '간편결제'
+              });
+            }
+          }
+        }
+      });
+
+      if (candidates.length === 0) {
+        alert('이전 결제 이력과 매칭되는 동일 가맹점 간편결제 내역이 없습니다.\n\n[내역 모아보기 & 이동] 버튼을 눌러 테이블에서 직접 실물 카드를 선택해주세요. 한 번만 카드를 지정해 두시면 다음부터는 해당 패턴으로 자동 연결됩니다! 👍');
+        return;
+      }
+
+      let confirmMsg = `⚡ 총 ${candidates.length}건의 간편결제를 이전 결제 카드와 자동으로 연결할 수 있습니다!\n\n[자동 연결 예정 항목]\n`;
+      const showLimit = 8;
+      candidates.slice(0, showLimit).forEach(c => {
+        const d = c.record.date ? c.record.date.substring(5) : '';
+        confirmMsg += `• [${d} ${c.record.merchant}] ${c.prevCard} ➔ ${c.suggestedCard}\n`;
+      });
+      if (candidates.length > showLimit) {
+        confirmMsg += `... 외 ${candidates.length - showLimit}건\n`;
+      }
+      confirmMsg += `\n위 항목들을 지금 실물 카드로 자동 연결하시겠습니까?`;
+
+      if (confirm(confirmMsg)) {
+        candidates.forEach(c => {
+          c.record.actualCard = c.suggestedCard;
+        });
+        saveData();
+        renderKPIs();
+        renderCardsBreakdown();
+        updateCharts(getFilteredRecords(true));
+        renderTable();
+        showToast(`총 ${candidates.length}건의 간편결제가 실물 카드로 자동 연결되었습니다! 🎉`, 'success');
+      }
+    }
+
+    document.getElementById('btnBannerAutoMap')?.addEventListener('click', () => {
+      executeAutoMapPayments();
+    });
+
     document.getElementById('btnBannerFilter')?.addEventListener('click', () => {
       appState.filterCard = 'UNMAPPED';
-      document.getElementById('filterCard').value = 'UNMAPPED';
+      const sel = document.getElementById('filterCard');
+      if (sel) sel.value = 'UNMAPPED';
       appState.currentPage = 1;
       renderCardsBreakdown();
       renderTable();
-      const unmappedCount = appState.records.filter(r => !CARD_CONFIG[r.actualCard] || CARD_CONFIG[r.actualCard].type !== 'physical').length;
-      showToast(`실물 카드가 지정되지 않은 간편결제/계좌 내역 ${unmappedCount}건을 표시합니다.`, 'info');
+      const filtered = getFilteredRecords(false);
+      showToast(`⚡ 실물 카드가 미지정된 간편결제/계좌 내역 ${filtered.length}건으로 이동했습니다.`, 'info');
+
+      // 지출 상세 테이블로 부드럽게 자동 스크롤
+      const txTableSec = document.querySelector('.table-section') || document.getElementById('txTableContainer');
+      txTableSec?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     document.getElementById('btnFilterFixed')?.addEventListener('click', () => {
