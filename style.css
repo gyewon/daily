@@ -1765,6 +1765,22 @@ select option:hover {
     width: 100%;
   }
 
+  .bulk-action-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .bulk-action-info {
+    font-size: 0.82rem;
+  }
+
+  .bulk-action-bar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
   /* Table Horizontal Scrolling Hint */
   .mobile-table-hint {
     display: flex;
@@ -2655,5 +2671,40 @@ select option:hover {
 .settle-list-item:hover {
   border-color: #10b981;
   background: rgba(16, 185, 129, 0.05);
+}
+
+/* Bulk Action Bar */
+.bulk-action-bar {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bulk-action-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+
+.bulk-settle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10b981;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
