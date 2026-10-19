@@ -2503,39 +2503,68 @@ select option:hover {
   text-decoration: underline;
 }
 
-/* Dutch Pay / Split Payment (더치페이 / 모임 정산) */
-.badge-settle {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 4px;
-  padding: 3px 8px;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  border-radius: 6px;
-  font-size: 0.74rem;
-  font-weight: 600;
-  color: #10b981;
-  cursor: pointer;
-  transition: all var(--transition-fast);
+/* Dutch Pay / Split Payment (더치페이 / 모임 정산 1줄 슬림 캡슐) */
+.amt-gross {
   line-height: 1.25;
-  text-align: left;
-}
-
-.badge-settle:hover {
-  background: rgba(16, 185, 129, 0.22);
-  border-color: #10b981;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
-}
-
-.badge-settle-net {
-  color: #059669;
+  font-family: 'Outfit', sans-serif;
   font-weight: 700;
 }
 
-[data-theme="light"] .badge-settle-net {
+.badge-settle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  margin-top: 2px;
+  padding: 1px 7px;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.38);
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #34d399;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  line-height: 1.25;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
+.badge-settle:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: #10b981;
+  color: #ecfdf5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(16, 185, 129, 0.25);
+}
+
+.badge-settle.badge-settle-zero {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+}
+
+.badge-settle.badge-settle-zero:hover {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: #6366f1;
+  color: #e0e7ff;
+}
+
+[data-theme="light"] .badge-settle {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.45);
   color: #047857;
+}
+
+[data-theme="light"] .badge-settle:hover {
+  background: rgba(16, 185, 129, 0.2);
+  color: #065f46;
+}
+
+[data-theme="light"] .badge-settle.badge-settle-zero {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.45);
+  color: #4f46e5;
 }
 
 .btn-split-row {

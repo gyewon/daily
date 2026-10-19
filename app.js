@@ -2303,13 +2303,21 @@
           ${rec.merchant}
         </td>
         <td class="col-amt">
-          <div>${formatCurrency(rec.amount)}</div>
-          ${(Number(rec.settleAmount) > 0) ? `
-            <div class="badge-settle" data-id="${rec.id}" title="${rec.settleNote || '더치페이/모임 정산 내역 (클릭하여 수정)'}">
-              <span>👥 정산 -${formatCurrency(rec.settleAmount)}원</span>
-              <span class="badge-settle-net">(실부담 ${formatCurrency(rec.amount - rec.settleAmount)}원)</span>
-            </div>
-          ` : ''}
+          <div class="amt-gross">${formatCurrency(rec.amount)}</div>
+          ${(() => {
+            const settle = Number(rec.settleAmount) || 0;
+            if (settle <= 0) return '';
+            const gross = Number(rec.amount) || 0;
+            const net = Math.max(0, gross - settle);
+            const isFull = settle >= gross && gross > 0;
+            const labelText = isFull ? '⚡ 실부담 0원' : `👥 실부담 ${formatCurrency(net)}원`;
+            const tooltip = `👥 정산 상세 (클릭하여 수정)&#10;• 결제원금: ${formatCurrency(gross)}원&#10;• 정산회수: -${formatCurrency(settle)}원&#10;👉 실부담액: ${formatCurrency(net)}원${rec.settleNote ? `&#10;• 메모: ${rec.settleNote}` : ''}`;
+            return `
+              <div class="badge-settle ${isFull ? 'badge-settle-zero' : ''}" data-id="${rec.id}" title="${tooltip}">
+                <span class="badge-settle-text">${labelText}</span>
+              </div>
+            `;
+          })()}
         </td>
         <td class="col-actual">
           <select class="select-table-card ${isUnmapped ? 'highlight-unmapped' : ''}" data-field="actualCard" data-id="${rec.id}">
