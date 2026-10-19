@@ -113,12 +113,14 @@ body {
   box-sizing: border-box;
 }
 
-/* Top Header */
+/* Top Header - Desktop 2-Column Layout */
 .app-header {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 18px 24px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 20px 26px;
   background: var(--bg-card);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
@@ -126,29 +128,29 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-.header-top-row {
+.header-brand-section {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
   gap: 16px;
-  width: 100%;
+  min-width: 0;
 }
 
-.header-left {
+.brand-main {
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
 .logo-badge {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--primary), #8b5cf6);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 24px;
   box-shadow: 0 4px 16px var(--primary-glow);
   flex-shrink: 0;
 }
@@ -161,43 +163,86 @@ body {
 .title-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
 .title-row h1 {
-  font-size: 1.45rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--text-primary);
   margin: 0;
+  white-space: nowrap;
 }
 
-.select-month-filter {
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-  color: var(--text-main);
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 0.85rem;
-  outline: none;
+/* 🌟 "몇월인지 잘안보이는 문제" 해결: 눈에 확 띄는 보라빛 광채 월 선택 뱃지 */
+.month-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(168, 85, 247, 0.28));
+  border: 1.5px solid rgba(129, 140, 248, 0.7);
+  border-radius: 10px;
+  padding: 4px 12px;
+  box-shadow: 0 2px 14px rgba(99, 102, 241, 0.4);
   transition: all var(--transition-fast);
 }
 
-.select-month-filter:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-glow);
+.month-filter-badge:hover,
+.month-filter-badge:focus-within {
+  border-color: #818cf8;
+  box-shadow: 0 0 18px rgba(129, 140, 248, 0.6);
+  transform: translateY(-1px);
 }
 
-/* Categorized Action Toolbar */
+.month-filter-badge .month-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.select-month-filter {
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  font-size: 1.18rem;
+  font-weight: 800;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  letter-spacing: -0.3px;
+}
+
+.select-month-filter option {
+  background: #1e1e2d;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+[data-theme="light"] .month-filter-badge {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.12));
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="light"] .select-month-filter {
+  color: #4338ca;
+}
+
+[data-theme="light"] .select-month-filter option {
+  background: #ffffff;
+  color: #1e293b;
+}
+
+/* 🌟 우측 액션 툴바: 3단 우측 정렬 세로 배치 (사용자 요청 디자인 완벽 일치) */
 .header-toolbar {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  width: 100%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .toolbar-group {
@@ -1724,13 +1769,15 @@ select option:hover {
     border-radius: var(--radius-md);
   }
 
-  .header-top-row {
+  .header-brand-section {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
+    width: 100%;
   }
 
-  .header-left {
+  .brand-main {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1754,13 +1801,23 @@ select option:hover {
   }
 
   .title-row h1 {
-    font-size: 1.15rem;
+    font-size: 1.12rem;
     line-height: 1.3;
   }
 
+  .month-filter-badge {
+    padding: 3px 8px;
+    gap: 4px;
+    border-radius: 8px;
+  }
+
+  .month-filter-badge .month-icon {
+    font-size: 0.95rem;
+  }
+
   .select-month-filter {
-    padding: 4px 8px;
-    font-size: 0.78rem;
+    padding: 2px 4px;
+    font-size: 0.88rem;
   }
 
   .auth-container {

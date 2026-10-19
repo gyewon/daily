@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=13">
 </head>
 
 <body>
@@ -52,17 +52,21 @@
 
     <!-- Top Header -->
     <header class="app-header">
-      <div class="header-top-row">
-        <div class="header-left">
+      <!-- Left Column: Title & Month Filter & User Info -->
+      <div class="header-brand-section">
+        <div class="brand-main">
           <div class="logo-badge">
             <span class="logo-icon">💳</span>
           </div>
           <div class="title-group">
             <div class="title-row">
               <h1>카드별 지출 현황 및 가계부</h1>
-              <select id="globalMonthFilter" class="select-month-filter">
-                <option value="ALL">전체 월 보기</option>
-              </select>
+              <div class="month-filter-badge">
+                <span class="month-icon">📅</span>
+                <select id="globalMonthFilter" class="select-month-filter">
+                  <option value="ALL">전체 월 보기</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
