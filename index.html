@@ -193,7 +193,7 @@
           <span class="banner-icon">💡</span>
           <div class="banner-text">
             <strong>간편결제 카드 매핑 안내:</strong>
-            <span id="unmappedBannerText">네이버페이, 카카오페이 등으로 결제된 내역의 '실제 결제카드'를 지정하면 카드별 혜택 실적이 실시간 갱신됩니다.</span>
+            <span id="unmappedBannerText">네이버페이, 카카오페이 등으로 결제된 내역의 '실제 결제카드'를 지정하면 카드별 혜택 실적이 실시간 갱신됩니다. (현금·계좌 지출 제외)</span>
           </div>
         </div>
         <div class="banner-actions">
@@ -226,6 +226,15 @@
           </div>
           <div class="accounts-status-container" id="payAccountsContainer">
             <!-- Dynamically populated pay items -->
+          </div>
+
+          <!-- Cash Spend Independent Section (현금 분리) -->
+          <div class="cash-section-header">
+            <h4>💵 현금 지출</h4>
+            <span class="cash-subtotal" id="cashSubtotalBadge">0원</span>
+          </div>
+          <div class="cash-status-container" id="cashStatusContainer">
+            <!-- Dynamically populated cash card -->
           </div>
         </section>
 
@@ -360,9 +369,12 @@
               <label for="filterCard">카드/수단</label>
               <select id="filterCard">
                 <option value="ALL">모든 결제수단</option>
-                <option value="UNMAPPED" id="optUnmappedAll">⚡ 등록되지 않은 결제수단 (미매핑)</option>
+                <option value="UNMAPPED" id="optUnmappedAll">⚡ 미매핑 간편결제 (현금/계좌 제외)</option>
                 <optgroup label="💳 실물 카드" id="optgroupPhysical"></optgroup>
-                <optgroup label="📱 간편결제/계좌 (개별)" id="optgroupPay"></optgroup>
+                <optgroup label="📱 간편결제 / 계좌" id="optgroupPay"></optgroup>
+                <optgroup label="💵 현금" id="optgroupCash">
+                  <option value="현금">💵 현금</option>
+                </optgroup>
               </select>
             </div>
 
@@ -657,6 +669,7 @@
           <select id="newCardType" class="select-new-card-type">
             <option value="physical">실물 카드</option>
             <option value="pay">간편결제 / 계좌</option>
+            <option value="cash">현금</option>
           </select>
           <input type="text" id="newCardName" placeholder="새 수단 이름 (예: 카카오페이)" required class="input-new-card-name">
           <button type="submit" class="btn btn-primary btn-add-card">추가</button>
@@ -985,7 +998,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=20"></script>
 </body>
 
 </html>

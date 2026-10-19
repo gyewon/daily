@@ -51,8 +51,24 @@
     '신한 SOL LINK (쏠편한 입출금)': { color: '#475569', dot: '#94a3b8', type: 'pay' },
     'Sh평생주거래우대통장(스페셜플러스예금-잔액구간별)': { color: '#475569', dot: '#94a3b8', type: 'pay' },
     '상상모바일통장': { color: '#475569', dot: '#94a3b8', type: 'pay' },
-    '현금': { color: '#10b981', dot: '#059669', type: 'pay' }
+    '현금': { color: '#10b981', dot: '#059669', type: 'cash' }
   };
+
+  // 순수 간편결제(카카오페이, 네이버페이, 페이코, 토스 등) 판별 함수 (현금, 실물카드, 통장/계좌 지출 제외)
+  function isSimplePay(cardName) {
+    if (!cardName) return false;
+    if (cardName === '현금') return false;
+    const conf = CARD_CONFIG[cardName];
+    if (conf) {
+      if (conf.type === 'physical' || conf.type === 'cash') return false;
+      // 통장, 계좌, 입출금, SOL LINK 등은 카드 매핑 대상이 아닌 계좌 지출
+      if (/통장|계좌|입출금|예금|SOL\s*LINK/i.test(cardName)) return false;
+      if (conf.type === 'pay') return true;
+    }
+    if (/통장|계좌|입출금|예금|SOL\s*LINK/i.test(cardName)) return false;
+    if (/페이|pay|토스|머니|간편결제/i.test(cardName)) return true;
+    return false;
+  }
 
   const CATEGORY_COLORS = [
     '#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899',
@@ -421,9 +437,11 @@
         });
       }
 
-      // Ensure "현금" is always in CARD_CONFIG
+      // Ensure "현금" is always in CARD_CONFIG with 'cash' type
       if (!CARD_CONFIG['현금']) {
-        CARD_CONFIG['현금'] = { color: '#22c55e', dot: '#16a34a', type: 'pay' };
+        CARD_CONFIG['현금'] = { color: '#10b981', dot: '#059669', type: 'cash' };
+      } else {
+        CARD_CONFIG['현금'].type = 'cash';
       }
 
       if (Object.keys(appState.masterCategories).length === 0) {
@@ -643,7 +661,7 @@
 
     // Extract cards dynamically from CARD_CONFIG
     const physicalCards = Object.keys(CARD_CONFIG).filter(c => CARD_CONFIG[c].type === 'physical');
-    const payCards = Object.keys(CARD_CONFIG).filter(c => CARD_CONFIG[c].type === 'pay');
+    const payCards = Object.keys(CARD_CONFIG).filter(c => CARD_CONFIG[c].type === 'pay' && c !== '현금' && CARD_CONFIG[c].type !== 'cash');
     const allCards = Object.keys(CARD_CONFIG);
 
     // Physical Cards
@@ -657,7 +675,7 @@
       });
     }
 
-    // Pay & Accounts
+    // Pay & Accounts (현금 제외)
     if (optgroupPay) {
       optgroupPay.innerHTML = '';
       payCards.forEach(pay => {
@@ -666,6 +684,12 @@
         opt.textContent = pay;
         optgroupPay.appendChild(opt);
       });
+    }
+
+    // Cash (현금 전용 독립 옵션)
+    const optgroupCash = document.getElementById('optgroupCash');
+    if (optgroupCash) {
+      optgroupCash.innerHTML = '<option value="현금">💵 현금</option>';
     }
 
     // Modal Card options
@@ -798,8 +822,8 @@
 
       // Card Filter
       if (appState.filterCard === 'UNMAPPED') {
-        const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
-        if (isPhysical) return false;
+        // 현금, 실물 카드, 은행 계좌를 제외한 순수 간편결제만 필터링
+        if (!isSimplePay(r.actualCard)) return false;
       } else if (appState.filterCard !== 'ALL') {
         if (r.actualCard !== appState.filterCard) return false;
       }
@@ -962,6 +986,8 @@
     let excludedCount = 0;
     let validCustomTypeAmt = 0;
     let cashAmt = 0;
+    let cashCount = 0;
+    let totalCashSettleAmt = 0;
     const customTypeSums = {};
     const customTypeCounts = {};
     for (const t in appState.customTypes) {
@@ -975,17 +1001,18 @@
       const settle = Number(r.settleAmount) || 0;
       const isExclude = r.exclude === 'Y';
       const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
-      const isPayOrAccount = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'pay';
+      const isCash = r.actualCard === '현금' || (CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'cash');
+      const isPayOrAccount = !isPhysical && !isCash;
 
       totalValidAmt += amt;
       totalValidCount++;
       totalSettleAmt += settle;
 
-      if (r.actualCard === '현금') {
+      if (isCash) {
         cashAmt += amt;
-      }
-
-      if (isPhysical) {
+        cashCount++;
+        totalCashSettleAmt += settle;
+      } else if (isPhysical) {
         cardAmt += amt;
         totalPhysicalSettleAmt += settle;
       } else if (isPayOrAccount) {
@@ -1120,10 +1147,21 @@
       document.getElementById('cardSubtotalBadge').textContent = `카드 합계: ${formatCurrency(cardAmt)}원`;
     }
 
+    // 간편결제 & 계좌 지출 소계 (현금 완전 제외!)
     if (totalPaySettleAmt > 0) {
       document.getElementById('paySubtotalBadge').innerHTML = `소계: ${formatCurrency(payAmt)}원 <span style="font-size:0.8rem; color:#10b981; font-weight:600;">(👥 정산 -${formatCurrency(totalPaySettleAmt)}원 → 실부담 ${formatCurrency(payAmt - totalPaySettleAmt)}원)</span>`;
     } else {
       document.getElementById('paySubtotalBadge').textContent = `소계: ${formatCurrency(payAmt)}원`;
+    }
+
+    // 현금 지출 소계 (신설)
+    const cashBadge = document.getElementById('cashSubtotalBadge');
+    if (cashBadge) {
+      if (totalCashSettleAmt > 0) {
+        cashBadge.innerHTML = `합계: ${formatCurrency(cashAmt)}원 <span style="font-size:0.8rem; color:#10b981; font-weight:600;">(👥 정산 -${formatCurrency(totalCashSettleAmt)}원 → 실부담 ${formatCurrency(cashAmt - totalCashSettleAmt)}원)</span>`;
+      } else {
+        cashBadge.textContent = `합계: ${formatCurrency(cashAmt)}원 (${cashCount}건)`;
+      }
     }
 
     // Period info
@@ -1132,17 +1170,27 @@
       countInfo.textContent = `총 ${records.length}건의 지출 내역 (포함 ${totalValidCount}건)`;
     }
 
+    // 간편결제 카드 매핑 안내 배너용 집계 (현금, 실물카드, 은행 계좌 제외 오직 순수 간편결제만!)
+    let unmappedPayCount = 0;
+    let unmappedPayAmt = 0;
+    records.forEach(r => {
+      if (isSimplePay(r.actualCard)) {
+        unmappedPayCount++;
+        unmappedPayAmt += (Number(r.amount) || 0);
+      }
+    });
+
     // Mapping Notice Banner Update & UNMAPPED select option text
     const banner = document.getElementById('mappingNoticeBanner');
     const bannerText = document.getElementById('unmappedBannerText');
     const optUnmapped = document.getElementById('optUnmappedAll');
     if (optUnmapped) {
-      optUnmapped.textContent = `⚡ 간편결제/계좌 전체 (미매핑 ${payCount}건)`;
+      optUnmapped.textContent = `⚡ 미매핑 간편결제 (${unmappedPayCount}건 - 현금/계좌 제외)`;
     }
 
-    if (payCount > 0) {
+    if (unmappedPayCount > 0) {
       banner.style.display = 'flex';
-      bannerText.textContent = `아직 카드가 지정되지 않은 간편결제/계좌 내역이 ${payCount}건 (${formatCurrency(payAmt)}원) 남아있습니다. '매핑하기'를 누르면 해당 내역만 모아서 편리하게 카드를 지정하실 수 있습니다!`;
+      bannerText.textContent = `실물 카드가 미지정된 간편결제(네이버페이, 카카오페이 등) 내역이 ${unmappedPayCount}건 (${formatCurrency(unmappedPayAmt)}원) 남아있습니다. '내역 모아보기'를 눌러 실물 카드를 지정하면 카드별 실적이 실시간 갱신됩니다. (현금/계좌 제외)`;
     } else {
       banner.style.display = 'none';
     }
@@ -1252,10 +1300,10 @@
       physicalCardsContainer.appendChild(cardEl);
     });
 
-    // Render Pay & Accounts mini-cards (사용금액 높은 순 정렬)
+    // Render Pay & Accounts mini-cards (사용금액 높은 순 정렬, 현금 완전 제외)
     payAccountsContainer.innerHTML = '';
     const payNames = Object.keys(CARD_CONFIG)
-      .filter(c => CARD_CONFIG[c].type === 'pay')
+      .filter(c => CARD_CONFIG[c].type === 'pay' && c !== '현금' && CARD_CONFIG[c].type !== 'cash')
       .sort((a, b) => {
         const diff = (cardSums[b] || 0) - (cardSums[a] || 0);
         if (diff !== 0) return diff;
@@ -1296,6 +1344,48 @@
 
       payAccountsContainer.appendChild(payEl);
     });
+
+    // Render Cash Spend Card (독립 현금 영역)
+    const cashStatusContainer = document.getElementById('cashStatusContainer');
+    if (cashStatusContainer) {
+      cashStatusContainer.innerHTML = '';
+      const cashAmt = cardSums['현금'] || 0;
+      const cashSettleAmt = cardSettleSums['현금'] || 0;
+      const cashCnt = cardCounts['현금'] || 0;
+      const cashCompletedAmt = cardCompletedSums['현금'] || 0;
+      const cashCompletedCnt = cardCompletedCounts['현금'] || 0;
+
+      const cashEl = document.createElement('div');
+      cashEl.className = `cash-card-item ${appState.filterCard === '현금' ? 'active-filter' : ''}`;
+      cashEl.title = '현금 지출 내역 모아보기 (클릭 시 토글)';
+      cashEl.innerHTML = `
+        <div class="cash-card-left">
+          <span class="cash-card-icon">💵</span>
+          <div>
+            <div class="cash-card-title">현금 지출</div>
+            <div class="cash-card-sub">계좌/간편결제와 분리된 순수 현금 내역</div>
+          </div>
+        </div>
+        <div class="cash-card-right">
+          <div class="cash-card-amount">${formatCurrency(cashAmt)}원</div>
+          ${cashSettleAmt > 0 ? `
+          <div class="cash-card-settle">
+            👥 정산 -${formatCurrency(cashSettleAmt)}원 (실부담 ${formatCurrency(cashAmt - cashSettleAmt)}원)
+          </div>
+          ` : ''}
+          <div class="cash-card-meta">
+            완료: <strong style="color:var(--primary-color);">${cashCompletedCnt}</strong> <span style="color:var(--text-muted); font-size:0.75rem;">/ ${cashCnt}건</span>
+            ${cashCnt > 0 && cashCompletedCnt === cashCnt ? '<span style="color: #10b981; font-weight: 700; margin-left: 4px;">✅</span>' : ''}
+          </div>
+        </div>
+      `;
+
+      cashEl.addEventListener('click', () => {
+        toggleCardFilter('현금');
+      });
+
+      cashStatusContainer.appendChild(cashEl);
+    }
   }
 
   // --- Toggle Filter Functions ---
@@ -3016,8 +3106,8 @@
 
       const candidates = [];
       currentMonthRecs.forEach(r => {
-        const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
-        if (!isPhysical && r.merchant) {
+        // 현금, 실물 카드, 은행 계좌를 제외한 오직 순수 간편결제만 자동 매핑 후보 대상!
+        if (isSimplePay(r.actualCard) && r.merchant) {
           const m = r.merchant.trim();
           const freq = merchantCardFreq[m];
           if (freq) {
@@ -3081,7 +3171,7 @@
       renderCardsBreakdown();
       renderTable();
       const filtered = getFilteredRecords(false);
-      showToast(`⚡ 실물 카드가 미지정된 간편결제/계좌 내역 ${filtered.length}건으로 이동했습니다.`, 'info');
+      showToast(`⚡ 실물 카드가 미지정된 간편결제 내역 ${filtered.length}건으로 이동했습니다. (현금/계좌 제외)`, 'info');
 
       // 지출 상세 테이블로 부드럽게 자동 스크롤
       const txTableSec = document.querySelector('.table-section') || document.getElementById('txTableContainer');
@@ -4214,15 +4304,17 @@
         
         const targetVal = conf.target || 0;
         const displayVal = targetVal > 0 ? targetVal.toLocaleString('ko-KR') : '';
+        const isCash = (card === '현금');
         tr.innerHTML = `
           <td class="col-card-name">
-            <input type="text" class="input-card-name" data-old-card="${card}" value="${card}" placeholder="수단 이름">
+            <input type="text" class="input-card-name" data-old-card="${card}" value="${card}" placeholder="수단 이름" ${isCash ? 'readonly style="opacity:0.85;" title="기본 현금 수단은 이름을 변경할 수 없습니다."' : ''}>
           </td>
           <td class="col-card-type">
             <span class="card-field-label">배치 유형</span>
-            <select class="select-card-type" data-card="${card}">
+            <select class="select-card-type" data-card="${card}" ${isCash ? 'disabled title="현금은 고정 유형입니다."' : ''}>
               <option value="physical" ${conf.type === 'physical' ? 'selected' : ''}>실물 카드</option>
               <option value="pay" ${conf.type === 'pay' ? 'selected' : ''}>간편결제 / 계좌</option>
+              <option value="cash" ${(conf.type === 'cash' || isCash) ? 'selected' : ''}>현금</option>
             </select>
           </td>
           <td class="col-card-target">
@@ -4230,7 +4322,10 @@
             <input type="text" class="input-card-target" data-card="${card}" value="${displayVal}" placeholder="목표 없음">
           </td>
           <td class="col-card-del">
-            <button type="button" class="btn-delete-card" data-card="${card}" title="삭제">🗑️</button>
+            ${isCash 
+              ? `<span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;" title="기본 수단">고정</span>` 
+              : `<button type="button" class="btn-delete-card" data-card="${card}" title="삭제">🗑️</button>`
+            }
           </td>
         `;
         tbody.appendChild(tr);
