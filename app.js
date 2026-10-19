@@ -4213,8 +4213,7 @@
         });
 
         const isUsedCat = usedMains.has(cat);
-        const isDefaultCat = !!DEFAULT_MASTER_CATEGORIES[cat];
-        if (!isUsedCat && !isDefaultCat && survivingSubs.length === 0) {
+        if (!isUsedCat && cat !== '미분류' && survivingSubs.length === 0) {
           toRemoveMains.push(cat);
         }
       });
@@ -4231,7 +4230,7 @@
       if (toRemoveMains.length > 0) {
         preview += toRemoveMains.map(m => `  • ${m}`).join('\n') + '\n\n';
       } else {
-        preview += `  (삭제 대상 없음 - 기본 대분류 보존)\n\n`;
+        preview += `  (삭제 대상 없음)\n\n`;
       }
 
       preview += `📄 삭제될 미사용 소분류 (${toRemoveSubs.length}개):\n`;
@@ -4268,8 +4267,7 @@
         appState.masterCategories[cat] = newSubs;
 
         const isUsedCat = usedMains.has(cat);
-        const isDefaultCat = !!DEFAULT_MASTER_CATEGORIES[cat];
-        if (!isUsedCat && !isDefaultCat && appState.masterCategories[cat].length === 0) {
+        if (!isUsedCat && cat !== '미분류' && appState.masterCategories[cat].length === 0) {
           delete appState.masterCategories[cat];
           removedMainCount++;
         }
