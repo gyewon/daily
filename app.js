@@ -4078,26 +4078,29 @@
       });
       cardNames.forEach(card => {
         const tr = document.createElement('tr');
+        tr.className = 'card-manage-row';
         const conf = CARD_CONFIG[card];
         const typeStr = conf.type === 'physical' ? '실물 카드' : '간편결제/기타';
         
         const targetVal = conf.target || 0;
         const displayVal = targetVal > 0 ? targetVal.toLocaleString('ko-KR') : '';
         tr.innerHTML = `
-          <td style="padding: 12px; white-space: nowrap;">
-            <input type="text" class="input-card-name" data-old-card="${card}" value="${card}" style="width: 100%; max-width: 200px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); font-size: 1.05rem; font-weight: bold;">
+          <td class="col-card-name">
+            <input type="text" class="input-card-name" data-old-card="${card}" value="${card}" placeholder="수단 이름">
           </td>
-          <td style="padding: 12px; text-align: center; white-space: nowrap;">
-            <select class="select-card-type" data-card="${card}" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main);">
+          <td class="col-card-type">
+            <span class="card-field-label">배치 유형</span>
+            <select class="select-card-type" data-card="${card}">
               <option value="physical" ${conf.type === 'physical' ? 'selected' : ''}>실물 카드</option>
               <option value="pay" ${conf.type === 'pay' ? 'selected' : ''}>간편결제 / 계좌</option>
             </select>
           </td>
-          <td style="padding: 12px; text-align: center; white-space: nowrap;">
-            <input type="text" class="input-card-target" data-card="${card}" value="${displayVal}" placeholder="목표 없음" style="width: 140px; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); text-align: right; font-size: 1.05rem; font-weight: bold;">
+          <td class="col-card-target">
+            <span class="card-field-label">실적 목표</span>
+            <input type="text" class="input-card-target" data-card="${card}" value="${displayVal}" placeholder="목표 없음">
           </td>
-          <td style="padding: 12px; text-align: center; white-space: nowrap;">
-            <button type="button" class="btn-delete-card" data-card="${card}" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size: 1.3rem;" title="삭제">🗑️</button>
+          <td class="col-card-del">
+            <button type="button" class="btn-delete-card" data-card="${card}" title="삭제">🗑️</button>
           </td>
         `;
         tbody.appendChild(tr);

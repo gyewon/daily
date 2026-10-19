@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 
 <body>
@@ -650,24 +650,24 @@
         <h3>💳 결제수단 관리</h3>
         <button id="btnCloseCardManageModal" class="btn-close-modal">&times;</button>
       </div>
-      <div class="modal-body" style="padding: 20px;">
-        <form id="newCardForm" style="display: flex; gap: 8px; margin-bottom: 20px;">
-          <select id="newCardType" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main);">
+      <div class="modal-body card-manage-modal-body">
+        <form id="newCardForm" class="new-card-form">
+          <select id="newCardType" class="select-new-card-type">
             <option value="physical">실물 카드</option>
             <option value="pay">간편결제 / 계좌</option>
           </select>
-          <input type="text" id="newCardName" placeholder="새 수단 이름 (예: 카카오페이)" required style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main);">
-          <button type="submit" class="btn btn-primary" style="white-space: nowrap;">추가</button>
+          <input type="text" id="newCardName" placeholder="새 수단 이름 (예: 카카오페이)" required class="input-new-card-name">
+          <button type="submit" class="btn btn-primary btn-add-card">추가</button>
         </form>
         
-        <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
-          <table class="tx-table">
+        <div class="card-manage-table-container">
+          <table class="tx-table card-manage-table">
             <thead>
               <tr>
-                <th style="padding: 12px; text-align: left; width: auto;">결제수단 이름</th>
-                <th id="sortCardTypeHeader" style="padding: 12px; text-align: center; width: 140px; white-space: nowrap; cursor: pointer; user-select: none;" title="클릭하여 정렬">배치(유형) <span style="font-size:0.8em; color:var(--text-muted);">↕</span></th>
-                <th style="padding: 12px; text-align: center; width: 140px; white-space: nowrap;">실적 목표 (원)</th>
-                <th style="padding: 12px; text-align: center; width: 60px; white-space: nowrap;">관리</th>
+                <th class="th-card-name">결제수단 이름</th>
+                <th id="sortCardTypeHeader" class="th-card-type" title="클릭하여 정렬">배치(유형) <span style="font-size:0.8em; color:var(--text-muted);">↕</span></th>
+                <th class="th-card-target">실적 목표 (원)</th>
+                <th class="th-card-del">관리</th>
               </tr>
             </thead>
             <tbody id="cardsTableBody">
@@ -983,7 +983,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 
 </html>

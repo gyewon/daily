@@ -1494,6 +1494,154 @@ select option:hover {
   max-width: 800px;
 }
 
+/* Card Manage Modal Table Styles */
+.card-manage-modal-body {
+  padding: 20px;
+}
+
+.new-card-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.new-card-form .select-new-card-type {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.new-card-form .input-new-card-name {
+  flex: 2;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.new-card-form .btn-add-card {
+  white-space: nowrap;
+  padding: 10px 20px;
+}
+
+.card-manage-table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.card-manage-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.card-manage-table th {
+  padding: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.card-manage-table th.th-card-name {
+  text-align: left;
+  width: auto;
+}
+
+.card-manage-table th.th-card-type {
+  text-align: center;
+  width: 140px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-manage-table th.th-card-target {
+  text-align: center;
+  width: 140px;
+  white-space: nowrap;
+}
+
+.card-manage-table th.th-card-del {
+  text-align: center;
+  width: 60px;
+  white-space: nowrap;
+}
+
+.card-manage-table td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+.col-card-name .input-card-name {
+  width: 100%;
+  max-width: 220px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.col-card-type {
+  text-align: center;
+}
+
+.col-card-type .select-card-type {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-size: 0.85rem;
+}
+
+.col-card-target {
+  text-align: center;
+}
+
+.col-card-target .input-card-target {
+  width: 130px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-main);
+  text-align: right;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.col-card-del {
+  text-align: center;
+}
+
+.btn-delete-card {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 1.25rem;
+  transition: transform var(--transition-fast);
+}
+
+.btn-delete-card:hover {
+  transform: scale(1.15);
+}
+
+.card-field-label {
+  display: none;
+}
+
 /* Category Inputs in Table */
 .cat-select-group {
   display: flex;
@@ -2032,16 +2180,155 @@ select option:hover {
     padding-bottom: 16px !important;
   }
 
-  #newCardForm {
-    flex-direction: column !important;
-    gap: 8px !important;
+  /* Mobile Optimized Card Manage Modal */
+  #cardManageModal .modal-dialog {
+    width: calc(100% - 20px) !important;
+    max-width: calc(100% - 20px) !important;
+    margin: 14px auto !important;
+    max-height: 92vh !important;
   }
 
-  #newCardForm input,
-  #newCardForm select,
-  #newCardForm button {
+  .card-manage-modal-body {
+    padding: 14px 12px !important;
+  }
+
+  .new-card-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    padding: 10px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border-color) !important;
+  }
+
+  .new-card-form .select-new-card-type,
+  .new-card-form .input-new-card-name,
+  .new-card-form .btn-add-card {
     width: 100% !important;
-    flex: none !important;
+    box-sizing: border-box !important;
+    padding: 9px !important;
+    font-size: 0.88rem !important;
+  }
+
+  .card-manage-table-container {
+    max-height: 48vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    border: none !important;
+    padding-right: 2px;
+  }
+
+  /* 테이블 헤더 숨김 (카드형 블록으로 변환) */
+  .card-manage-table thead {
+    display: none !important;
+  }
+
+  .card-manage-table,
+  .card-manage-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  /* 각 행을 2행 카드 블록으로 변환 (1행: 이름+삭제, 2행: 유형+목표) */
+  .card-manage-table tr.card-manage-row {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    grid-template-areas:
+      "name del"
+      "type target" !important;
+    gap: 8px 10px !important;
+    padding: 10px 12px !important;
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 10px !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+  }
+
+  .card-manage-table tr.card-manage-row:hover {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .col-card-name {
+    grid-area: name !important;
+    padding: 0 !important;
+    border: none !important;
+    width: 100% !important;
+  }
+
+  .col-card-name .input-card-name {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 8px 10px !important;
+    font-size: 0.95rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .col-card-del {
+    grid-area: del !important;
+    padding: 0 !important;
+    border: none !important;
+    justify-self: end !important;
+  }
+
+  .col-card-del .btn-delete-card {
+    padding: 5px 9px !important;
+    background: rgba(239, 68, 68, 0.12) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    border-radius: 6px !important;
+    font-size: 1.15rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .col-card-type {
+    grid-area: type !important;
+    padding: 0 !important;
+    border: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    text-align: left !important;
+  }
+
+  .col-card-type .select-card-type {
+    width: 100% !important;
+    padding: 7px 8px !important;
+    font-size: 0.82rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .col-card-target {
+    grid-area: target !important;
+    padding: 0 !important;
+    border: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    text-align: left !important;
+  }
+
+  .col-card-target .input-card-target {
+    width: 100% !important;
+    padding: 7px 10px !important;
+    font-size: 0.85rem !important;
+    box-sizing: border-box !important;
+    text-align: right !important;
+  }
+
+  .card-field-label {
+    display: block !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    letter-spacing: -0.2px !important;
   }
 
   #installmentTrackerPanel > div {
