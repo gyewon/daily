@@ -1038,7 +1038,10 @@
     const kpiTxCountEl = document.getElementById('kpiTxCount');
     if (kpiTxCountEl) {
       if (totalSettleAmt > 0) {
-        kpiTxCountEl.innerHTML = `${totalValidCount}건 지출 반영 <span style="color:#10b981; font-weight:600; margin-left:4px;">(👥 정산 -${formatCurrency(totalSettleAmt)}원)</span>`;
+        kpiTxCountEl.innerHTML = `
+          <span class="kpi-tx-count-text">${totalValidCount}건 지출 반영</span>
+          <span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원</span>
+        `;
       } else {
         kpiTxCountEl.textContent = `${totalValidCount}건 지출 반영`;
       }

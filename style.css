@@ -490,6 +490,28 @@ body {
   color: var(--text-muted);
 }
 
+.kpi-subtext#kpiTxCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.kpi-tx-settle-badge {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  color: #10b981;
+  font-weight: 600;
+  font-size: 0.74rem;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 4px;
+  padding: 1px 6px;
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+}
+
 .kpi-badge {
   font-size: 0.72rem;
   font-weight: 600;
@@ -1780,21 +1802,19 @@ select option:hover {
     width: 100%;
   }
 
-  .toolbar-group[data-group="actions"] .toolbar-btn-wrap {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .toolbar-btn-wrap .btn-header-item {
     width: 100%;
-    padding: 7px 4px;
-    font-size: 0.75rem;
+    padding: 7px 2px;
+    font-size: 0.72rem;
     justify-content: center;
     text-align: center;
-    gap: 4px;
+    gap: 3px;
+    letter-spacing: -0.3px;
   }
 
+  /* 작업·기록 그룹도 동일하게 3칸 1줄 유지, 새 지출 추가는 하단 1줄 와이드 배치 */
   .btn-header-item.highlight-btn {
-    grid-column: span 2;
+    grid-column: span 3;
     padding: 8px 6px;
     font-size: 0.82rem;
   }
@@ -1847,6 +1867,26 @@ select option:hover {
     font-size: 0.72rem;
     gap: 4px;
     flex-wrap: wrap;
+  }
+
+  .kpi-subtext#kpiTxCount {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 3px !important;
+    width: 100% !important;
+  }
+
+  .kpi-tx-count-text {
+    font-size: 0.74rem;
+  }
+
+  .kpi-tx-settle-badge {
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    font-size: 0.71rem !important;
+    padding: 1px 5px !important;
+    letter-spacing: -0.3px !important;
   }
 
   .kpi-mini-btn {
