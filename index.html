@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 
 <body>
@@ -52,62 +52,78 @@
 
     <!-- Top Header -->
     <header class="app-header">
-      <div class="header-left">
-        <div class="logo-badge">
-          <span class="logo-icon">💳</span>
-        </div>
-        <div class="title-group">
-          <div class="title-row" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <h1>카드별 지출 현황 및 가계부</h1>
-            <span class="badge-tag live-badge">실시간 연동</span>
-            <select id="globalMonthFilter" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main); font-weight: 600; cursor: pointer;">
-              <option value="ALL">전체 월 보기</option>
-            </select>
+      <div class="header-top-row">
+        <div class="header-left">
+          <div class="logo-badge">
+            <span class="logo-icon">💳</span>
           </div>
-          <p class="subtitle">뱅크샐러드 데이터 기반 · 지출 분석 및 실시간 카드 재집계</p>
+          <div class="title-group">
+            <div class="title-row">
+              <h1>카드별 지출 현황 및 가계부</h1>
+              <select id="globalMonthFilter" class="select-month-filter">
+                <option value="ALL">전체 월 보기</option>
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div class="header-right">
-        <!-- Action Buttons -->
-        <button id="btnManageCards" class="btn btn-secondary" title="카드 및 간편결제 수단을 관리합니다">
-          <span class="btn-icon">💳</span> 수단 관리
-        </button>
-        <button id="btnNotificationLog" class="btn btn-secondary" title="과거 알림 내역을 확인합니다">
-          <span class="btn-icon">🔔</span> 알림 기록
-        </button>
-        <button id="btnRecycleBin" class="btn btn-secondary" title="휴지통(삭제된 내역)을 확인하고 복원합니다">
-          <span class="btn-icon">🗑️</span> 휴지통
-        </button>
-        <button id="btnManageCategories" class="btn btn-secondary" title="대분류와 소분류 목록을 관리합니다">
-          <span class="btn-icon">📑</span> 분류 관리
-        </button>
-        <button id="btnCategoryRules" class="btn btn-secondary" title="자동 카테고리 분류 규칙을 설정합니다">
-          <span class="btn-icon">⚙️</span> 규칙 설정
-        </button>
-        <button id="btnAutoInstallment" class="btn btn-secondary" title="이전 결제 내역을 분석하여 할부를 자동으로 연결합니다">
-          <span class="btn-icon">🔗</span> 할부 자동 연결
-        </button>
-        <button id="btnNewTransaction" class="btn btn-primary" title="새로운 지출 내역을 추가합니다">
-          <span class="btn-icon">+</span> 새 지출 추가
-        </button>
-        <button id="btnExportExcel" class="btn btn-secondary" title="현재 수정된 내역을 엑셀로 다운로드합니다">
-          <span class="btn-icon">📥</span> 엑셀 내보내기
-        </button>
-        <label for="excelFileInput" class="btn btn-secondary file-upload-btn" title="뱅크샐러드 엑셀 파일을 불러옵니다">
-          <span class="btn-icon">📤</span> 뱅크샐러드 업로드
-          <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display:none;">
-        </label>
-        <label for="backupFileInput" class="btn btn-secondary file-upload-btn" title="엑셀 내보내기로 받은 백업 파일로 복원합니다 (할부/결제상태 포함)">
-          <span class="btn-icon">♻️</span> 백업 복원
-          <input type="file" id="backupFileInput" accept=".xlsx, .xls" style="display:none;">
-        </label>
-
-        <button id="btnThemeToggle" class="btn btn-icon-only" title="다크/라이트 테마 변경" aria-label="테마 변경">
-          <span id="themeIcon">☀️</span>
-        </button>
 
         <div id="authContainer" class="auth-container"></div>
+      </div>
+
+      <!-- Categorized Action Toolbar -->
+      <div class="header-toolbar">
+        <!-- 그룹 1: 설정·관리 (수단관리, 분류관리, 규칙설정) -->
+        <div class="toolbar-group" data-group="manage">
+          <span class="toolbar-group-label">설정·관리</span>
+          <div class="toolbar-btn-wrap">
+            <button id="btnManageCards" class="btn btn-secondary btn-header-item" title="카드 및 간편결제 수단을 관리합니다">
+              <span class="btn-icon">💳</span> 수단 관리
+            </button>
+            <button id="btnManageCategories" class="btn btn-secondary btn-header-item" title="대분류와 소분류 목록을 관리합니다">
+              <span class="btn-icon">📑</span> 분류 관리
+            </button>
+            <button id="btnCategoryRules" class="btn btn-secondary btn-header-item" title="자동 카테고리 분류 규칙을 설정합니다">
+              <span class="btn-icon">⚙️</span> 규칙 설정
+            </button>
+          </div>
+        </div>
+
+        <!-- 그룹 2: 작업·기록 (할부 자동 연결, 알림기록, 휴지통, 새 지출 추가) -->
+        <div class="toolbar-group" data-group="actions">
+          <span class="toolbar-group-label">작업·기록</span>
+          <div class="toolbar-btn-wrap">
+            <button id="btnAutoInstallment" class="btn btn-secondary btn-header-item" title="이전 결제 내역을 분석하여 할부를 자동으로 연결합니다">
+              <span class="btn-icon">🔗</span> 할부 자동 연결
+            </button>
+            <button id="btnNotificationLog" class="btn btn-secondary btn-header-item" title="과거 알림 내역을 확인합니다">
+              <span class="btn-icon">🔔</span> 알림 기록
+            </button>
+            <button id="btnRecycleBin" class="btn btn-secondary btn-header-item" title="휴지통(삭제된 내역)을 확인하고 복원합니다">
+              <span class="btn-icon">🗑️</span> 휴지통
+            </button>
+            <button id="btnNewTransaction" class="btn btn-primary btn-header-item highlight-btn" title="새로운 지출 내역을 추가합니다">
+              <span class="btn-icon">+</span> 새 지출 추가
+            </button>
+          </div>
+        </div>
+
+        <!-- 그룹 3: 데이터·백업 (엑셀 내보내기, 뱅크샐러드 업로드, 백업 복원) -->
+        <div class="toolbar-group" data-group="data">
+          <span class="toolbar-group-label">데이터·백업</span>
+          <div class="toolbar-btn-wrap">
+            <button id="btnExportExcel" class="btn btn-secondary btn-header-item" title="현재 수정된 내역을 엑셀로 다운로드합니다">
+              <span class="btn-icon">📥</span> 엑셀 내보내기
+            </button>
+            <label for="excelFileInput" class="btn btn-secondary btn-header-item file-upload-btn" title="뱅크샐러드 엑셀 파일을 불러옵니다">
+              <span class="btn-icon">📤</span> 뱅크샐러드 업로드
+              <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display:none;">
+            </label>
+            <label for="backupFileInput" class="btn btn-secondary btn-header-item file-upload-btn" title="엑셀 내보내기로 받은 백업 파일로 복원합니다">
+              <span class="btn-icon">♻️</span> 백업 복원
+              <input type="file" id="backupFileInput" accept=".xlsx, .xls" style="display:none;">
+            </label>
+          </div>
+        </div>
       </div>
     </header>
 
