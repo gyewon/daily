@@ -798,7 +798,8 @@
 
       // Card Filter
       if (appState.filterCard === 'UNMAPPED') {
-        if (CARD_CONFIG[r.actualCard]) return false;
+        const isPhysical = CARD_CONFIG[r.actualCard] && CARD_CONFIG[r.actualCard].type === 'physical';
+        if (isPhysical) return false;
       } else if (appState.filterCard !== 'ALL') {
         if (r.actualCard !== appState.filterCard) return false;
       }
@@ -2241,6 +2242,7 @@
         </tr>
       `;
       renderPagination(totalPages);
+      updateBulkActionUI();
       return;
     }
 
@@ -2997,8 +2999,8 @@
       appState.currentPage = 1;
       renderCardsBreakdown();
       renderTable();
-      const unmappedCount = appState.records.filter(r => !CARD_CONFIG[r.actualCard]).length;
-      showToast(`등록되지 않은 결제수단 내역 ${unmappedCount}건을 표시합니다.`, 'info');
+      const unmappedCount = appState.records.filter(r => !CARD_CONFIG[r.actualCard] || CARD_CONFIG[r.actualCard].type !== 'physical').length;
+      showToast(`실물 카드가 지정되지 않은 간편결제/계좌 내역 ${unmappedCount}건을 표시합니다.`, 'info');
     });
 
     document.getElementById('btnFilterFixed')?.addEventListener('click', () => {
