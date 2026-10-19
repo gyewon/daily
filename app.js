@@ -2283,32 +2283,6 @@
         cardOptionsHtml += `<option value="${rec.actualCard}" selected>${rec.actualCard} (미등록)</option>`;
       }
 
-      // Category Options for Table Select
-      const mainCats = Object.keys(appState.masterCategories).sort();
-      let catOptionsHtml = '<option value="">대분류</option>';
-      let isValidCat = false;
-      mainCats.forEach(cat => {
-        const isSelected = cat === rec.category;
-        if (isSelected) isValidCat = true;
-        catOptionsHtml += `<option value="${cat}" ${isSelected ? 'selected' : ''}>${cat}</option>`;
-      });
-      if (rec.category && !isValidCat) {
-        catOptionsHtml += `<option value="${rec.category}" selected>${rec.category} (미등록)</option>`;
-      }
-
-      // SubCategory Options for Table Select
-      let subOptionsHtml = '<option value="">소분류</option>';
-      let isValidSub = false;
-      const validSubCats = [...(appState.masterCategories[rec.category] || [])].sort();
-      validSubCats.forEach(sub => {
-        const isSelected = sub === rec.subCategory;
-        if (isSelected) isValidSub = true;
-        subOptionsHtml += `<option value="${sub}" ${isSelected ? 'selected' : ''}>${sub}</option>`;
-      });
-      if (rec.subCategory && !isValidSub) {
-        subOptionsHtml += `<option value="${rec.subCategory}" selected>${rec.subCategory} (미등록)</option>`;
-      }
-
       tr.innerHTML = `
         <td class="col-check" style="text-align: center;">
           <input type="checkbox" class="row-check" data-id="${rec.id}" data-amount="${rec.amount}" data-settle="${rec.settleAmount || 0}">
@@ -2319,14 +2293,11 @@
           <small style="color:var(--text-muted); font-size:0.75rem;">${rec.time || ''}</small>
         </td>
         <td class="col-cat">
-          <div class="cat-select-group">
-            <select class="input-table-category badge-cat-input" data-id="${rec.id}" title="대분류 선택">
-              ${catOptionsHtml}
-            </select>
-            <select class="input-table-subcategory" data-id="${rec.id}" title="소분류 선택">
-              ${subOptionsHtml}
-            </select>
-          </div>
+          <button type="button" class="btn-table-category" data-id="${rec.id}" title="클릭하여 분류(카테고리) 변경 (스크롤 없는 원터치 선택)">
+            <span class="cat-pill">${rec.category || '미분류'}</span>
+            ${rec.subCategory && rec.subCategory !== rec.category ? `<span class="cat-sub-pill">${rec.subCategory}</span>` : ''}
+            <span class="cat-edit-pencil">✏️</span>
+          </button>
         </td>
         <td class="col-merchant" title="${rec.merchant}">
           ${rec.merchant}
@@ -2466,6 +2437,16 @@
       const id = Number(splitBtn.dataset.id);
       openSplitModal(id);
       return;
+    }
+
+    // 0-1. Quick Category selector modal trigger
+    const catBtn = target.closest('.btn-table-category');
+    if (catBtn) {
+      const id = Number(catBtn.dataset.id);
+      if (id) {
+        openQuickCategoryModal(id);
+        return;
+      }
     }
 
     // 1. Toggle Exclude (Y / N)
@@ -2705,6 +2686,193 @@
     }
   }
 
+  // --- Quick Category Selector Logic (스크롤 없는 원터치 분류 선택기) ---
+  const CATEGORY_ICONS = {
+    '식비': '🍚',
+    '카페/간식': '☕',
+    '생활용품': '🛒',
+    '쇼핑': '🛍️',
+    '온라인쇼핑': '📦',
+    '패션/쇼핑': '👗',
+    '패션/쇼핑/미용': '👗',
+    '미용/패션': '💄',
+    '교통/차량': '🚌',
+    '주거/통신': '🏠',
+    '고정비': '🔒',
+    '리뷰비': '📝',
+    '계원': '🤝',
+    '건강/의료': '💊',
+    '의료/건강': '🏥',
+    '문화/여가': '🎬',
+    '술/유흥': '🍺',
+    '교육': '📚',
+    '경조사/회비': '💌',
+    '금융/보험': '🏦',
+    '기타': '✨',
+    '미분류': '❓'
+  };
+
+  let currentQuickCatTargetIds = [];
+  let quickCatSelectedMain = '';
+
+  function openQuickCategoryModal(txIds) {
+    if (!Array.isArray(txIds)) txIds = [txIds];
+    currentQuickCatTargetIds = txIds;
+    if (currentQuickCatTargetIds.length === 0) return;
+
+    const modal = document.getElementById('modalQuickCategory');
+    const targetInfo = document.getElementById('quickCatTargetInfo');
+    const grid = document.getElementById('quickMainCategoryGrid');
+    const subSection = document.getElementById('quickSubCategorySection');
+
+    if (!modal || !grid) return;
+
+    let initialMain = '';
+    let initialSub = '';
+
+    if (currentQuickCatTargetIds.length === 1) {
+      const rec = appState.records.find(r => r.id === currentQuickCatTargetIds[0]);
+      if (rec) {
+        initialMain = rec.category || '';
+        initialSub = rec.subCategory || '';
+        const amtStr = formatCurrency(Number(rec.amount) || 0);
+        targetInfo.innerHTML = `<strong>${rec.merchant || '상호명 없음'}</strong> · ${amtStr}원 <span style="color:var(--text-muted); margin-left:6px;">(현재: <span style="color:var(--primary); font-weight:600;">${rec.category || '미분류'}${rec.subCategory ? ` > ${rec.subCategory}` : ''}</span>)</span>`;
+      }
+    } else {
+      targetInfo.innerHTML = `<strong style="color:var(--primary); font-size: 0.95rem;">${currentQuickCatTargetIds.length}개</strong>의 선택된 항목 분류를 일괄 변경합니다.`;
+    }
+
+    quickCatSelectedMain = initialMain;
+    renderQuickMainCategories(initialMain);
+
+    if (initialMain && appState.masterCategories[initialMain] && appState.masterCategories[initialMain].length > 0) {
+      renderQuickSubCategories(initialMain, initialSub);
+      if (subSection) subSection.style.display = 'block';
+    } else {
+      if (subSection) subSection.style.display = 'none';
+    }
+
+    modal.classList.add('show');
+  }
+
+  function closeQuickCategoryModal() {
+    const modal = document.getElementById('modalQuickCategory');
+    if (modal) modal.classList.remove('show');
+    currentQuickCatTargetIds = [];
+    quickCatSelectedMain = '';
+  }
+
+  function renderQuickMainCategories(activeCat) {
+    const grid = document.getElementById('quickMainCategoryGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const allCats = Object.keys(appState.masterCategories || {}).sort((a, b) => a.localeCompare(b, 'ko'));
+    allCats.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `quick-cat-btn ${cat === activeCat ? 'active' : ''}`;
+      const icon = CATEGORY_ICONS[cat] || '🏷️';
+      btn.innerHTML = `<span class="icon">${icon}</span><span>${cat}</span>`;
+      btn.addEventListener('click', () => {
+        quickCatSelectedMain = cat;
+        grid.querySelectorAll('.quick-cat-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const subCats = appState.masterCategories[cat] || [];
+        if (subCats.length > 0) {
+          renderQuickSubCategories(cat, '');
+          const subSection = document.getElementById('quickSubCategorySection');
+          if (subSection) subSection.style.display = 'block';
+        } else {
+          // If no subcategories, apply immediately!
+          applyCategorySelection(cat, '');
+        }
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  function renderQuickSubCategories(mainCat, activeSub) {
+    const subNameEl = document.getElementById('quickSelectedMainName');
+    const chipsContainer = document.getElementById('quickSubCategoryChips');
+    if (subNameEl) subNameEl.textContent = mainCat;
+    if (!chipsContainer) return;
+    chipsContainer.innerHTML = '';
+
+    const subCats = [...(appState.masterCategories[mainCat] || [])].sort((a, b) => a.localeCompare(b, 'ko'));
+
+    // 1. "대분류만 (소분류 없음)" Chip
+    const noneChip = document.createElement('button');
+    noneChip.type = 'button';
+    noneChip.className = `quick-sub-chip ${!activeSub ? 'active' : ''}`;
+    noneChip.innerHTML = `✓ ${mainCat} (전체)`;
+    noneChip.addEventListener('click', () => {
+      applyCategorySelection(mainCat, '');
+    });
+    chipsContainer.appendChild(noneChip);
+
+    // 2. Subcategory chips
+    subCats.forEach(sub => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = `quick-sub-chip ${sub === activeSub ? 'active' : ''}`;
+      chip.textContent = sub;
+      chip.addEventListener('click', () => {
+        applyCategorySelection(mainCat, sub);
+      });
+      chipsContainer.appendChild(chip);
+    });
+
+    // 3. "+ 직접 입력" Chip
+    const addChip = document.createElement('button');
+    addChip.type = 'button';
+    addChip.className = 'quick-sub-chip';
+    addChip.style.borderStyle = 'dashed';
+    addChip.style.color = 'var(--text-muted)';
+    addChip.textContent = '+ 직접 입력';
+    addChip.addEventListener('click', () => {
+      const newSub = prompt(`'${mainCat}' 대분류에 추가할 새 소분류 이름을 입력하세요:`);
+      if (newSub && newSub.trim()) {
+        const trimmed = newSub.trim();
+        if (!appState.masterCategories[mainCat].includes(trimmed)) {
+          appState.masterCategories[mainCat].push(trimmed);
+          saveMasterCategories();
+          populateFilterDropdowns();
+        }
+        applyCategorySelection(mainCat, trimmed);
+      }
+    });
+    chipsContainer.appendChild(addChip);
+  }
+
+  function applyCategorySelection(mainCat, subCat) {
+    if (!currentQuickCatTargetIds || currentQuickCatTargetIds.length === 0) return;
+
+    let updatedCount = 0;
+    currentQuickCatTargetIds.forEach(id => {
+      const rec = appState.records.find(r => r.id === id);
+      if (rec) {
+        rec.category = mainCat;
+        rec.subCategory = subCat || '';
+        checkFixedCategory(rec);
+        updatedCount++;
+      }
+    });
+
+    saveData();
+    renderAll();
+    closeQuickCategoryModal();
+
+    if (updatedCount === 1) {
+      const subText = subCat ? ` > ${subCat}` : '';
+      showToast(`분류가 '${mainCat}${subText}'(으)로 변경되었습니다.`, 'success');
+    } else {
+      const subText = subCat ? ` > ${subCat}` : '';
+      showToast(`${updatedCount}건의 분류가 '${mainCat}${subText}'(으)로 일괄 변경되었습니다.`, 'success');
+    }
+  }
+
   // --- Attach Event Listeners ---
   function attachEventListeners() {
     // Theme Toggle
@@ -2726,6 +2894,27 @@
     });
     document.getElementById('btnSaveSplit')?.addEventListener('click', handleSaveSplit);
     document.getElementById('btnRemoveSplit')?.addEventListener('click', handleRemoveSplit);
+
+    // Modal: Quick Category Selector (스크롤 없는 원터치 분류 선택기)
+    document.getElementById('btnCloseQuickCatModal')?.addEventListener('click', closeQuickCategoryModal);
+    document.getElementById('btnCancelQuickCat')?.addEventListener('click', closeQuickCategoryModal);
+    document.getElementById('modalQuickCategory')?.addEventListener('click', e => {
+      if (e.target.id === 'modalQuickCategory') closeQuickCategoryModal();
+    });
+    document.getElementById('btnApplyMainOnly')?.addEventListener('click', () => {
+      if (quickCatSelectedMain) {
+        applyCategorySelection(quickCatSelectedMain, '');
+      }
+    });
+    document.getElementById('btnBulkChangeCategory')?.addEventListener('click', () => {
+      const checkedBoxes = document.querySelectorAll('.row-check:checked');
+      if (checkedBoxes.length === 0) {
+        showToast('분류를 일괄 변경할 항목을 체크박스로 먼저 선택해주세요.', 'warn');
+        return;
+      }
+      const ids = Array.from(checkedBoxes).map(cb => Number(cb.dataset.id)).filter(Boolean);
+      openQuickCategoryModal(ids);
+    });
 
     // Notification Log Modal
     const notificationLogModal = document.getElementById('notificationLogModal');

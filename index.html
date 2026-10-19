@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 
 <body>
@@ -402,7 +402,10 @@
             <span>원금 합계: <strong id="bulkSum" style="color: var(--accent-color); font-size: 1.1rem;">0</strong>원</span>
             <span id="bulkSettleBadge" style="display: none; align-items: center; gap: 6px; margin-left: 2px;"></span>
           </div>
-          <button id="btnBulkComplete" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;">일괄 결제 완료(대기->완료)</button>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button type="button" id="btnBulkChangeCategory" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.82rem;">📑 분류 일괄 변경</button>
+            <button id="btnBulkComplete" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;">일괄 결제 완료(대기->완료)</button>
+          </div>
         </div>
 
         <!-- Mobile Touch Scroll Hint -->
@@ -922,10 +925,49 @@
     </div>
   </div>
 
+  <!-- Modal: Quick Category Selector (스크롤 없는 원터치 분류 선택기) -->
+  <div id="modalQuickCategory" class="modal-backdrop">
+    <div class="modal-dialog modal-quick-category">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size: 1.15rem; margin-bottom: 4px;">📑 분류(카테고리) 원터치 선택</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;" id="quickCatTargetInfo">가맹점명</p>
+        </div>
+        <button type="button" class="btn-close-modal" id="btnCloseQuickCatModal">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px 20px;">
+        <!-- 1단계: 대분류 바둑판 그리드 -->
+        <div style="margin-bottom: 14px;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">
+            1️⃣ 대분류 선택 (스크롤 없이 한눈에 전체 보기)
+          </div>
+          <div id="quickMainCategoryGrid" class="quick-main-cat-grid"></div>
+        </div>
+
+        <!-- 2단계: 소분류 칩 영역 -->
+        <div id="quickSubCategorySection" style="display: none; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--primary);">
+              2️⃣ '<span id="quickSelectedMainName"></span>'의 소분류 선택 (터치 시 즉시 완료)
+            </div>
+            <button type="button" id="btnApplyMainOnly" class="btn btn-ghost btn-sm" style="font-size: 0.78rem; padding: 2px 8px; color: var(--primary);">
+              소분류 없이 대분류만 적용 &rarr;
+            </button>
+          </div>
+          <div id="quickSubCategoryChips" class="quick-sub-cat-chips"></div>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">💡 탭 한 번으로 스크롤 없이 즉시 저장 및 실시간 반영됩니다.</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnCancelQuickCat">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 
 </html>
