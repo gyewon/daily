@@ -3805,37 +3805,27 @@
       if (e.target.closest('.btn-delete-main-cat')) {
         const cat = e.target.closest('.btn-delete-main-cat').dataset.cat;
         
-        const isUsed = appState.records.some(r => r.category === cat);
-        let confirmMsg = `대분류 '${cat}'와 속한 모든 소분류를 삭제하시겠습니까?`;
-        if (isUsed) {
-          confirmMsg = `대분류 '${cat}'를 사용 중인 내역이 있습니다. 삭제 시 해당 내역들의 카테고리는 모두 '미분류'로 자동 변경됩니다. 계속하시겠습니까?`;
+        const usedCount = appState.records.filter(r => r.category === cat).length;
+        if (usedCount > 0) {
+          alert(`⚠️ [삭제 불가]\n'${cat}' 대분류를 사용 중인 지출 내역이 ${usedCount}건 있습니다.\n\n데이터 보호를 위해 현재 가계부 내역에 기록(필터링)되어 있는 대분류는 삭제할 수 없습니다.\n\n삭제를 원하시면 먼저 해당 지출 내역들의 카테고리를 다른 대분류로 변경해주세요.`);
+          return;
         }
-        
-        if (confirm(confirmMsg)) {
-          delete appState.masterCategories[cat];
-          if (appState.activeManageMainCat === cat) {
-            appState.activeManageMainCat = null;
-          }
-          
-          if (isUsed) {
-            appState.records.forEach(r => {
-              if (r.category === cat) {
-                r.category = '미분류';
-                r.subCategory = '미분류';
-                checkFixedCategory(r); // 업데이트된 카테고리에 맞춰 고정비 여부 재확인
-              }
-            });
-            saveData();
-          }
 
-          saveMasterCategories();
-          populateFilterDropdowns();
-          renderTable();
-          renderManageMainCategories();
-          renderManageSubCategories();
-          renderKPIs();
-          showToast(`대분류 '${cat}'가 삭제되었습니다.`);
+        if (!confirm(`대분류 '${cat}'와 속한 모든 소분류를 삭제하시겠습니까?`)) return;
+
+        delete appState.masterCategories[cat];
+        if (appState.activeManageMainCat === cat) {
+          const remainingCats = Object.keys(appState.masterCategories).sort();
+          appState.activeManageMainCat = remainingCats.length > 0 ? remainingCats[0] : null;
         }
+
+        saveMasterCategories();
+        populateFilterDropdowns();
+        renderTable();
+        renderManageMainCategories();
+        renderManageSubCategories();
+        renderKPIs();
+        showToast(`대분류 '${cat}'가 삭제되었습니다.`);
       }
       
       // Edit Main Category
@@ -3886,35 +3876,33 @@
     document.getElementById('subCategoryList')?.addEventListener('click', e => {
       // Delete Sub Category
       if (e.target.closest('.btn-delete-sub-cat')) {
-        const sub = e.target.closest('.btn-delete-sub-cat').dataset.sub;
-        const mainCat = appState.activeManageMainCat;
+        const btn = e.target.closest('.btn-delete-sub-cat');
+        const sub = btn.dataset.sub;
+        const mainCat = btn.dataset.cat || appState.activeManageMainCat;
         
-        const isUsed = appState.records.some(r => r.category === mainCat && r.subCategory === sub);
-        let confirmMsg = `소분류 '${sub}'를 삭제하시겠습니까?`;
-        if (isUsed) {
-          confirmMsg = `소분류 '${sub}'를 사용 중인 내역이 있습니다. 삭제 시 해당 내역들의 소분류는 모두 '미분류'로 자동 변경됩니다. 계속하시겠습니까?`;
+        if (!mainCat || !appState.masterCategories[mainCat]) {
+          alert('대분류를 먼저 선택해주세요.');
+          return;
         }
-        
-        if (mainCat && appState.masterCategories[mainCat]) {
-          if (!confirm(confirmMsg)) return;
-          appState.masterCategories[mainCat] = appState.masterCategories[mainCat].filter(s => s !== sub);
-          
-          if (isUsed) {
-            appState.records.forEach(r => {
-              if (r.category === mainCat && r.subCategory === sub) {
-                r.subCategory = '미분류';
-              }
-            });
-            saveData();
-          }
 
-          saveMasterCategories();
-          populateFilterDropdowns();
-          renderTable();
-          renderManageSubCategories();
-          renderKPIs();
-          showToast(`소분류 '${sub}'가 삭제되었습니다.`);
+        const usedCount = appState.records.filter(r => 
+          (r.category === mainCat || !r.category) && r.subCategory === sub
+        ).length;
+
+        if (usedCount > 0) {
+          alert(`⚠️ [삭제 불가]\n'${mainCat} > ${sub}' 소분류를 사용 중인 지출 내역이 ${usedCount}건 있습니다.\n\n데이터 보호를 위해 현재 가계부 내역에 기록(필터링)되어 있는 소분류는 삭제할 수 없습니다.\n\n삭제를 원하시면 먼저 해당 지출 내역들의 소분류를 다른 카테고리로 변경해주세요.`);
+          return;
         }
+
+        if (!confirm(`소분류 '${mainCat} > ${sub}'를 삭제하시겠습니까?`)) return;
+
+        appState.masterCategories[mainCat] = appState.masterCategories[mainCat].filter(s => s !== sub);
+        saveMasterCategories();
+        populateFilterDropdowns();
+        renderTable();
+        renderManageSubCategories();
+        renderKPIs();
+        showToast(`소분류 '${sub}'가 삭제되었습니다.`);
       }
       
       // Edit Sub Category
@@ -4031,6 +4019,7 @@
       
       subCats.forEach(sub => {
         const div = document.createElement('div');
+        div.className = 'sub-cat-item';
         div.style.padding = '8px 12px';
         div.style.borderRadius = '4px';
         div.style.background = 'var(--bg-surface)';
@@ -4043,8 +4032,8 @@
             ${sub} 
           </span>
           <div style="display:flex; gap: 8px;">
-            <button type="button" class="btn-edit-sub-cat" data-sub="${sub}" style="background:none; border:none; color:var(--text-muted); cursor:pointer;" title="이름 수정">✏️</button>
-            <button type="button" class="btn-delete-sub-cat" data-sub="${sub}" style="background:none; border:none; color:var(--text-muted); cursor:pointer;" title="삭제">&times;</button>
+            <button type="button" class="btn-edit-sub-cat" data-cat="${mainCat}" data-sub="${sub}" style="background:none; border:none; color:var(--text-muted); cursor:pointer;" title="이름 수정">✏️</button>
+            <button type="button" class="btn-delete-sub-cat" data-cat="${mainCat}" data-sub="${sub}" style="background:none; border:none; color:var(--text-muted); cursor:pointer;" title="삭제">&times;</button>
           </div>
         `;
         container.appendChild(div);

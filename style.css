@@ -1313,6 +1313,57 @@ select option:hover {
   background: var(--bg-input);
 }
 
+/* Category Manage Modal Base Styles (Desktop 2-Column Split View) */
+.category-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  max-height: 620px;
+  min-height: 420px;
+}
+
+.category-modal-col-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-color);
+  padding-right: 20px;
+  min-width: 0;
+}
+
+.category-modal-col-sub {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.category-modal-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.category-modal-input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.category-modal-list {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .btn-delete-row {
   background: transparent;
   border: none;
@@ -1832,17 +1883,53 @@ select option:hover {
     justify-content: flex-end;
   }
 
-  /* Header Categorized Toolbar on Mobile */
-  .header-left-group {
+  /* Header Categorized Toolbar on Mobile (Exact order like Image 1):
+     1: Title & Month
+     2: 작업·기록
+     3: 설정·관리
+     4: 데이터·백업 */
+  .app-header {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 12px 10px !important;
+    gap: 8px !important;
+    overflow-x: hidden !important;
     width: 100% !important;
-    margin-top: 4px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .header-brand-section {
+    display: contents !important;
+  }
+
+  .brand-main {
+    order: 1 !important;
+    width: 100% !important;
+    margin-bottom: 2px !important;
   }
 
   .header-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    width: 100%;
+    display: contents !important;
+  }
+
+  .toolbar-group[data-group="actions"] {
+    order: 2 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .toolbar-group[data-group="manage"] {
+    order: 3 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .toolbar-group[data-group="data"] {
+    order: 4 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-top: 0 !important;
   }
 
   .toolbar-group {
@@ -1864,27 +1951,35 @@ select option:hover {
   }
 
   .toolbar-btn-wrap {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 5px;
-    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 5px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .toolbar-btn-wrap .btn-header-item {
-    width: 100%;
-    padding: 7px 2px;
-    font-size: 0.72rem;
-    justify-content: center;
-    text-align: center;
-    gap: 3px;
-    letter-spacing: -0.3px;
+    width: 100% !important;
+    padding: 7px 2px !important;
+    font-size: 0.72rem !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 3px !important;
+    letter-spacing: -0.3px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
   }
 
   /* 작업·기록 그룹도 동일하게 3칸 1줄 유지, 새 지출 추가는 하단 1줄 와이드 배치 */
   .btn-header-item.highlight-btn {
-    grid-column: span 3;
-    padding: 8px 6px;
-    font-size: 0.82rem;
+    grid-column: span 3 !important;
+    padding: 8px 6px !important;
+    font-size: 0.82rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .auth-container {
@@ -2279,16 +2374,16 @@ select option:hover {
   #categoryManageModal .modal-dialog {
     width: calc(100% - 10px) !important;
     max-width: calc(100% - 10px) !important;
-    margin: 8px auto !important;
+    margin: 6px auto !important;
     max-height: 94vh !important;
   }
 
   #categoryManageModal .modal-header {
-    padding: 12px 14px !important;
+    padding: 10px 12px !important;
   }
 
   #categoryManageModal .modal-header h3 {
-    font-size: 1rem !important;
+    font-size: 0.95rem !important;
   }
 
   #btnCleanupCategories {
@@ -2296,19 +2391,22 @@ select option:hover {
     font-size: 0.72rem !important;
   }
 
+  #categoryManageModal .category-modal-body,
   #categoryManageModal .modal-body {
     display: flex !important;
     flex-direction: row !important;
-    max-height: 72vh !important;
-    height: 72vh !important;
+    max-height: 75vh !important;
+    height: 75vh !important;
     gap: 8px !important;
     padding: 10px 8px !important;
     box-sizing: border-box !important;
+    overflow-y: hidden !important;
   }
 
-  /* 좌측: 대분류 영역 (45%) */
-  #categoryManageModal .modal-body > div:first-child {
+  /* 좌측: 대분류 영역 (46%) */
+  .category-modal-col-main {
     flex: 0 0 46% !important;
+    width: 46% !important;
     min-width: 0 !important;
     border-right: 1px solid var(--border-color) !important;
     border-bottom: none !important;
@@ -2316,80 +2414,98 @@ select option:hover {
     padding-bottom: 0 !important;
     display: flex !important;
     flex-direction: column !important;
+    height: 100% !important;
   }
 
   /* 우측: 소분류 영역 (54%) */
-  #categoryManageModal .modal-body > div:last-child {
+  .category-modal-col-sub {
     flex: 1 1 54% !important;
+    width: 54% !important;
     min-width: 0 !important;
     display: flex !important;
     flex-direction: column !important;
     padding-left: 2px !important;
+    height: 100% !important;
   }
 
+  .category-modal-col-main h4,
+  .category-modal-col-sub h4,
   #categoryManageModal h4 {
-    font-size: 0.85rem !important;
+    font-size: 0.82rem !important;
     margin-bottom: 6px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
+  .category-modal-form,
   #newMainCategoryForm,
   #newSubCategoryForm {
     display: flex !important;
-    gap: 4px !important;
-    margin-bottom: 8px !important;
+    gap: 3px !important;
+    margin-bottom: 6px !important;
   }
 
+  .category-modal-input,
   #newMainCategoryForm input,
   #newSubCategoryForm input {
-    font-size: 0.76rem !important;
-    padding: 6px 6px !important;
+    font-size: 0.74rem !important;
+    padding: 5px 5px !important;
     min-width: 0 !important;
+    flex: 1 1 auto !important;
   }
 
+  .category-modal-form button,
   #newMainCategoryForm button,
   #newSubCategoryForm button {
-    font-size: 0.74rem !important;
-    padding: 6px 8px !important;
+    font-size: 0.72rem !important;
+    padding: 5px 6px !important;
     white-space: nowrap !important;
     flex-shrink: 0 !important;
   }
 
+  .category-modal-list,
   #mainCategoryList,
   #subCategoryList {
     flex: 1 1 auto !important;
     overflow-y: auto !important;
     gap: 3px !important;
+    min-height: 0 !important;
   }
 
   .main-cat-item {
-    padding: 6px 6px !important;
+    padding: 6px 4px !important;
     border-radius: 4px !important;
   }
 
   .main-cat-item span {
-    font-size: 0.8rem !important;
+    font-size: 0.78rem !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
   }
 
   .main-cat-item div {
-    gap: 3px !important;
+    gap: 2px !important;
   }
 
   .main-cat-item button,
+  .category-modal-list button,
+  #mainCategoryList button,
   #subCategoryList button {
-    padding: 2px !important;
+    padding: 2px 3px !important;
     font-size: 0.75rem !important;
   }
 
+  .sub-cat-item,
   #subCategoryList > div {
-    padding: 6px 8px !important;
-    font-size: 0.8rem !important;
+    padding: 6px 6px !important;
+    font-size: 0.78rem !important;
   }
 
+  .sub-cat-item span,
   #subCategoryList span {
-    font-size: 0.8rem !important;
+    font-size: 0.78rem !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
