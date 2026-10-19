@@ -1094,7 +1094,10 @@
     if (kpiLivingAmountEl) kpiLivingAmountEl.textContent = formatCurrency(livingAmt);
     const livingRatio = totalValidAmt > 0 ? Math.round((livingAmt / totalValidAmt) * 100) : 0;
     const kpiLivingRatioTextEl = document.getElementById('kpiLivingRatioText');
-    if (kpiLivingRatioTextEl) kpiLivingRatioTextEl.textContent = `비중 ${livingRatio}%`;
+    if (kpiLivingRatioTextEl) {
+      kpiLivingRatioTextEl.textContent = `총 지출의 ${livingRatio}%`;
+      kpiLivingRatioTextEl.title = `이번 달 총 지출(${formatCurrency(totalValidAmt)}원) 중 순수 생활비(${formatCurrency(livingAmt)}원)가 차지하는 비율입니다.`;
+    }
     const kpiLivingLabelEl = document.getElementById('kpiLivingLabel');
     if (kpiLivingLabelEl) {
       const typeNames = Object.keys(appState.customTypes);
@@ -3658,7 +3661,10 @@
     const manageModal = document.getElementById('categoryManageModal');
     
     document.getElementById('btnManageCategories')?.addEventListener('click', () => {
-      appState.activeManageMainCat = null;
+      const mainCats = Object.keys(appState.masterCategories).sort();
+      if (!appState.activeManageMainCat || !appState.masterCategories[appState.activeManageMainCat]) {
+        appState.activeManageMainCat = mainCats.length > 0 ? mainCats[0] : null;
+      }
       renderManageMainCategories();
       renderManageSubCategories();
       manageModal.classList.add('show');
@@ -3677,11 +3683,13 @@
         return;
       }
       appState.masterCategories[val] = [];
+      appState.activeManageMainCat = val;
       
       saveMasterCategories();
       populateFilterDropdowns(); // update dropdowns globally
       renderTable();
       renderManageMainCategories();
+      renderManageSubCategories();
       e.target.reset();
       showToast(`대분류 '${val}'가 추가되었습니다.`, 'success');
     });
@@ -3710,8 +3718,7 @@
       if (e.target.closest('.main-cat-item') && !e.target.closest('.btn-delete-main-cat') && !e.target.closest('.btn-edit-main-cat')) {
         const item = e.target.closest('.main-cat-item');
         appState.activeManageMainCat = item.dataset.cat;
-        document.querySelectorAll('.main-cat-item').forEach(el => el.style.background = 'transparent');
-        item.style.background = 'var(--bg-input)';
+        renderManageMainCategories();
         renderManageSubCategories();
       }
       
@@ -3976,8 +3983,6 @@
     });
 
     document.getElementById('btnCleanupCategories')?.addEventListener('click', () => {
-      if (!confirm('현재 가계부 내역에 한 번도 쓰이지 않은 (미사용) 카테고리들을 모두 정리하시겠습니까?\n※ 기본 필수 카테고리는 삭제되지 않습니다.')) return;
-      
       const usedMains = new Set();
       const usedSubs = new Set();
       
@@ -3988,44 +3993,98 @@
         }
       });
       
+      const toRemoveSubs = [];
+      const toRemoveMains = [];
+
+      Object.keys(appState.masterCategories).sort().forEach(cat => {
+        const originalSubs = [...(appState.masterCategories[cat] || [])];
+        const survivingSubs = [];
+
+        originalSubs.forEach(sub => {
+          const isUsed = usedSubs.has(`${cat}|${sub}`);
+          const isDefault = DEFAULT_MASTER_CATEGORIES[cat] && DEFAULT_MASTER_CATEGORIES[cat].includes(sub);
+          if (!isUsed && !isDefault) {
+            toRemoveSubs.push({ cat, sub });
+          } else {
+            survivingSubs.push(sub);
+          }
+        });
+
+        const isUsedCat = usedMains.has(cat);
+        const isDefaultCat = !!DEFAULT_MASTER_CATEGORIES[cat];
+        if (!isUsedCat && !isDefaultCat && survivingSubs.length === 0) {
+          toRemoveMains.push(cat);
+        }
+      });
+
+      if (toRemoveMains.length === 0 && toRemoveSubs.length === 0) {
+        alert('정리할 미사용 카테고리가 없습니다.\n현재 모든 카테고리가 가계부에서 사용 중입니다! 👍');
+        return;
+      }
+
+      let preview = `🧹 [미사용 카테고리 일괄 정리 대상 미리보기]\n`;
+      preview += `※ 가계부 내역에 1번도 쓰이지 않은 항목들만 선별되었습니다.\n\n`;
+
+      preview += `📁 삭제될 대분류 (${toRemoveMains.length}개):\n`;
+      if (toRemoveMains.length > 0) {
+        preview += toRemoveMains.map(m => `  • ${m}`).join('\n') + '\n\n';
+      } else {
+        preview += `  (삭제 대상 없음)\n\n`;
+      }
+
+      preview += `📄 삭제될 소분류 (${toRemoveSubs.length}개):\n`;
+      if (toRemoveSubs.length > 0) {
+        const maxShow = 15;
+        const showList = toRemoveSubs.slice(0, maxShow);
+        preview += showList.map(s => `  • ${s.cat} > ${s.sub}`).join('\n');
+        if (toRemoveSubs.length > maxShow) {
+          preview += `\n  ... 외 ${toRemoveSubs.length - maxShow}개 항목`;
+        }
+        preview += '\n\n';
+      } else {
+        preview += `  (삭제 대상 없음)\n\n`;
+      }
+
+      preview += `※ 기본 필수 카테고리는 안전하게 보존됩니다.\n정말 위 항목들을 일괄 삭제하시겠습니까?`;
+
+      if (!confirm(preview)) return;
+
       let removedMainCount = 0;
       let removedSubCount = 0;
-      
+
       Object.keys(appState.masterCategories).sort().forEach(cat => {
-        // 소분류 정리
-        const originalSubs = [...appState.masterCategories[cat]];
+        const originalSubs = [...(appState.masterCategories[cat] || [])];
         const newSubs = originalSubs.filter(sub => {
           const isUsed = usedSubs.has(`${cat}|${sub}`);
           const isDefault = DEFAULT_MASTER_CATEGORIES[cat] && DEFAULT_MASTER_CATEGORIES[cat].includes(sub);
           if (!isUsed && !isDefault) {
             removedSubCount++;
-            return false; // 안 쓰고 기본도 아니면 삭제
+            return false;
           }
           return true;
         });
-        
+
         appState.masterCategories[cat] = newSubs;
-        
-        // 대분류 정리
+
         const isUsedCat = usedMains.has(cat);
         const isDefaultCat = !!DEFAULT_MASTER_CATEGORIES[cat];
-        
         if (!isUsedCat && !isDefaultCat && appState.masterCategories[cat].length === 0) {
           delete appState.masterCategories[cat];
           removedMainCount++;
         }
       });
-      
-      if (removedMainCount > 0 || removedSubCount > 0) {
-        saveMasterCategories();
-        renderManageMainCategories();
-        renderManageSubCategories();
-        populateFilterDropdowns();
-        renderAll();
-        alert(`청소 완료! 🧹\n대분류 ${removedMainCount}개, 소분류 ${removedSubCount}개가 삭제되었습니다.`);
-      } else {
-        alert('삭제할 미사용 카테고리가 없습니다. 모두 잘 사용 중이시네요! 👍');
+
+      if (appState.activeManageMainCat && !appState.masterCategories[appState.activeManageMainCat]) {
+        const remainingCats = Object.keys(appState.masterCategories).sort();
+        appState.activeManageMainCat = remainingCats.length > 0 ? remainingCats[0] : null;
       }
+
+      saveMasterCategories();
+      renderManageMainCategories();
+      renderManageSubCategories();
+      populateFilterDropdowns();
+      renderAll();
+      alert(`카테고리 정리 완료! 🧹\n대분류 ${removedMainCount}개, 소분류 ${removedSubCount}개가 안전하게 삭제되었습니다.`);
     });
     
     document.getElementById('btnDoneCardManageModal')?.addEventListener('click', () => {

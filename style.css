@@ -2264,38 +2264,145 @@ select option:hover {
     flex: none !important;
   }
 
-  #categoryManageModal .modal-body {
-    flex-direction: column !important;
-    max-height: 65vh !important;
-    gap: 16px !important;
+  /* Mobile Optimized Category Master Modal: Side-by-Side 2-Column Split View */
+  #categoryManageModal .modal-dialog {
+    width: calc(100% - 10px) !important;
+    max-width: calc(100% - 10px) !important;
+    margin: 8px auto !important;
+    max-height: 94vh !important;
   }
 
+  #categoryManageModal .modal-header {
+    padding: 12px 14px !important;
+  }
+
+  #categoryManageModal .modal-header h3 {
+    font-size: 1rem !important;
+  }
+
+  #btnCleanupCategories {
+    padding: 4px 8px !important;
+    font-size: 0.72rem !important;
+  }
+
+  #categoryManageModal .modal-body {
+    display: flex !important;
+    flex-direction: row !important;
+    max-height: 72vh !important;
+    height: 72vh !important;
+    gap: 8px !important;
+    padding: 10px 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 좌측: 대분류 영역 (45%) */
   #categoryManageModal .modal-body > div:first-child {
-    border-right: none !important;
-    border-bottom: 1px solid var(--border-color);
-    padding-right: 0 !important;
-    padding-bottom: 16px !important;
+    flex: 0 0 46% !important;
+    min-width: 0 !important;
+    border-right: 1px solid var(--border-color) !important;
+    border-bottom: none !important;
+    padding-right: 6px !important;
+    padding-bottom: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* 우측: 소분류 영역 (54%) */
+  #categoryManageModal .modal-body > div:last-child {
+    flex: 1 1 54% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-left: 2px !important;
+  }
+
+  #categoryManageModal h4 {
+    font-size: 0.85rem !important;
+    margin-bottom: 6px !important;
+  }
+
+  #newMainCategoryForm,
+  #newSubCategoryForm {
+    display: flex !important;
+    gap: 4px !important;
+    margin-bottom: 8px !important;
+  }
+
+  #newMainCategoryForm input,
+  #newSubCategoryForm input {
+    font-size: 0.76rem !important;
+    padding: 6px 6px !important;
+    min-width: 0 !important;
+  }
+
+  #newMainCategoryForm button,
+  #newSubCategoryForm button {
+    font-size: 0.74rem !important;
+    padding: 6px 8px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  #mainCategoryList,
+  #subCategoryList {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    gap: 3px !important;
+  }
+
+  .main-cat-item {
+    padding: 6px 6px !important;
+    border-radius: 4px !important;
+  }
+
+  .main-cat-item span {
+    font-size: 0.8rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .main-cat-item div {
+    gap: 3px !important;
+  }
+
+  .main-cat-item button,
+  #subCategoryList button {
+    padding: 2px !important;
+    font-size: 0.75rem !important;
+  }
+
+  #subCategoryList > div {
+    padding: 6px 8px !important;
+    font-size: 0.8rem !important;
+  }
+
+  #subCategoryList span {
+    font-size: 0.8rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   /* Mobile Optimized Card Manage Modal */
   #cardManageModal .modal-dialog {
-    width: calc(100% - 20px) !important;
-    max-width: calc(100% - 20px) !important;
-    margin: 14px auto !important;
-    max-height: 92vh !important;
+    width: calc(100% - 12px) !important;
+    max-width: calc(100% - 12px) !important;
+    margin: 8px auto !important;
+    max-height: 94vh !important;
   }
 
   .card-manage-modal-body {
-    padding: 14px 12px !important;
+    padding: 10px 8px !important;
   }
 
   .new-card-form {
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
-    margin-bottom: 12px !important;
+    gap: 7px !important;
+    margin-bottom: 10px !important;
     background: rgba(255, 255, 255, 0.02) !important;
-    padding: 10px !important;
+    padding: 8px !important;
     border-radius: 8px !important;
     border: 1px solid var(--border-color) !important;
   }
@@ -2305,16 +2412,16 @@ select option:hover {
   .new-card-form .btn-add-card {
     width: 100% !important;
     box-sizing: border-box !important;
-    padding: 9px !important;
+    padding: 8px !important;
     font-size: 0.88rem !important;
   }
 
   .card-manage-table-container {
-    max-height: 48vh !important;
+    max-height: 52vh !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     border: none !important;
-    padding-right: 2px;
+    padding: 0 !important;
   }
 
   /* 테이블 헤더 숨김 (카드형 블록으로 변환) */
@@ -2330,18 +2437,18 @@ select option:hover {
     width: 100% !important;
   }
 
-  /* 각 행을 2행 카드 블록으로 변환 (1행: 이름+삭제, 2행: 유형+목표) */
+  /* 각 행을 2행 카드 블록으로 변환 (1행: 이름(최대확장)+삭제, 2행: 유형+목표) */
   .card-manage-table tr.card-manage-row {
     display: grid !important;
     grid-template-columns: 1fr auto !important;
     grid-template-areas:
       "name del"
       "type target" !important;
-    gap: 8px 10px !important;
-    padding: 10px 12px !important;
+    gap: 6px 8px !important;
+    padding: 8px 10px !important;
     background: var(--bg-surface) !important;
     border: 1px solid var(--border-color) !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     align-items: center !important;
     box-sizing: border-box !important;
     width: 100% !important;
@@ -2362,9 +2469,11 @@ select option:hover {
   .col-card-name .input-card-name {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 8px 10px !important;
-    font-size: 0.95rem !important;
+    padding: 6px 8px !important;
+    font-size: 0.88rem !important;
+    font-weight: 700;
     box-sizing: border-box !important;
+    letter-spacing: -0.2px;
   }
 
   .col-card-del {
@@ -2375,11 +2484,11 @@ select option:hover {
   }
 
   .col-card-del .btn-delete-card {
-    padding: 5px 9px !important;
+    padding: 4px 7px !important;
     background: rgba(239, 68, 68, 0.12) !important;
     border: 1px solid rgba(239, 68, 68, 0.3) !important;
     border-radius: 6px !important;
-    font-size: 1.15rem !important;
+    font-size: 1.05rem !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
