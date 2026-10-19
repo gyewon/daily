@@ -3895,13 +3895,33 @@
       if (e.target.closest('.btn-delete-main-cat')) {
         const cat = e.target.closest('.btn-delete-main-cat').dataset.cat;
         
-        const usedCount = appState.records.filter(r => r.category === cat).length;
-        if (usedCount > 0) {
-          alert(`⚠️ [삭제 불가]\n'${cat}' 대분류를 사용 중인 지출 내역이 ${usedCount}건 있습니다.\n\n데이터 보호를 위해 현재 가계부 내역에 기록(필터링)되어 있는 대분류는 삭제할 수 없습니다.\n\n삭제를 원하시면 먼저 해당 지출 내역들의 카테고리를 다른 대분류로 변경해주세요.`);
-          return;
-        }
+        const usedRecs = appState.records.filter(r => r.category === cat);
+        const usedCount = usedRecs.length;
 
-        if (!confirm(`대분류 '${cat}'와 속한 모든 소분류를 삭제하시겠습니까?`)) return;
+        if (usedCount > 0) {
+          const sampleLimit = 4;
+          const samples = usedRecs.slice(0, sampleLimit).map(r => {
+            const d = r.date ? r.date.substring(5) : '';
+            const m = r.merchant ? r.merchant.trim() : '미입력';
+            const a = formatCurrency(r.amount);
+            const sub = r.subCategory ? ` > ${r.subCategory}` : '';
+            return `  • [${d} ${m}] ${a}원 (${cat}${sub})`;
+          }).join('\n');
+          const moreText = usedCount > sampleLimit ? `\n  ... 외 ${usedCount - sampleLimit}건` : '';
+
+          const msg = `⚠️ [사용 중인 대분류 삭제 확인]\n\n'${cat}' 대분류를 사용 중인 지출 내역이 총 ${usedCount}건 있습니다.\n\n[등록된 내역 예시]\n${samples}${moreText}\n\n정말로 이 대분류와 속한 모든 소분류를 삭제하시겠습니까?\n\n※ '확인'을 누르면 해당 지출 내역(${usedCount}건)은 모두 '미분류'로 자동 이동되고 대분류가 삭제됩니다.`;
+          
+          if (!confirm(msg)) return;
+
+          // 지출 내역을 '미분류'로 이동
+          usedRecs.forEach(r => {
+            r.category = '미분류';
+            r.subCategory = '';
+          });
+          saveData();
+        } else {
+          if (!confirm(`'${cat}' 대분류와 속한 모든 소분류를 삭제하시겠습니까?\n(현재 이 대분류를 사용하는 지출 내역이 없습니다.)`)) return;
+        }
 
         delete appState.masterCategories[cat];
         if (appState.activeManageMainCat === cat) {
@@ -3915,7 +3935,11 @@
         renderManageMainCategories();
         renderManageSubCategories();
         renderKPIs();
-        showToast(`대분류 '${cat}'가 삭제되었습니다.`);
+        if (usedCount > 0) {
+          showToast(`대분류 '${cat}'가 삭제되었으며, 기존 내역 ${usedCount}건이 '미분류'로 이동되었습니다.`, 'success');
+        } else {
+          showToast(`대분류 '${cat}'가 삭제되었습니다.`, 'info');
+        }
       }
       
       // Edit Main Category
@@ -3975,16 +3999,33 @@
           return;
         }
 
-        const usedCount = appState.records.filter(r => 
+        const usedRecs = appState.records.filter(r => 
           (r.category === mainCat || !r.category) && r.subCategory === sub
-        ).length;
+        );
+        const usedCount = usedRecs.length;
 
         if (usedCount > 0) {
-          alert(`⚠️ [삭제 불가]\n'${mainCat} > ${sub}' 소분류를 사용 중인 지출 내역이 ${usedCount}건 있습니다.\n\n데이터 보호를 위해 현재 가계부 내역에 기록(필터링)되어 있는 소분류는 삭제할 수 없습니다.\n\n삭제를 원하시면 먼저 해당 지출 내역들의 소분류를 다른 카테고리로 변경해주세요.`);
-          return;
-        }
+          const sampleLimit = 4;
+          const samples = usedRecs.slice(0, sampleLimit).map(r => {
+            const d = r.date ? r.date.substring(5) : '';
+            const m = r.merchant ? r.merchant.trim() : '미입력';
+            const a = formatCurrency(r.amount);
+            return `  • [${d} ${m}] ${a}원`;
+          }).join('\n');
+          const moreText = usedCount > sampleLimit ? `\n  ... 외 ${usedCount - sampleLimit}건` : '';
 
-        if (!confirm(`소분류 '${mainCat} > ${sub}'를 삭제하시겠습니까?`)) return;
+          const msg = `⚠️ [사용 중인 소분류 삭제 확인]\n\n'${mainCat} > ${sub}' 소분류를 사용 중인 지출 내역이 총 ${usedCount}건 있습니다.\n\n[등록된 내역 예시]\n${samples}${moreText}\n\n정말로 이 소분류를 삭제하시겠습니까?\n\n※ '확인'을 누르면 해당 지출 내역(${usedCount}건)의 소분류가 초기화(미분류)됩니다. (대분류 '${mainCat}'는 유지됩니다.)`;
+
+          if (!confirm(msg)) return;
+
+          // 지출 내역의 소분류 초기화
+          usedRecs.forEach(r => {
+            r.subCategory = '';
+          });
+          saveData();
+        } else {
+          if (!confirm(`소분류 '${mainCat} > ${sub}'를 삭제하시겠습니까?\n(현재 이 소분류를 사용하는 지출 내역이 없습니다.)`)) return;
+        }
 
         appState.masterCategories[mainCat] = appState.masterCategories[mainCat].filter(s => s !== sub);
         saveMasterCategories();
@@ -3992,7 +4033,11 @@
         renderTable();
         renderManageSubCategories();
         renderKPIs();
-        showToast(`소분류 '${sub}'가 삭제되었습니다.`);
+        if (usedCount > 0) {
+          showToast(`소분류 '${sub}'가 삭제되었으며, 기존 내역 ${usedCount}건의 소분류가 초기화되었습니다.`, 'success');
+        } else {
+          showToast(`소분류 '${sub}'가 삭제되었습니다.`, 'info');
+        }
       }
       
       // Edit Sub Category
@@ -4160,8 +4205,7 @@
 
         originalSubs.forEach(sub => {
           const isUsed = usedSubs.has(`${cat}|${sub}`);
-          const isDefault = DEFAULT_MASTER_CATEGORIES[cat] && DEFAULT_MASTER_CATEGORIES[cat].includes(sub);
-          if (!isUsed && !isDefault) {
+          if (!isUsed) {
             toRemoveSubs.push({ cat, sub });
           } else {
             survivingSubs.push(sub);
@@ -4176,23 +4220,23 @@
       });
 
       if (toRemoveMains.length === 0 && toRemoveSubs.length === 0) {
-        alert('정리할 미사용 카테고리가 없습니다.\n현재 모든 카테고리가 가계부에서 사용 중입니다! 👍');
+        alert('정리할 미사용 카테고리가 없습니다.\n현재 등록된 모든 카테고리가 가계부 지출 내역에서 사용 중입니다! 👍');
         return;
       }
 
       let preview = `🧹 [미사용 카테고리 일괄 정리 대상 미리보기]\n`;
-      preview += `※ 가계부 내역에 1번도 쓰이지 않은 항목들만 선별되었습니다.\n\n`;
+      preview += `※ 가계부 지출 내역에 1번도 쓰이지 않은 카테고리들만 선별되었습니다.\n\n`;
 
-      preview += `📁 삭제될 대분류 (${toRemoveMains.length}개):\n`;
+      preview += `📁 삭제될 미사용 대분류 (${toRemoveMains.length}개):\n`;
       if (toRemoveMains.length > 0) {
         preview += toRemoveMains.map(m => `  • ${m}`).join('\n') + '\n\n';
       } else {
-        preview += `  (삭제 대상 없음)\n\n`;
+        preview += `  (삭제 대상 없음 - 기본 대분류 보존)\n\n`;
       }
 
-      preview += `📄 삭제될 소분류 (${toRemoveSubs.length}개):\n`;
+      preview += `📄 삭제될 미사용 소분류 (${toRemoveSubs.length}개):\n`;
       if (toRemoveSubs.length > 0) {
-        const maxShow = 15;
+        const maxShow = 20;
         const showList = toRemoveSubs.slice(0, maxShow);
         preview += showList.map(s => `  • ${s.cat} > ${s.sub}`).join('\n');
         if (toRemoveSubs.length > maxShow) {
@@ -4203,7 +4247,7 @@
         preview += `  (삭제 대상 없음)\n\n`;
       }
 
-      preview += `※ 기본 필수 카테고리는 안전하게 보존됩니다.\n정말 위 항목들을 일괄 삭제하시겠습니까?`;
+      preview += `※ 지출 내역이 있는 카테고리는 안전하게 보존됩니다.\n정말 위 미사용 카테고리들을 일괄 정리(삭제)하시겠습니까?`;
 
       if (!confirm(preview)) return;
 
@@ -4214,8 +4258,7 @@
         const originalSubs = [...(appState.masterCategories[cat] || [])];
         const newSubs = originalSubs.filter(sub => {
           const isUsed = usedSubs.has(`${cat}|${sub}`);
-          const isDefault = DEFAULT_MASTER_CATEGORIES[cat] && DEFAULT_MASTER_CATEGORIES[cat].includes(sub);
-          if (!isUsed && !isDefault) {
+          if (!isUsed) {
             removedSubCount++;
             return false;
           }
@@ -4242,7 +4285,7 @@
       renderManageSubCategories();
       populateFilterDropdowns();
       renderAll();
-      alert(`카테고리 정리 완료! 🧹\n대분류 ${removedMainCount}개, 소분류 ${removedSubCount}개가 안전하게 삭제되었습니다.`);
+      alert(`카테고리 정리 완료! 🧹\n미사용 대분류 ${removedMainCount}개, 미사용 소분류 ${removedSubCount}개가 깔끔하게 정리되었습니다.`);
     });
     
     document.getElementById('btnDoneCardManageModal')?.addEventListener('click', () => {
