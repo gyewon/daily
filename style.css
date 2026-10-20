@@ -1226,16 +1226,10 @@ body {
   line-height: 1;
 }
 
-.cash-card-title {
+.cash-card-label {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.cash-card-sub {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin-top: 2px;
 }
 
 .cash-card-right {
@@ -2470,9 +2464,20 @@ select option:hover {
    ========================================================================== */
 @media (max-width: 768px) {
   /* Layout & Spacing */
+  html, body {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
   .app-layout {
+    width: 100% !important;
+    max-width: 100% !important;
     padding: 10px 12px;
     gap: 16px;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
   }
 
   /* Header Optimization */

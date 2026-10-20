@@ -1488,10 +1488,7 @@
       cashEl.innerHTML = `
         <div class="cash-card-left">
           <span class="cash-card-icon">💵</span>
-          <div>
-            <div class="cash-card-title">현금 지출</div>
-            <div class="cash-card-sub">계좌/간편결제와 분리된 순수 현금 내역</div>
-          </div>
+          <span class="cash-card-label">현금</span>
         </div>
         <div class="cash-card-right">
           <div class="cash-card-amount">${formatCurrency(cashAmt)}원</div>
