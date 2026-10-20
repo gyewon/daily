@@ -1091,7 +1091,7 @@
     if (kpiTotalSettleDetailEl) {
       if (totalSettleAmt > 0) {
         kpiTotalSettleDetailEl.style.display = 'block';
-        kpiTotalSettleDetailEl.innerHTML = `결제원금 ${formatCurrency(totalValidAmt)}원 - 정산 ${formatCurrency(totalSettleAmt)}원`;
+        kpiTotalSettleDetailEl.innerHTML = `원금 ${formatCurrency(totalValidAmt)}원 - 정산 ${formatCurrency(totalSettleAmt)}원`;
         kpiTotalSettleDetailEl.title = `총 결제 원금 ${formatCurrency(totalValidAmt)}원에서 정산 회수액 ${formatCurrency(totalSettleAmt)}원을 뺀 실부담액입니다.`;
       } else {
         kpiTotalSettleDetailEl.style.display = 'none';
