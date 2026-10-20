@@ -844,11 +844,11 @@ body {
   font-weight: 600;
 }
 
-/* Card Status Items */
+/* Card Status Items (2개씩 나란히 2열 그리드 배치) */
 .cards-status-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .card-item {
@@ -2862,20 +2862,27 @@ select option:hover {
     max-height: 250px;
   }
 
+  .cards-status-container {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
   .card-item {
-    padding: 11px 13px;
-    gap: 8px;
+    padding: 10px 10px;
+    gap: 6px;
+    min-width: 0;
   }
 
   .card-title {
-    font-size: 0.88rem;
+    font-size: 0.82rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .card-amount {
-    font-size: 0.98rem;
+    font-size: 0.92rem;
   }
 
   .card-meta-row {

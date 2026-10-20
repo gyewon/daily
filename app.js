@@ -1321,7 +1321,7 @@
       const cnt = cardCounts[cardName] || 0;
       const completedAmt = cardCompletedSums[cardName] || 0;
       const completedCnt = cardCompletedCounts[cardName] || 0;
-      const share = totalPhysicalAmt > 0 ? ((amt / totalPhysicalAmt) * 100).toFixed(1) : 0;
+      const completionRate = amt > 0 ? Math.min(100, Math.round((completedAmt / amt) * 100)) : (cnt > 0 && isComplete ? 100 : 0);
 
       // 카드 실적 인정 기준: 카드사 혜택 규정에 따라 할부 이용금액은 전월 실적 산정에서 제외
       const performanceAmt = Math.max(0, amt - instAmt);
@@ -1344,7 +1344,6 @@
           <div class="card-amount-group">
             <div>
               <span class="card-amount">${formatCurrency(amt)}원</span>
-              <span class="card-share">(${share}%)</span>
             </div>
             ${(instAmt > 0 || settleAmt > 0) ? `
             <div class="card-extra-subline" title="실제 지출: ${formatCurrency(amt)}원 / 실적인정(할부 제외): ${formatCurrency(performanceAmt)}원 / 정산 차감: -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)">
@@ -1372,8 +1371,8 @@
             </div>
             `}
           </div>
-          <div class="card-bar-bg">
-            <div class="card-bar-fill" style="width: ${share}%; background: ${conf.color};"></div>
+          <div class="card-bar-bg" title="결제 완료 진행률: ${completionRate}% (${formatCurrency(completedAmt)}원 / ${formatCurrency(amt)}원)">
+            <div class="card-bar-fill" style="width: ${completionRate}%; background: ${conf.color};"></div>
           </div>
         </div>
       `;
