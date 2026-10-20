@@ -988,12 +988,18 @@
     let cashAmt = 0;
     let cashCount = 0;
     let totalCashSettleAmt = 0;
-    const customTypeSums = {};
+    const customTypeGrossSums = {};
+    const customTypeSettleSums = {};
     const customTypeCounts = {};
     for (const t in appState.customTypes) {
-      customTypeSums[t] = 0;
+      customTypeGrossSums[t] = 0;
+      customTypeSettleSums[t] = 0;
       customTypeCounts[t] = 0;
     }
+
+    let livingGrossAmt = 0;
+    let livingSettleAmt = 0;
+    let livingCount = 0;
 
     records.forEach(r => {
       const amt = Number(r.amount) || 0;
@@ -1032,32 +1038,36 @@
         excludedCount++;
       }
 
-      let matchedAnyType = false;
+      let matchedType = null;
       for (const t in appState.customTypes) {
-        const cats = appState.customTypes[t];
+        const cats = appState.customTypes[t] || [];
         if (t === '고정비') {
           if (r.isFixed === 'Y' || cats.includes(r.category) || r.category === t) {
-            customTypeSums[t] += amt;
-            customTypeCounts[t]++;
-            matchedAnyType = true;
+            matchedType = t;
+            break;
           }
         } else {
           if (cats.includes(r.category) || r.category === t) {
-            customTypeSums[t] += amt;
-            customTypeCounts[t]++;
-            matchedAnyType = true;
+            matchedType = t;
+            break;
           }
         }
       }
       
-      if (matchedAnyType) {
+      if (matchedType) {
+        customTypeGrossSums[matchedType] += amt;
+        customTypeSettleSums[matchedType] += settle;
+        customTypeCounts[matchedType]++;
         validCustomTypeAmt += amt;
+      } else {
+        livingGrossAmt += amt;
+        livingSettleAmt += settle;
+        livingCount++;
       }
     });
 
     // Update KPI Elements
-    const fixedAmt = customTypeSums['고정비'] || 0;
-    const livingAmt = Math.max(0, totalValidAmt - validCustomTypeAmt - totalSettleAmt);
+    const livingNetAmt = Math.max(0, livingGrossAmt - livingSettleAmt);
     
     // KPI 1: 총 지출
     const kpiTotalAmountEl = document.getElementById('kpiTotalAmount');
@@ -1083,22 +1093,37 @@
       let colorIdx = 0;
       
       for (const t in appState.customTypes) {
-        const tAmt = customTypeSums[t] || 0;
+        const tGross = customTypeGrossSums[t] || 0;
+        const tSettle = customTypeSettleSums[t] || 0;
+        const tNet = Math.max(0, tGross - tSettle);
         const tCnt = customTypeCounts[t] || 0;
         const color = colors[colorIdx % colors.length];
         
+        let settleBadgeHtml = '';
+        let formulaSubHtml = '';
+        if (tSettle > 0) {
+          settleBadgeHtml = `<span class="kpi-tx-settle-badge" title="원금 ${formatCurrency(tGross)}원 - 정산 ${formatCurrency(tSettle)}원">👥 정산 -${formatCurrency(tSettle)}원</span>`;
+          formulaSubHtml = `<div class="kpi-formula-sub" title="원금에서 정산 회수액을 차감한 실부담액입니다">(원금 ${formatCurrency(tGross)}원 - 정산 ${formatCurrency(tSettle)}원)</div>`;
+        }
+
         const cardEl = document.createElement('div');
         cardEl.className = `kpi-card ${color}`;
         cardEl.innerHTML = `
           <div class="kpi-header">
-            <div class="kpi-title-row">
-              <span class="kpi-label">${t}</span>
-              <span class="kpi-header-count">(총 ${tCnt}건)</span>
+            <div class="kpi-title-col">
+              <div class="kpi-title-row">
+                <span class="kpi-label">${t}</span>
+                <span class="kpi-header-count">(총 ${tCnt}건)</span>
+              </div>
+              ${formulaSubHtml}
             </div>
-            <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">모아보기 &rarr;</button>
+            <div class="kpi-header-action">
+              ${settleBadgeHtml}
+              <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">모아보기 &rarr;</button>
+            </div>
           </div>
           <div class="kpi-value-row">
-            <span class="kpi-value">${formatCurrency(tAmt)}</span>
+            <span class="kpi-value">${formatCurrency(tNet)}</span>
             <span class="kpi-unit">원</span>
           </div>
         `;
@@ -1117,12 +1142,12 @@
 
     // KPI 3: 순 생활비 (정산 회수액 차감)
     const kpiLivingAmountEl = document.getElementById('kpiLivingAmount');
-    if (kpiLivingAmountEl) kpiLivingAmountEl.textContent = formatCurrency(livingAmt);
-    const livingRatio = totalValidAmt > 0 ? Math.round((livingAmt / totalValidAmt) * 100) : 0;
+    if (kpiLivingAmountEl) kpiLivingAmountEl.textContent = formatCurrency(livingNetAmt);
+    const livingRatio = totalValidAmt > 0 ? Math.round((livingNetAmt / totalValidAmt) * 100) : 0;
     const kpiLivingRatioHeaderEl = document.getElementById('kpiLivingRatioHeader');
     if (kpiLivingRatioHeaderEl) {
       kpiLivingRatioHeaderEl.textContent = `(총 지출의 ${livingRatio}%)`;
-      kpiLivingRatioHeaderEl.title = `이번 달 총 지출(${formatCurrency(totalValidAmt)}원) 중 순수 생활비(${formatCurrency(livingAmt)}원)가 차지하는 비율입니다.`;
+      kpiLivingRatioHeaderEl.title = `이번 달 총 지출(${formatCurrency(totalValidAmt)}원) 중 순수 생활비 실부담액(${formatCurrency(livingNetAmt)}원)이 차지하는 비율입니다.`;
     }
     const kpiLivingLabelEl = document.getElementById('kpiLivingLabel');
     if (kpiLivingLabelEl) {
@@ -1132,14 +1157,18 @@
     if (kpiLivingFormulaEl) {
       const typeNames = Object.keys(appState.customTypes);
       const extraList = [...typeNames];
-      if (totalSettleAmt > 0) extraList.push('정산회수');
+      if (livingSettleAmt > 0) extraList.push('생활비 정산회수');
       const excludeText = extraList.length > 0 ? `(총 지출 - ${extraList.join(', ')})` : '';
-      kpiLivingFormulaEl.textContent = excludeText;
+      if (livingSettleAmt > 0) {
+        kpiLivingFormulaEl.innerHTML = `${excludeText}<br><span style="color:var(--text-muted); font-size:0.7rem;">(원금 ${formatCurrency(livingGrossAmt)}원 - 정산 ${formatCurrency(livingSettleAmt)}원)</span>`;
+      } else {
+        kpiLivingFormulaEl.textContent = excludeText;
+      }
     }
     const kpiLivingTopRightEl = document.getElementById('kpiLivingTopRight');
     if (kpiLivingTopRightEl) {
-      if (totalSettleAmt > 0) {
-        kpiLivingTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원 차감</span>`;
+      if (livingSettleAmt > 0) {
+        kpiLivingTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="생활비 내역 중 더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(livingSettleAmt)}원 차감</span>`;
       } else {
         kpiLivingTopRightEl.innerHTML = '';
       }
