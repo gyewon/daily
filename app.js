@@ -1072,9 +1072,13 @@
     // Update KPI Elements
     const livingNetAmt = Math.max(0, livingGrossAmt - livingSettleAmt);
     
-    // KPI 1: 총 지출
+    // KPI 1: 총 지출 (정산 회수액이 있는 경우 실부담금을 주 표시)
+    const totalNetAmt = Math.max(0, totalValidAmt - totalSettleAmt);
     const kpiTotalAmountEl = document.getElementById('kpiTotalAmount');
-    if (kpiTotalAmountEl) kpiTotalAmountEl.textContent = formatCurrency(totalValidAmt);
+    if (kpiTotalAmountEl) {
+      // 실부담금을 메인 숫자로 표시
+      kpiTotalAmountEl.textContent = formatCurrency(totalNetAmt);
+    }
     const kpiTotalCountHeaderEl = document.getElementById('kpiTotalCountHeader');
     if (kpiTotalCountHeaderEl) {
       kpiTotalCountHeaderEl.textContent = `(총 ${totalValidCount}건)`;
@@ -1082,7 +1086,7 @@
     const kpiTotalTopRightEl = document.getElementById('kpiTotalTopRight');
     if (kpiTotalTopRightEl) {
       if (totalSettleAmt > 0) {
-        kpiTotalTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액이 반영된 달입니다">👥 정산반영</span>`;
+        kpiTotalTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액 -${formatCurrency(totalSettleAmt)}원이 차감 반영되었습니다">👥 정산반영</span>`;
       } else {
         kpiTotalTopRightEl.innerHTML = '';
       }
@@ -1090,10 +1094,9 @@
     const kpiTotalSettleDetailEl = document.getElementById('kpiTotalSettleDetail');
     if (kpiTotalSettleDetailEl) {
       if (totalSettleAmt > 0) {
-        const totalNetAmt = Math.max(0, totalValidAmt - totalSettleAmt);
         kpiTotalSettleDetailEl.style.display = 'block';
-        kpiTotalSettleDetailEl.innerHTML = `총 ${formatCurrency(totalValidAmt)}원 - 정산 ${formatCurrency(totalSettleAmt)}원 = <strong>실부담 ${formatCurrency(totalNetAmt)}원</strong>`;
-        kpiTotalSettleDetailEl.title = `총 결제 원금 ${formatCurrency(totalValidAmt)}원에서 정산 회수액 ${formatCurrency(totalSettleAmt)}원을 뺀 실부담액은 ${formatCurrency(totalNetAmt)}원입니다.`;
+        kpiTotalSettleDetailEl.innerHTML = `결제원금 ${formatCurrency(totalValidAmt)}원 - 정산 ${formatCurrency(totalSettleAmt)}원 = <strong>실부담 ${formatCurrency(totalNetAmt)}원</strong>`;
+        kpiTotalSettleDetailEl.title = `총 결제 원금 ${formatCurrency(totalValidAmt)}원에서 정산 회수액 ${formatCurrency(totalSettleAmt)}원을 뺀 실부담액입니다.`;
       } else {
         kpiTotalSettleDetailEl.style.display = 'none';
         kpiTotalSettleDetailEl.innerHTML = '';
@@ -6081,7 +6084,10 @@
     const cardMap = {};
     cardSet.forEach(card => {
       const conf = CARD_CONFIG[card] || { type: card === '현금' ? 'cash' : 'pay', color: '#6366f1' };
-      const rawType = conf.type || (card === '현금' ? 'cash' : 'pay');
+      // 엄격한 수단 유형 판별 (현금은 무조건 'cash')
+      let rawType = card === '현금' ? 'cash' : (conf.type || 'pay');
+      if (rawType !== 'physical' && rawType !== 'cash') rawType = 'pay';
+
       cardMap[card] = {
         name: card,
         type: rawType,
@@ -6101,9 +6107,10 @@
     yearRecords.forEach(r => {
       const card = r.actualCard || '기타';
       if (!cardMap[card]) {
+        const isCashCard = card === '현금';
         cardMap[card] = {
           name: card,
-          type: 'pay',
+          type: isCashCard ? 'cash' : 'pay',
           color: '#6366f1',
           monthlyAmounts: Array(12).fill(0),
           monthlyGross: Array(12).fill(0),
@@ -6155,11 +6162,11 @@
       }
     });
 
-    // Update Filter Tab Count Badges
+    // Update Filter Tab Count Badges (현금은 pay에서 완전 제외)
     const allCardsList = Object.values(cardMap);
     const cntAll = allCardsList.length;
-    const cntPhysical = allCardsList.filter(c => c.type === 'physical').length;
-    const cntPay = allCardsList.filter(c => c.type === 'pay').length;
+    const cntPhysical = allCardsList.filter(c => c.type === 'physical' && c.name !== '현금').length;
+    const cntPay = allCardsList.filter(c => c.type === 'pay' && c.name !== '현금' && c.type !== 'cash').length;
     const cntCash = allCardsList.filter(c => c.type === 'cash' || c.name === '현금').length;
 
     if (document.getElementById('annualCntAll')) document.getElementById('annualCntAll').textContent = cntAll;
@@ -6253,10 +6260,18 @@
     tbody.innerHTML = '';
     tfoot.innerHTML = '';
 
-    // Group cards according to filter
-    const physicalList = allCardsList.filter(c => c.type === 'physical').sort((a, b) => b.yearTotal - a.yearTotal);
-    const payList = allCardsList.filter(c => c.type === 'pay').sort((a, b) => b.yearTotal - a.yearTotal);
-    const cashList = allCardsList.filter(c => c.type === 'cash' || c.name === '현금').sort((a, b) => b.yearTotal - a.yearTotal);
+    // Group cards according to filter - 카드 결제 수단 이름(가나다 순)으로 고정 정렬하여 월/조건 변경 시 카드가 흔들리지 않도록 유지
+    const physicalList = allCardsList
+      .filter(c => c.type === 'physical' && c.name !== '현금')
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+
+    const payList = allCardsList
+      .filter(c => c.type === 'pay' && c.name !== '현금' && c.type !== 'cash')
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+
+    const cashList = allCardsList
+      .filter(c => c.type === 'cash' || c.name === '현금')
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
     const groupsToRender = [];
     if (annualCardFilter === 'all' || annualCardFilter === 'physical') {
@@ -6418,14 +6433,14 @@
 
     let cardsForChart = allCardsList.filter(c => c.yearTotal > 0);
     if (annualCardFilter === 'physical') {
-      cardsForChart = cardsForChart.filter(c => c.type === 'physical');
+      cardsForChart = cardsForChart.filter(c => c.type === 'physical' && c.name !== '현금');
     } else if (annualCardFilter === 'pay') {
-      cardsForChart = cardsForChart.filter(c => c.type === 'pay');
+      cardsForChart = cardsForChart.filter(c => c.type === 'pay' && c.name !== '현금' && c.type !== 'cash');
     } else if (annualCardFilter === 'cash') {
       cardsForChart = cardsForChart.filter(c => c.type === 'cash' || c.name === '현금');
     }
 
-    cardsForChart.sort((a, b) => b.yearTotal - a.yearTotal);
+    cardsForChart.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
     const datasets = cardsForChart.map(c => {
       const conf = CARD_CONFIG[c.name] || { color: '#6366f1' };
