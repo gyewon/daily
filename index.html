@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="style.css?v=26">
 </head>
 
 <body>
@@ -166,6 +166,7 @@
             <span class="kpi-value" id="kpiTotalAmount">0</span>
             <span class="kpi-unit">원</span>
           </div>
+          <div id="kpiTotalSettleDetail" class="kpi-settle-detail" style="display: none;"></div>
         </div>
 
         <!-- KPI 3: 순 생활비 -->
@@ -173,10 +174,9 @@
           <div class="kpi-header">
             <div class="kpi-title-col">
               <div class="kpi-title-row">
-                <span class="kpi-label" id="kpiLivingLabel">순 생활비</span>
+                <span class="kpi-label" id="kpiLivingLabel">순 생활비*</span>
                 <span class="kpi-header-count" id="kpiLivingRatioHeader"></span>
               </div>
-              <div class="kpi-formula-sub" id="kpiLivingFormula"></div>
             </div>
             <div id="kpiLivingTopRight" class="kpi-header-action"></div>
           </div>
@@ -184,6 +184,7 @@
             <span class="kpi-value" id="kpiLivingAmount">0</span>
             <span class="kpi-unit">원</span>
           </div>
+          <div id="kpiLivingSettleDetail" class="kpi-settle-detail" style="display: none;"></div>
         </div>
 
         <!-- Dynamic Custom Type KPIs will be inserted here -->
@@ -204,6 +205,12 @@
           </div>
         </div>
       </section>
+
+      <!-- 순 생활비 1줄 안내 공지 바 -->
+      <div class="kpi-notice-bar" id="kpiLivingNoticeBar">
+        <span class="notice-mark">*</span>
+        <span class="notice-desc" id="kpiLivingNoticeDesc">순 생활비: 총 지출에서 비생활비 분류(고정비 등)를 차감한 실질 생활비 실부담액입니다.</span>
+      </div>
 
       <!-- Smart Tip & Mapping Banner -->
       <section id="mappingNoticeBanner" class="smart-banner">
@@ -1277,7 +1284,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=33"></script>
+  <script src="app.js?v=34"></script>
 </body>
 
 </html>

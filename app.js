@@ -1082,9 +1082,21 @@
     const kpiTotalTopRightEl = document.getElementById('kpiTotalTopRight');
     if (kpiTotalTopRightEl) {
       if (totalSettleAmt > 0) {
-        kpiTotalTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원 반영</span>`;
+        kpiTotalTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액이 반영된 달입니다">👥 정산반영</span>`;
       } else {
         kpiTotalTopRightEl.innerHTML = '';
+      }
+    }
+    const kpiTotalSettleDetailEl = document.getElementById('kpiTotalSettleDetail');
+    if (kpiTotalSettleDetailEl) {
+      if (totalSettleAmt > 0) {
+        const totalNetAmt = Math.max(0, totalValidAmt - totalSettleAmt);
+        kpiTotalSettleDetailEl.style.display = 'block';
+        kpiTotalSettleDetailEl.innerHTML = `총 ${formatCurrency(totalValidAmt)}원 - 정산 ${formatCurrency(totalSettleAmt)}원 = <strong>실부담 ${formatCurrency(totalNetAmt)}원</strong>`;
+        kpiTotalSettleDetailEl.title = `총 결제 원금 ${formatCurrency(totalValidAmt)}원에서 정산 회수액 ${formatCurrency(totalSettleAmt)}원을 뺀 실부담액은 ${formatCurrency(totalNetAmt)}원입니다.`;
+      } else {
+        kpiTotalSettleDetailEl.style.display = 'none';
+        kpiTotalSettleDetailEl.innerHTML = '';
       }
     }
 
@@ -1102,9 +1114,9 @@
         const tCnt = customTypeCounts[t] || 0;
         const color = colors[colorIdx % colors.length];
         
-        let settleBadgeHtml = '';
+        let settleSubHtml = '';
         if (tSettle > 0) {
-          settleBadgeHtml = `<span class="kpi-tx-settle-badge" title="원금 ${formatCurrency(tGross)}원 - 정산 ${formatCurrency(tSettle)}원">👥 정산 -${formatCurrency(tSettle)}원</span>`;
+          settleSubHtml = `<div class="kpi-settle-detail">총 ${formatCurrency(tGross)}원 - 정산 ${formatCurrency(tSettle)}원 = <strong>실부담 ${formatCurrency(tNet)}원</strong></div>`;
         }
 
         const cardEl = document.createElement('div');
@@ -1118,7 +1130,7 @@
               </div>
             </div>
             <div class="kpi-header-action">
-              ${settleBadgeHtml}
+              ${tSettle > 0 ? `<span class="kpi-tx-settle-badge" title="정산 -${formatCurrency(tSettle)}원">👥 정산반영</span>` : ''}
               <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">모아보기 &rarr;</button>
             </div>
           </div>
@@ -1126,6 +1138,7 @@
             <span class="kpi-value">${formatCurrency(tNet)}</span>
             <span class="kpi-unit">원</span>
           </div>
+          ${settleSubHtml}
         `;
         const btn = cardEl.querySelector('.kpi-mini-btn');
         btn.onclick = () => {
@@ -1151,23 +1164,37 @@
     }
     const kpiLivingLabelEl = document.getElementById('kpiLivingLabel');
     if (kpiLivingLabelEl) {
-      kpiLivingLabelEl.textContent = '순 생활비';
-    }
-    const kpiLivingFormulaEl = document.getElementById('kpiLivingFormula');
-    if (kpiLivingFormulaEl) {
-      const typeNames = Object.keys(appState.customTypes);
-      const extraList = [...typeNames];
-      if (livingSettleAmt > 0) extraList.push('생활비 정산회수');
-      const excludeText = extraList.length > 0 ? `(총 지출 - ${extraList.join(', ')})` : '';
-      kpiLivingFormulaEl.textContent = excludeText;
+      kpiLivingLabelEl.textContent = '순 생활비*';
     }
     const kpiLivingTopRightEl = document.getElementById('kpiLivingTopRight');
     if (kpiLivingTopRightEl) {
       if (livingSettleAmt > 0) {
-        kpiLivingTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="생활비 내역 중 더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(livingSettleAmt)}원 차감</span>`;
+        kpiLivingTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="생활비 내역 중 정산 회수액이 반영되었습니다">👥 정산반영</span>`;
       } else {
         kpiLivingTopRightEl.innerHTML = '';
       }
+    }
+    const kpiLivingSettleDetailEl = document.getElementById('kpiLivingSettleDetail');
+    if (kpiLivingSettleDetailEl) {
+      if (livingSettleAmt > 0) {
+        kpiLivingSettleDetailEl.style.display = 'block';
+        kpiLivingSettleDetailEl.innerHTML = `원금 ${formatCurrency(livingGrossAmt)}원 - 정산 ${formatCurrency(livingSettleAmt)}원 = <strong>실부담 ${formatCurrency(livingNetAmt)}원</strong>`;
+      } else {
+        kpiLivingSettleDetailEl.style.display = 'none';
+        kpiLivingSettleDetailEl.innerHTML = '';
+      }
+    }
+
+    // 1-line Living notice text below grid
+    const typeNames = Object.keys(appState.customTypes);
+    const extraList = [...typeNames];
+    if (livingSettleAmt > 0) extraList.push('생활비 정산');
+    const excludeNotice = extraList.length > 0 
+      ? `순 생활비: 총 지출에서 ${extraList.join(', ')}을 차감한 실제 생활비 실부담액입니다.`
+      : `순 생활비: 총 지출에서 비생활비 분류(고정비 등)를 차감한 실제 생활비 실부담액입니다.`;
+    const noticeDescEl = document.getElementById('kpiLivingNoticeDesc');
+    if (noticeDescEl) {
+      noticeDescEl.textContent = excludeNotice;
     }
 
     // KPI 4: 남은 결제 금액 (총 지출 - 결제 완료)

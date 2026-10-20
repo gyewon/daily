@@ -470,10 +470,10 @@ body {
   backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 13px 16px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   position: relative;
   overflow: hidden;
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
@@ -489,7 +489,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  min-height: 26px;
+  min-height: 24px;
   gap: 8px;
 }
 
@@ -502,8 +502,9 @@ body {
 .kpi-title-row {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 5px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .kpi-formula-sub {
@@ -512,6 +513,60 @@ body {
   font-weight: 500;
   line-height: 1.25;
   word-break: keep-all;
+}
+
+.kpi-settle-detail {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  word-break: keep-all;
+}
+
+.kpi-settle-detail strong {
+  color: #10b981;
+  font-weight: 700;
+}
+
+[data-theme="light"] .kpi-settle-detail {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .kpi-settle-detail strong {
+  color: #059669;
+}
+
+.kpi-notice-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin-top: 8px;
+  margin-bottom: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.kpi-notice-bar .notice-mark {
+  color: var(--primary-light, #818cf8);
+  font-weight: 800;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.kpi-notice-bar .notice-desc {
+  line-height: 1.35;
+}
+
+[data-theme="light"] .kpi-notice-bar {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #64748b;
 }
 
 .kpi-label {
@@ -2605,14 +2660,33 @@ select option:hover {
 
   .kpi-label {
     font-size: 0.76rem;
+    white-space: nowrap;
   }
 
   .kpi-title-row {
     gap: 3px;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+    white-space: nowrap;
   }
 
   .kpi-header-count {
     font-size: 0.69rem;
+    white-space: nowrap;
+  }
+
+  .kpi-settle-detail {
+    font-size: 0.65rem;
+    line-height: 1.25;
+    padding-top: 2px;
+  }
+
+  .kpi-notice-bar {
+    font-size: 0.71rem;
+    padding: 6px 10px;
+    margin-top: 6px;
+    margin-bottom: 10px;
   }
 
   .kpi-icon-pill {
