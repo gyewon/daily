@@ -1062,9 +1062,9 @@
     // KPI 1: 총 지출
     const kpiTotalAmountEl = document.getElementById('kpiTotalAmount');
     if (kpiTotalAmountEl) kpiTotalAmountEl.textContent = formatCurrency(totalValidAmt);
-    const kpiTotalCountInlineEl = document.getElementById('kpiTotalCountInline');
-    if (kpiTotalCountInlineEl) {
-      kpiTotalCountInlineEl.textContent = `(총 ${totalValidCount}건)`;
+    const kpiTotalCountHeaderEl = document.getElementById('kpiTotalCountHeader');
+    if (kpiTotalCountHeaderEl) {
+      kpiTotalCountHeaderEl.textContent = `(총 ${totalValidCount}건)`;
     }
     const kpiTxCountEl = document.getElementById('kpiTxCount');
     if (kpiTxCountEl) {
@@ -1094,13 +1094,15 @@
         cardEl.className = `kpi-card ${color}`;
         cardEl.innerHTML = `
           <div class="kpi-header">
-            <span class="kpi-label">${t}</span>
+            <div class="kpi-title-row">
+              <span class="kpi-label">${t}</span>
+              <span class="kpi-header-count">(총 ${tCnt}건)</span>
+            </div>
             <span class="kpi-icon-pill">${icon}</span>
           </div>
           <div class="kpi-value-row">
             <span class="kpi-value">${formatCurrency(tAmt)}</span>
             <span class="kpi-unit">원</span>
-            <span class="kpi-count-inline">(총 ${tCnt}건)</span>
           </div>
           <div class="kpi-footer" style="justify-content: flex-end;">
             <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">모아보기 &rarr;</button>
@@ -1123,10 +1125,10 @@
     const kpiLivingAmountEl = document.getElementById('kpiLivingAmount');
     if (kpiLivingAmountEl) kpiLivingAmountEl.textContent = formatCurrency(livingAmt);
     const livingRatio = totalValidAmt > 0 ? Math.round((livingAmt / totalValidAmt) * 100) : 0;
-    const kpiLivingRatioTextEl = document.getElementById('kpiLivingRatioText');
-    if (kpiLivingRatioTextEl) {
-      kpiLivingRatioTextEl.textContent = `(총 지출의 ${livingRatio}%)`;
-      kpiLivingRatioTextEl.title = `이번 달 총 지출(${formatCurrency(totalValidAmt)}원) 중 순수 생활비(${formatCurrency(livingAmt)}원)가 차지하는 비율입니다.`;
+    const kpiLivingRatioHeaderEl = document.getElementById('kpiLivingRatioHeader');
+    if (kpiLivingRatioHeaderEl) {
+      kpiLivingRatioHeaderEl.textContent = `(총 지출의 ${livingRatio}%)`;
+      kpiLivingRatioHeaderEl.title = `이번 달 총 지출(${formatCurrency(totalValidAmt)}원) 중 순수 생활비(${formatCurrency(livingAmt)}원)가 차지하는 비율입니다.`;
     }
     const kpiLivingLabelEl = document.getElementById('kpiLivingLabel');
     if (kpiLivingLabelEl) {
@@ -1155,9 +1157,9 @@
     const remainingAmt = totalValidAmt - excludedAmt;
     const remainingCount = totalValidCount - excludedCount;
     document.getElementById('kpiExcludedAmount').textContent = formatCurrency(remainingAmt);
-    const kpiExcludedCountEl = document.getElementById('kpiExcludedCount');
-    if (kpiExcludedCountEl) {
-      kpiExcludedCountEl.textContent = `(총 ${remainingCount}건)`;
+    const kpiExcludedCountHeaderEl = document.getElementById('kpiExcludedCountHeader');
+    if (kpiExcludedCountHeaderEl) {
+      kpiExcludedCountHeaderEl.textContent = `(총 ${remainingCount}건)`;
     }
 
     // Subtotals in Panel (카드 청구액 원금과 실부담액 병기)

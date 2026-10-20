@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
 </head>
 
 <body>
@@ -140,13 +140,15 @@
         <!-- KPI 1: 총 지출 -->
         <div class="kpi-card highlight-card">
           <div class="kpi-header">
-            <span class="kpi-label">총 지출</span>
+            <div class="kpi-title-row">
+              <span class="kpi-label">총 지출</span>
+              <span class="kpi-header-count" id="kpiTotalCountHeader"></span>
+            </div>
             <span class="kpi-icon-pill">💰</span>
           </div>
           <div class="kpi-value-row">
             <span class="kpi-value" id="kpiTotalAmount">0</span>
             <span class="kpi-unit">원</span>
-            <span class="kpi-count-inline" id="kpiTotalCountInline"></span>
           </div>
           <div class="kpi-footer">
             <span class="kpi-subtext" id="kpiTxCount"></span>
@@ -157,7 +159,10 @@
         <div class="kpi-card card-accent-blue">
           <div class="kpi-header">
             <div class="kpi-title-col">
-              <span class="kpi-label" id="kpiLivingLabel">순 생활비</span>
+              <div class="kpi-title-row">
+                <span class="kpi-label" id="kpiLivingLabel">순 생활비</span>
+                <span class="kpi-header-count" id="kpiLivingRatioHeader"></span>
+              </div>
               <div class="kpi-formula-sub" id="kpiLivingFormula"></div>
             </div>
             <span class="kpi-icon-pill">🎯</span>
@@ -165,7 +170,6 @@
           <div class="kpi-value-row">
             <span class="kpi-value" id="kpiLivingAmount">0</span>
             <span class="kpi-unit">원</span>
-            <span class="kpi-count-inline" id="kpiLivingRatioText" title="이번 달 총 지출 중 순수 생활비가 차지하는 비율입니다."></span>
           </div>
           <div class="kpi-footer">
             <span class="kpi-subtext" id="kpiLivingDeductFooter"></span>
@@ -178,13 +182,15 @@
         <!-- KPI 4: 남은 결제 금액 -->
         <div class="kpi-card card-accent-purple">
           <div class="kpi-header">
-            <span class="kpi-label">남은 결제 금액</span>
+            <div class="kpi-title-row">
+              <span class="kpi-label">남은 결제 금액</span>
+              <span class="kpi-header-count" id="kpiExcludedCountHeader"></span>
+            </div>
             <span class="kpi-icon-pill">⏳</span>
           </div>
           <div class="kpi-value-row">
             <span class="kpi-value" id="kpiExcludedAmount">0</span>
             <span class="kpi-unit">원</span>
-            <span class="kpi-count-inline" id="kpiExcludedCount"></span>
           </div>
           <div class="kpi-footer" style="justify-content: flex-end;">
             <button id="btnFilterExcluded" class="kpi-mini-btn" title="미완료된 항목만 모아보기">미완료 목록 &rarr;</button>
@@ -1003,7 +1009,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 
 </html>

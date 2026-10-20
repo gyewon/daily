@@ -495,6 +495,13 @@ body {
   gap: 2px;
 }
 
+.kpi-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .kpi-formula-sub {
   font-size: 0.73rem;
   color: var(--text-muted);
@@ -508,6 +515,15 @@ body {
   font-weight: 600;
   color: var(--text-secondary);
   letter-spacing: -0.01em;
+}
+
+.kpi-header-count {
+  font-family: 'Pretendard', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .kpi-icon-pill {
@@ -2143,6 +2159,14 @@ select option:hover {
 
   .kpi-label {
     font-size: 0.76rem;
+  }
+
+  .kpi-title-row {
+    gap: 3px;
+  }
+
+  .kpi-header-count {
+    font-size: 0.69rem;
   }
 
   .kpi-icon-pill {
