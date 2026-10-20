@@ -1737,28 +1737,29 @@
     // 3. 차트 요약 총합계 헤더 업데이트
     const summaryRow = document.getElementById('chartTotalSummaryRow');
     if (summaryRow) {
-      const settleNotice = totalIncludedSettleAmt > 0 ? `
-        <span style="font-size: 0.88rem; color: #10b981; margin-left: 8px; font-weight: 600;">
-          (👥 정산 회수: -${formatCurrency(totalIncludedSettleAmt)}원 | 결제 원금: ${formatCurrency(totalIncludedGrossAmt)}원 | 실부담: ${formatCurrency(totalIncludedNetAmt)}원)
-        </span>
-      ` : '';
-
       if (appState.filterCategory !== 'ALL') {
         const catGross = catGrossSums[appState.filterCategory] || 0;
         const catSettle = catSettleSums[appState.filterCategory] || 0;
         const catNet = catNetSums[appState.filterCategory] || 0;
-        const catDisplay = isNetMode ? catNet : catGross;
         const selectedCnt = catCounts[appState.filterCategory] || 0;
 
         summaryRow.innerHTML = `
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <div style="font-size: 1.15rem;">
-              📈 <strong style="color: var(--primary); font-size: 1.3rem;">[${appState.filterCategory}]</strong> 합계 (${isNetMode ? '👥 실부담 기준' : '💳 결제 원금 기준'}): 
-              <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(catDisplay)}</strong>원 
-              ${catSettle > 0 ? `<span style="font-size: 0.88rem; color: #10b981; font-weight: 600; margin-left: 6px;">(👥 정산 -${formatCurrency(catSettle)}원 | 원금: ${formatCurrency(catGross)}원)</span>` : ''}
-              <span style="font-size: 0.9rem; color: var(--text-muted); margin-left: 6px;">(${selectedCnt}건 / 전체: ${formatCurrency(totalAllDisplayAmt)}원)</span>
+          <div class="chart-summary-header-box">
+            <div class="chart-summary-left">
+              <div class="chart-summary-main-line">
+                <span class="chart-summary-title">📈 [${appState.filterCategory}] 합계:</span>
+                <span class="chart-summary-amount">${formatCurrency(catNet)}원</span>
+                <span class="chart-summary-count-badge">${selectedCnt}건</span>
+              </div>
+              <div class="chart-summary-sub-line">
+                ${catSettle > 0 ? `
+                  <span class="chart-badge-settle">👥 정산 회수 -${formatCurrency(catSettle)}원</span>
+                  <span class="chart-badge-gross">결제 원금 ${formatCurrency(catGross)}원</span>
+                ` : ''}
+                <span class="chart-badge-info">전체 중 ${formatCurrency(totalAllNetAmt)}원</span>
+              </div>
             </div>
-            <button id="btnResetCatFilter" class="btn btn-secondary btn-sm" style="padding: 4px 12px; font-size: 0.85rem; border-radius: 12px;">
+            <button id="btnResetCatFilter" class="btn btn-secondary btn-sm chart-summary-action-btn">
               전체 카테고리 보기 ✕
             </button>
           </div>
@@ -1768,14 +1769,21 @@
         });
       } else if (excludedSet.size > 0) {
         summaryRow.innerHTML = `
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <div style="font-size: 1.25rem;">
-              📈 현재 차트 총합계 (${isNetMode ? '👥 실부담 기준' : '💳 결제 원금 기준'}): 
-              <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(totalDisplayAmt)}</strong>원 
-              ${settleNotice}
-              <span style="font-size: 0.88rem; color: #f59e0b; margin-left: 8px; font-weight: 600;">(${excludedSet.size}개 카테고리 제외됨)</span>
+          <div class="chart-summary-header-box">
+            <div class="chart-summary-left">
+              <div class="chart-summary-main-line">
+                <span class="chart-summary-title">📈 차트 총합계:</span>
+                <span class="chart-summary-amount">${formatCurrency(totalIncludedNetAmt)}원</span>
+                <span class="chart-badge-excluded">⚠️ ${excludedSet.size}개 카테고리 제외됨</span>
+              </div>
+              ${totalIncludedSettleAmt > 0 ? `
+              <div class="chart-summary-sub-line">
+                <span class="chart-badge-settle">👥 정산 회수 -${formatCurrency(totalIncludedSettleAmt)}원</span>
+                <span class="chart-badge-gross">결제 원금 ${formatCurrency(totalIncludedGrossAmt)}원</span>
+              </div>
+              ` : ''}
             </div>
-            <button id="btnRestoreExcludesHeader" class="btn btn-secondary btn-sm" style="padding: 4px 12px; font-size: 0.85rem; border-radius: 12px;">
+            <button id="btnRestoreExcludesHeader" class="btn btn-secondary btn-sm chart-summary-action-btn">
               제외 모두 해제 ↺
             </button>
           </div>
@@ -1785,10 +1793,19 @@
         });
       } else {
         summaryRow.innerHTML = `
-          <div style="font-size: 1.25rem;">
-            📈 현재 차트 총합계 (${isNetMode ? '👥 실부담 기준' : '💳 결제 원금 기준'}): 
-            <strong id="chartTotalSum" style="color: var(--accent-color); font-size: 1.5rem;">${formatCurrency(totalDisplayAmt)}</strong>원
-            ${settleNotice}
+          <div class="chart-summary-header-box">
+            <div class="chart-summary-left">
+              <div class="chart-summary-main-line">
+                <span class="chart-summary-title">📈 차트 총합계:</span>
+                <span class="chart-summary-amount">${formatCurrency(totalIncludedNetAmt)}원</span>
+              </div>
+              ${totalIncludedSettleAmt > 0 ? `
+              <div class="chart-summary-sub-line">
+                <span class="chart-badge-settle">👥 정산 회수 -${formatCurrency(totalIncludedSettleAmt)}원</span>
+                <span class="chart-badge-gross">결제 원금 ${formatCurrency(totalIncludedGrossAmt)}원</span>
+              </div>
+              ` : ''}
+            </div>
           </div>
         `;
       }
