@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=43">
+  <link rel="stylesheet" href="style.css?v=44">
 </head>
 
 <body>
@@ -560,8 +560,8 @@
           </div>
         </section>
 
-        <!-- 연간 핵심 요약 KPI 카드 -->
-        <section class="kpi-grid annual-kpi-grid">
+        <!-- 연간 핵심 요약 KPI 카드 (총 소비액 + 수단 유형별 구성비) -->
+        <section class="kpi-grid annual-kpi-grid" style="grid-template-columns: repeat(2, 1fr);">
           <div class="kpi-card highlight-card">
             <div class="kpi-header">
               <div class="kpi-title-row">
@@ -573,32 +573,6 @@
             <div class="kpi-value-row">
               <span class="kpi-value" id="annualTotalAmount">0</span>
               <span class="kpi-unit">원</span>
-            </div>
-          </div>
-
-          <div class="kpi-card card-accent-blue">
-            <div class="kpi-header">
-              <div class="kpi-title-row">
-                <span class="kpi-label">월평균 소비액</span>
-                <span class="kpi-header-count" id="annualActiveMonthsHeader">(활동 0개월)</span>
-              </div>
-            </div>
-            <div class="kpi-value-row">
-              <span class="kpi-value" id="annualMonthlyAvg">0</span>
-              <span class="kpi-unit">원</span>
-            </div>
-          </div>
-
-          <div class="kpi-card card-accent-orange">
-            <div class="kpi-header">
-              <div class="kpi-title-row">
-                <span class="kpi-label">최다 소비 결제수단</span>
-                <span class="kpi-header-count" id="annualTopCardShare"></span>
-              </div>
-            </div>
-            <div class="kpi-value-row">
-              <span class="kpi-value" id="annualTopCardName" style="font-size: 1.25rem; font-weight: 700;">-</span>
-              <span class="kpi-unit" id="annualTopCardAmount" style="font-size: 0.92rem; color: var(--text-muted); margin-left: 6px;"></span>
             </div>
           </div>
 
