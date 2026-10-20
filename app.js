@@ -1095,7 +1095,7 @@
     if (kpiTotalSettleDetailEl) {
       if (totalSettleAmt > 0) {
         kpiTotalSettleDetailEl.style.display = 'block';
-        kpiTotalSettleDetailEl.innerHTML = `결제원금 ${formatCurrency(totalValidAmt)}원 - 정산 ${formatCurrency(totalSettleAmt)}원 = <strong>실부담 ${formatCurrency(totalNetAmt)}원</strong>`;
+        kpiTotalSettleDetailEl.innerHTML = `결제원금 ${formatCurrency(totalValidAmt)}원 - 정산 ${formatCurrency(totalSettleAmt)}원`;
         kpiTotalSettleDetailEl.title = `총 결제 원금 ${formatCurrency(totalValidAmt)}원에서 정산 회수액 ${formatCurrency(totalSettleAmt)}원을 뺀 실부담액입니다.`;
       } else {
         kpiTotalSettleDetailEl.style.display = 'none';
@@ -1119,7 +1119,7 @@
         
         let settleSubHtml = '';
         if (tSettle > 0) {
-          settleSubHtml = `<div class="kpi-settle-detail">총 ${formatCurrency(tGross)}원 - 정산 ${formatCurrency(tSettle)}원 = <strong>실부담 ${formatCurrency(tNet)}원</strong></div>`;
+          settleSubHtml = `<div class="kpi-settle-detail">원금 ${formatCurrency(tGross)}원 - 정산 ${formatCurrency(tSettle)}원</div>`;
         }
 
         const cardEl = document.createElement('div');
@@ -1185,7 +1185,7 @@
     if (kpiLivingSettleDetailEl) {
       if (livingSettleAmt > 0) {
         kpiLivingSettleDetailEl.style.display = 'block';
-        kpiLivingSettleDetailEl.innerHTML = `원금 ${formatCurrency(livingGrossAmt)}원 - 정산 ${formatCurrency(livingSettleAmt)}원 = <strong>실부담 ${formatCurrency(livingNetAmt)}원</strong>`;
+        kpiLivingSettleDetailEl.innerHTML = `원금 ${formatCurrency(livingGrossAmt)}원 - 정산 ${formatCurrency(livingSettleAmt)}원`;
       } else {
         kpiLivingSettleDetailEl.style.display = 'none';
         kpiLivingSettleDetailEl.innerHTML = '';
