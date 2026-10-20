@@ -1062,15 +1062,18 @@
     // KPI 1: 총 지출
     const kpiTotalAmountEl = document.getElementById('kpiTotalAmount');
     if (kpiTotalAmountEl) kpiTotalAmountEl.textContent = formatCurrency(totalValidAmt);
+    const kpiTotalCountInlineEl = document.getElementById('kpiTotalCountInline');
+    if (kpiTotalCountInlineEl) {
+      kpiTotalCountInlineEl.textContent = `(총 ${totalValidCount}건)`;
+    }
     const kpiTxCountEl = document.getElementById('kpiTxCount');
     if (kpiTxCountEl) {
       if (totalSettleAmt > 0) {
-        kpiTxCountEl.innerHTML = `
-          <span class="kpi-tx-count-text">${totalValidCount}건 지출 반영</span>
-          <span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원</span>
-        `;
+        kpiTxCountEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원 반영</span>`;
+        kpiTxCountEl.style.display = 'inline-flex';
       } else {
-        kpiTxCountEl.textContent = `${totalValidCount}건 지출 반영`;
+        kpiTxCountEl.innerHTML = '';
+        kpiTxCountEl.style.display = 'none';
       }
     }
 
@@ -1097,9 +1100,9 @@
           <div class="kpi-value-row">
             <span class="kpi-value">${formatCurrency(tAmt)}</span>
             <span class="kpi-unit">원</span>
+            <span class="kpi-count-inline">(총 ${tCnt}건)</span>
           </div>
-          <div class="kpi-footer">
-            <span class="kpi-subtext">${t} ${tCnt}건</span>
+          <div class="kpi-footer" style="justify-content: flex-end;">
             <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">모아보기 &rarr;</button>
           </div>
         `;
@@ -1116,29 +1119,46 @@
       }
     }
 
-    // KPI 4: 순 생활비 (정산 회수액 차감)
+    // KPI 3: 순 생활비 (정산 회수액 차감)
     const kpiLivingAmountEl = document.getElementById('kpiLivingAmount');
     if (kpiLivingAmountEl) kpiLivingAmountEl.textContent = formatCurrency(livingAmt);
     const livingRatio = totalValidAmt > 0 ? Math.round((livingAmt / totalValidAmt) * 100) : 0;
     const kpiLivingRatioTextEl = document.getElementById('kpiLivingRatioText');
     if (kpiLivingRatioTextEl) {
-      kpiLivingRatioTextEl.textContent = `총 지출의 ${livingRatio}%`;
+      kpiLivingRatioTextEl.textContent = `(총 지출의 ${livingRatio}%)`;
       kpiLivingRatioTextEl.title = `이번 달 총 지출(${formatCurrency(totalValidAmt)}원) 중 순수 생활비(${formatCurrency(livingAmt)}원)가 차지하는 비율입니다.`;
     }
     const kpiLivingLabelEl = document.getElementById('kpiLivingLabel');
     if (kpiLivingLabelEl) {
+      kpiLivingLabelEl.textContent = '순 생활비';
+    }
+    const kpiLivingFormulaEl = document.getElementById('kpiLivingFormula');
+    if (kpiLivingFormulaEl) {
       const typeNames = Object.keys(appState.customTypes);
       const extraList = [...typeNames];
       if (totalSettleAmt > 0) extraList.push('정산회수');
-      const excludeText = extraList.length > 0 ? `(총 지출 - ${extraList.join(', ')})` : '(총 지출)';
-      kpiLivingLabelEl.textContent = `순 생활비 ${excludeText}`;
+      const excludeText = extraList.length > 0 ? `(총 지출 - ${extraList.join(', ')})` : '';
+      kpiLivingFormulaEl.textContent = excludeText;
+    }
+    const kpiLivingDeductFooterEl = document.getElementById('kpiLivingDeductFooter');
+    if (kpiLivingDeductFooterEl) {
+      if (totalSettleAmt > 0) {
+        kpiLivingDeductFooterEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원 차감 반영</span>`;
+        kpiLivingDeductFooterEl.style.display = 'inline-flex';
+      } else {
+        kpiLivingDeductFooterEl.innerHTML = '';
+        kpiLivingDeductFooterEl.style.display = 'none';
+      }
     }
 
     // KPI 4: 남은 결제 금액 (총 지출 - 결제 완료)
     const remainingAmt = totalValidAmt - excludedAmt;
     const remainingCount = totalValidCount - excludedCount;
     document.getElementById('kpiExcludedAmount').textContent = formatCurrency(remainingAmt);
-    document.getElementById('kpiExcludedCount').textContent = `${remainingCount}건 남음`;
+    const kpiExcludedCountEl = document.getElementById('kpiExcludedCount');
+    if (kpiExcludedCountEl) {
+      kpiExcludedCountEl.textContent = `(총 ${remainingCount}건)`;
+    }
 
     // Subtotals in Panel (카드 청구액 원금과 실부담액 병기)
     if (totalPhysicalSettleAmt > 0) {
