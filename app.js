@@ -3957,44 +3957,79 @@
       // Edit Main Category
       if (e.target.closest('.btn-edit-main-cat')) {
         e.stopPropagation();
-        const oldCat = e.target.closest('.btn-edit-main-cat').dataset.cat;
+        const oldCat = e.target.closest('.btn-edit-main-cat').dataset.cat?.trim();
+        if (!oldCat) return;
+
         const newCat = prompt(`'${oldCat}' 대분류의 새 이름을 입력하세요:`, oldCat);
-        if (newCat && newCat.trim() !== '' && newCat !== oldCat) {
+        if (newCat !== null) {
           const trimmedCat = newCat.trim();
-          if (appState.masterCategories[trimmedCat]) {
-            alert('이미 존재하는 대분류 이름입니다.');
+          if (!trimmedCat) {
+            showToast('대분류 이름을 입력해주세요.', 'warn');
             return;
           }
-          // Update masterCategories
-          appState.masterCategories[trimmedCat] = appState.masterCategories[oldCat];
+          if (trimmedCat === oldCat) {
+            return;
+          }
+          if (appState.masterCategories[trimmedCat]) {
+            alert(`'${trimmedCat}'은(는) 이미 존재하는 대분류 이름입니다.`);
+            return;
+          }
+
+          // 1. masterCategories 갱신
+          appState.masterCategories[trimmedCat] = appState.masterCategories[oldCat] || [];
           delete appState.masterCategories[oldCat];
-          
+
+          // 2. 현재 선택된 활성 대분류 갱신
           if (appState.activeManageMainCat === oldCat) {
             appState.activeManageMainCat = trimmedCat;
           }
-          
-          // Update all records
+
+          // 3. 지출 내역 전체의 category 변경
+          let changedCount = 0;
           appState.records.forEach(r => {
-            if (r.category === oldCat) {
+            if (r.category && r.category.trim() === oldCat) {
               r.category = trimmedCat;
+              changedCount++;
             }
           });
-          
-          // Update all rules
+
+          // 4. 자동분류 규칙(rules) 갱신
           appState.categoryRules.forEach(rule => {
-            if (rule.category === oldCat) {
+            if (rule.category && rule.category.trim() === oldCat) {
               rule.category = trimmedCat;
             }
           });
-          
+
+          // 5. customTypes(고정비, 리뷰비 등) 내 포함 목록 갱신
+          for (const t in appState.customTypes) {
+            const arr = appState.customTypes[t];
+            if (Array.isArray(arr)) {
+              const idx = arr.indexOf(oldCat);
+              if (idx > -1) arr[idx] = trimmedCat;
+            }
+          }
+
+          // 6. 차트 제외 카테고리 갱신
+          if (appState.chartExcludedCategories && appState.chartExcludedCategories.has(oldCat)) {
+            appState.chartExcludedCategories.delete(oldCat);
+            appState.chartExcludedCategories.add(trimmedCat);
+          }
+
+          // 7. 대시보드 필터가 수정 전 대분류였다면 새 대분류로 유지
+          if (appState.filterCategory === oldCat) {
+            appState.filterCategory = trimmedCat;
+          }
+
+          // 8. 저장 및 실시간 전체 렌더링
           saveMasterCategories();
           saveData();
           saveRules();
-          populateFilterDropdowns();
-          renderAll();
+          saveCustomTypes();
           renderManageMainCategories();
           renderManageSubCategories();
-          showToast(`대분류가 '${oldCat}'에서 '${trimmedCat}'(으)로 변경되었습니다.`, 'success');
+          populateFilterDropdowns();
+          renderAll();
+          showToast(`대분류가 '${oldCat}' ➔ '${trimmedCat}'(으)로 즉시 변경되었습니다. (${changedCount}건 반영)`, 'success');
         }
       }
     });
@@ -4057,45 +4092,61 @@
       if (e.target.closest('.btn-edit-sub-cat')) {
         e.stopPropagation();
         const oldSub = e.target.closest('.btn-edit-sub-cat').dataset.sub?.trim();
-        const mainCat = appState.activeManageMainCat?.trim();
+        const mainCat = (e.target.closest('.btn-edit-sub-cat').dataset.cat || appState.activeManageMainCat)?.trim();
         if (!mainCat || !appState.masterCategories[mainCat]) return;
-        
+        if (!oldSub) return;
+
         const newSub = prompt(`'${oldSub}' 소분류의 새 이름을 입력하세요:`, oldSub);
-        if (newSub && newSub.trim() !== '' && newSub.trim() !== oldSub) {
+        if (newSub !== null) {
           const trimmedSub = newSub.trim();
-          if (appState.masterCategories[mainCat].includes(trimmedSub)) {
-            alert('이미 존재하는 소분류 이름입니다.');
+          if (!trimmedSub) {
+            showToast('소분류 이름을 입력해주세요.', 'warn');
             return;
           }
-          
-          // Update masterCategories array
-          const idx = appState.masterCategories[mainCat].indexOf(oldSub);
-          if (idx > -1) {
-            appState.masterCategories[mainCat][idx] = trimmedSub;
+          if (trimmedSub === oldSub) {
+            return;
           }
-          
-          // Update all records
+          if (appState.masterCategories[mainCat].includes(trimmedSub)) {
+            alert(`'${mainCat}' 대분류에 '${trimmedSub}' 소분류가 이미 존재합니다.`);
+            return;
+          }
+
+          // 1. masterCategories 배열 내 이름 변경
+          const subList = appState.masterCategories[mainCat] || [];
+          const idx = subList.findIndex(s => s.trim() === oldSub);
+          if (idx > -1) {
+            subList[idx] = trimmedSub;
+          } else {
+            subList.push(trimmedSub);
+          }
+          appState.masterCategories[mainCat] = subList;
+
+          // 2. 지출 내역 전체의 subCategory 변경
+          let changedCount = 0;
           appState.records.forEach(r => {
-            if (r.category === mainCat && r.subCategory === oldSub) {
+            const isTargetMain = !r.category || r.category.trim() === mainCat;
+            if (isTargetMain && r.subCategory && r.subCategory.trim() === oldSub) {
               r.subCategory = trimmedSub;
+              changedCount++;
             }
           });
-          
-          // Update all rules
+
+          // 3. 자동분류 규칙(rules) 갱신
           appState.categoryRules.forEach(rule => {
-            if (rule.category === mainCat && rule.subCategory === oldSub) {
+            if ((!rule.category || rule.category.trim() === mainCat) && rule.subCategory && rule.subCategory.trim() === oldSub) {
               rule.subCategory = trimmedSub;
             }
           });
-          
+
+          // 4. 저장 및 실시간 전체 렌더링
           saveMasterCategories();
           saveData();
           saveRules();
-          populateFilterDropdowns();
-          renderAll();
           renderManageSubCategories();
           renderManageMainCategories();
-          showToast(`소분류가 '${oldSub}'에서 '${trimmedSub}'(으)로 변경되었습니다.`, 'success');
+          populateFilterDropdowns();
+          renderAll();
+          showToast(`소분류가 '${oldSub}' ➔ '${trimmedSub}'(으)로 즉시 변경되었습니다. (${changedCount}건 반영)`, 'success');
         }
       }
     });
