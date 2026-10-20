@@ -7,6 +7,7 @@
   /* Dark Theme (Default) */
   --bg-main: #0b0f19;
   --bg-surface: #111827;
+  --bg-secondary: #151d30;
   --bg-card: rgba(24, 33, 53, 0.75);
   --bg-card-hover: rgba(30, 41, 67, 0.9);
   --bg-input: #1a2236;
@@ -59,6 +60,7 @@
   color-scheme: light;
   --bg-main: #f1f5f9;
   --bg-surface: #ffffff;
+  --bg-secondary: #eef2f6;
   --bg-card: #ffffff;
   --bg-card-hover: #f8fafc;
   --bg-input: #f8fafc;
@@ -1963,20 +1965,49 @@ select option:hover {
   overflow-y: auto;
   border: 1px solid var(--border-color);
   border-radius: 8px;
+  background: var(--bg-surface);
+  position: relative;
 }
 
 .card-manage-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.card-manage-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .card-manage-table th {
-  padding: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 12px 10px;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--border-color);
+  background: #172134 !important;
+  background-color: #172134 !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.35);
+  user-select: none;
+}
+
+[data-theme="light"] .card-manage-table th {
+  background: #eef2f6 !important;
+  background-color: #eef2f6 !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+.card-manage-table th.th-card-chk {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  text-align: center;
+  padding: 12px 6px;
 }
 
 .card-manage-table th.th-card-name {
@@ -2008,6 +2039,20 @@ select option:hover {
 .card-manage-table td {
   padding: 10px 12px;
   vertical-align: middle;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-manage-table tr:hover td {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.card-manage-table td.col-card-chk {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  text-align: center;
+  padding: 10px 6px;
 }
 
 .col-card-name {
