@@ -833,6 +833,15 @@ body {
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge-sub-settle {
+  color: #10b981;
+  font-weight: 600;
 }
 
 /* Card Status Items */
@@ -2819,6 +2828,14 @@ select option:hover {
 
   .panel-badge {
     align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    line-height: 1.35;
   }
 
   .chart-tab-group {

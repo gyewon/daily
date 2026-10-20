@@ -1203,10 +1203,14 @@
     }
 
     // Subtotals in Panel (카드 청구액 원금과 실부담액 병기)
-    if (totalPhysicalSettleAmt > 0) {
-      document.getElementById('cardSubtotalBadge').innerHTML = `카드 청구 합계: ${formatCurrency(cardAmt)}원 <span style="font-size:0.8rem; color:#10b981; font-weight:600;">(👥 정산 -${formatCurrency(totalPhysicalSettleAmt)}원 → 실부담 ${formatCurrency(cardAmt - totalPhysicalSettleAmt)}원)</span>`;
-    } else {
-      document.getElementById('cardSubtotalBadge').textContent = `카드 합계: ${formatCurrency(cardAmt)}원`;
+    const cardBadgeEl = document.getElementById('cardSubtotalBadge');
+    if (cardBadgeEl) {
+      if (totalPhysicalSettleAmt > 0) {
+        cardBadgeEl.innerHTML = `<span class="badge-main-line">카드청구합계 ${formatCurrency(cardAmt)}원</span> <span class="badge-sub-settle">(정산 -${formatCurrency(totalPhysicalSettleAmt)}원)</span>`;
+        cardBadgeEl.title = `카드 결제원금 ${formatCurrency(cardAmt)}원에서 정산 차감 ${formatCurrency(totalPhysicalSettleAmt)}원을 뺀 실부담액은 ${formatCurrency(cardAmt - totalPhysicalSettleAmt)}원입니다.`;
+      } else {
+        cardBadgeEl.innerHTML = `<span class="badge-main-line">카드청구합계 ${formatCurrency(cardAmt)}원</span>`;
+      }
     }
 
     // 간편결제 & 계좌 지출 소계 (현금 완전 제외!)
