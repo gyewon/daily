@@ -106,9 +106,9 @@ body {
 /* Layout */
 .app-layout {
   width: 100%;
-  max-width: 1440px;
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -1469,7 +1469,7 @@ body {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
 }
 
 .tx-table th {
@@ -1478,7 +1478,7 @@ body {
   background: #151d30;
   color: var(--text-secondary);
   font-weight: 600;
-  padding: 12px 14px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--border-color);
   z-index: 10;
   cursor: pointer;
@@ -1501,7 +1501,7 @@ body {
 }
 
 .tx-table td {
-  padding: 10px 14px;
+  padding: 8px 8px;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
   vertical-align: middle;
@@ -1511,32 +1511,31 @@ body {
   background: rgba(255, 255, 255, 0.025);
 }
 
-
-
-
 .is-canceled {
   opacity: 0.45;
   background: rgba(148, 163, 184, 0.05) !important;
 }
+
 .is-canceled td.col-merchant,
 .is-canceled td.col-amt {
   text-decoration: line-through;
   color: var(--text-muted) !important;
 }
 
-/* Table Columns */
-.col-id { width: 45px; text-align: center; color: var(--text-muted); font-size: 0.82rem; }
-.col-date { width: 105px; white-space: nowrap; font-size: 0.82rem; color: #e2e8f0; }
-.col-cat { width: 145px; min-width: 130px; white-space: normal; }
-.col-merchant { min-width: 160px; font-weight: 600; color: #ffffff; }
-.col-amt { width: 130px; min-width: 125px; text-align: right; font-family: 'Outfit', sans-serif; font-weight: 700; color: #ffffff; font-size: 0.92rem; }
-.col-orig { width: 140px; font-size: 0.82rem; color: #94a3b8; }
-.col-actual { width: 190px; min-width: 160px; }
-.col-inst { width: 60px; text-align: center; }
-.col-exclude { width: 70px; text-align: center; }
-.col-fixed { width: 85px; text-align: center; white-space: nowrap; }
-.col-memo { min-width: 180px; }
-.col-action { width: 80px; min-width: 80px; text-align: center; white-space: nowrap; }
+/* Table Columns (컴팩트 최적화: 가로 스크롤 없이 한 화면에 표시) */
+.col-check { width: 34px !important; text-align: center; }
+.col-id { width: 38px; text-align: center; color: var(--text-muted); font-size: 0.8rem; }
+.col-date { width: 88px; white-space: nowrap; font-size: 0.8rem; color: #e2e8f0; }
+.col-cat { width: 105px; min-width: 95px; white-space: normal; }
+.col-merchant { min-width: 120px; font-weight: 600; color: #ffffff; }
+.col-amt { width: 105px; min-width: 95px; text-align: right; font-family: 'Outfit', sans-serif; font-weight: 700; color: #ffffff; font-size: 0.9rem; }
+.col-orig { width: 110px; font-size: 0.8rem; color: #94a3b8; }
+.col-actual { width: 140px; min-width: 125px; }
+.col-inst { width: 45px; text-align: center; }
+.col-exclude { width: 55px; text-align: center; }
+.col-fixed { width: 68px; text-align: center; white-space: nowrap; }
+.col-memo { min-width: 110px; }
+.col-action { width: 65px; min-width: 65px; text-align: center; white-space: nowrap; }
 
 [data-theme="light"] .col-merchant { color: #0f172a; }
 [data-theme="light"] .col-amt { color: #0f172a; }
@@ -1585,16 +1584,19 @@ select option:hover {
 
 .select-table-card {
   width: 100%;
+  max-width: 135px;
   background: #1e293b;
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 6px;
-  padding: 7px 10px;
-  font-size: 0.86rem;
+  padding: 5px 6px;
+  font-size: 0.82rem;
   color: #ffffff;
   font-weight: 600;
   outline: none;
   cursor: pointer;
   transition: all var(--transition-fast);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .select-table-card:focus {
