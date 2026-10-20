@@ -1066,14 +1066,12 @@
     if (kpiTotalCountHeaderEl) {
       kpiTotalCountHeaderEl.textContent = `(총 ${totalValidCount}건)`;
     }
-    const kpiTxCountEl = document.getElementById('kpiTxCount');
-    if (kpiTxCountEl) {
+    const kpiTotalTopRightEl = document.getElementById('kpiTotalTopRight');
+    if (kpiTotalTopRightEl) {
       if (totalSettleAmt > 0) {
-        kpiTxCountEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원 반영</span>`;
-        kpiTxCountEl.style.display = 'inline-flex';
+        kpiTotalTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원 반영</span>`;
       } else {
-        kpiTxCountEl.innerHTML = '';
-        kpiTxCountEl.style.display = 'none';
+        kpiTotalTopRightEl.innerHTML = '';
       }
     }
 
@@ -1087,7 +1085,6 @@
       for (const t in appState.customTypes) {
         const tAmt = customTypeSums[t] || 0;
         const tCnt = customTypeCounts[t] || 0;
-        const icon = t === '고정비' ? '🔒' : (t === '리뷰비' ? '📝' : '✨');
         const color = colors[colorIdx % colors.length];
         
         const cardEl = document.createElement('div');
@@ -1098,14 +1095,11 @@
               <span class="kpi-label">${t}</span>
               <span class="kpi-header-count">(총 ${tCnt}건)</span>
             </div>
-            <span class="kpi-icon-pill">${icon}</span>
+            <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">모아보기 &rarr;</button>
           </div>
           <div class="kpi-value-row">
             <span class="kpi-value">${formatCurrency(tAmt)}</span>
             <span class="kpi-unit">원</span>
-          </div>
-          <div class="kpi-footer" style="justify-content: flex-end;">
-            <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">모아보기 &rarr;</button>
           </div>
         `;
         const btn = cardEl.querySelector('.kpi-mini-btn');
@@ -1142,14 +1136,12 @@
       const excludeText = extraList.length > 0 ? `(총 지출 - ${extraList.join(', ')})` : '';
       kpiLivingFormulaEl.textContent = excludeText;
     }
-    const kpiLivingDeductFooterEl = document.getElementById('kpiLivingDeductFooter');
-    if (kpiLivingDeductFooterEl) {
+    const kpiLivingTopRightEl = document.getElementById('kpiLivingTopRight');
+    if (kpiLivingTopRightEl) {
       if (totalSettleAmt > 0) {
-        kpiLivingDeductFooterEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원 차감 반영</span>`;
-        kpiLivingDeductFooterEl.style.display = 'inline-flex';
+        kpiLivingTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액">👥 정산 -${formatCurrency(totalSettleAmt)}원 차감</span>`;
       } else {
-        kpiLivingDeductFooterEl.innerHTML = '';
-        kpiLivingDeductFooterEl.style.display = 'none';
+        kpiLivingTopRightEl.innerHTML = '';
       }
     }
 
