@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=28">
+  <link rel="stylesheet" href="style.css?v=29">
 </head>
 
 <body>
@@ -187,17 +187,15 @@
           <div id="kpiLivingSettleDetail" class="kpi-settle-detail" style="display: none;"></div>
         </div>
 
-        <!-- KPI 4: 남은 금액 (총 지출 - 결제 완료) -->
+        <!-- KPI 4: 미완료 금액 (총 지출 - 결제 완료) -->
         <div class="kpi-card card-accent-purple">
           <div class="kpi-header">
             <div class="kpi-title-row">
-              <span class="kpi-label">남은 금액</span>
+              <span class="kpi-label">미완료 금액</span>
               <span class="kpi-header-count" id="kpiExcludedCountHeader"></span>
             </div>
-            <button id="btnFilterExcluded" class="kpi-mini-btn" title="미완료된 항목만 모아보기">
-              <span class="btn-text-full">미완료 목록</span>
-              <span class="btn-text-short">미완료</span>
-              &rarr;
+            <button id="btnFilterExcluded" class="kpi-mini-btn" title="미완료된 항목만 목록 보기">
+              목록 &rarr;
             </button>
           </div>
           <div class="kpi-value-row">
@@ -271,18 +269,9 @@
           <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div class="panel-title-group">
               <h3>📊 지출 시각화 분석</h3>
-              <p>카테고리 및 카드 점유율 실시간 차트</p>
+              <p>카테고리 및 카드 점유율 실시간 차트 (실부담 기준)</p>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <!-- Settle Mode Toggle (실부담 기준 vs 결제 원금 기준) -->
-              <div class="chart-settle-toggle-group">
-                <button type="button" class="btn-chart-settle active" id="btnChartSettleNet" title="정산받은 금액을 제외한 내 순수 실부담액으로 분석합니다">
-                  👥 실부담 기준 (정산 차감)
-                </button>
-                <button type="button" class="btn-chart-settle" id="btnChartSettleGross" title="정산 차감 전 결제 원금으로 분석합니다">
-                  💳 결제 원금 기준
-                </button>
-              </div>
               <div class="chart-tab-group">
                 <button class="chart-tab-btn" data-chart-tab="cards">카드 비중</button>
                 <button class="chart-tab-btn active" data-chart-tab="categories">카테고리</button>
@@ -1295,7 +1284,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=37"></script>
+  <script src="app.js?v=38"></script>
 </body>
 
 </html>

@@ -618,14 +618,6 @@ body {
   gap: 3px;
 }
 
-.kpi-header .kpi-mini-btn .btn-text-short {
-  display: none;
-}
-
-.kpi-header .kpi-mini-btn .btn-text-full {
-  display: inline;
-}
-
 .kpi-header .kpi-mini-btn:hover {
   background: var(--primary-glow);
   color: var(--primary-color);
@@ -1062,17 +1054,23 @@ body {
 }
 
 .card-bar-bg {
-  flex: 1;
+  width: 100%;
   height: 6px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-full);
   overflow: hidden;
+  margin-top: 4px;
+}
+
+[data-theme="light"] .card-bar-bg {
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .card-bar-fill {
   height: 100%;
   border-radius: var(--radius-full);
   transition: width 0.5s ease;
+  min-width: 0;
 }
 
 /* Accounts / Unmapped section */
@@ -2766,13 +2764,6 @@ select option:hover {
     letter-spacing: -0.2px;
   }
 
-  .kpi-header .kpi-mini-btn .btn-text-full {
-    display: none !important;
-  }
-
-  .kpi-header .kpi-mini-btn .btn-text-short {
-    display: inline !important;
-  }
 
   /* Smart Tip Banner */
   .smart-banner {

@@ -1085,11 +1085,7 @@
     }
     const kpiTotalTopRightEl = document.getElementById('kpiTotalTopRight');
     if (kpiTotalTopRightEl) {
-      if (totalSettleAmt > 0) {
-        kpiTotalTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="더치페이/모임 정산 회수액 -${formatCurrency(totalSettleAmt)}원이 차감 반영되었습니다">👥 정산반영</span>`;
-      } else {
-        kpiTotalTopRightEl.innerHTML = '';
-      }
+      kpiTotalTopRightEl.innerHTML = '';
     }
     const kpiTotalSettleDetailEl = document.getElementById('kpiTotalSettleDetail');
     if (kpiTotalSettleDetailEl) {
@@ -1133,11 +1129,8 @@
               </div>
             </div>
             <div class="kpi-header-action">
-              ${tSettle > 0 ? `<span class="kpi-tx-settle-badge" title="정산 -${formatCurrency(tSettle)}원">👥 정산반영</span>` : ''}
-              <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">
-                <span class="btn-text-full">모아보기</span>
-                <span class="btn-text-short">목록</span>
-                &rarr;
+              <button class="kpi-mini-btn" title="${t} 항목 목록 보기">
+                목록 &rarr;
               </button>
             </div>
           </div>
@@ -1175,11 +1168,7 @@
     }
     const kpiLivingTopRightEl = document.getElementById('kpiLivingTopRight');
     if (kpiLivingTopRightEl) {
-      if (livingSettleAmt > 0) {
-        kpiLivingTopRightEl.innerHTML = `<span class="kpi-tx-settle-badge" title="생활비 내역 중 정산 회수액이 반영되었습니다">👥 정산반영</span>`;
-      } else {
-        kpiLivingTopRightEl.innerHTML = '';
-      }
+      kpiLivingTopRightEl.innerHTML = '';
     }
     const kpiLivingSettleDetailEl = document.getElementById('kpiLivingSettleDetail');
     if (kpiLivingSettleDetailEl) {
