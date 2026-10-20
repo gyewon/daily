@@ -1675,22 +1675,6 @@
       });
       filterContainer.appendChild(allChip);
 
-      // 제외된 카테고리가 있는 경우 [제외 모두 해제 ↺] 버튼 제공
-      if (excludedSet.size > 0) {
-        const resetChip = document.createElement('button');
-        resetChip.type = 'button';
-        resetChip.className = 'cat-filter-chip cat-chip-reset-all';
-        resetChip.title = '제외된 카테고리를 모두 다시 포함합니다';
-        resetChip.innerHTML = `
-          <span>↺ 제외 해제</span>
-          <span class="cat-chip-amount">(${excludedSet.size}개 제외중)</span>
-        `;
-        resetChip.addEventListener('click', () => {
-          restoreAllExcludedCategories();
-        });
-        filterContainer.appendChild(resetChip);
-      }
-
       // 개별 카테고리 버튼들
       sortedCategories.forEach((cat, idx) => {
         const gross = catGrossSums[cat] || 0;
