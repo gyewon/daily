@@ -3839,14 +3839,18 @@
       manageModal.classList.add('show');
     });
 
-    document.getElementById('btnCloseCategoryManageModal')?.addEventListener('click', () => manageModal.classList.remove('show'));
-    document.getElementById('btnDoneCategoryManageModal')?.addEventListener('click', () => manageModal.classList.remove('show'));
+    const closeCategoryModal = () => {
+      manageModal.classList.remove('show');
+      populateFilterDropdowns();
+      renderAll();
+    };
 
-    
+    document.getElementById('btnCloseCategoryManageModal')?.addEventListener('click', closeCategoryModal);
+    document.getElementById('btnDoneCategoryManageModal')?.addEventListener('click', closeCategoryModal);
+
     document.getElementById('newMainCategoryForm')?.addEventListener('submit', e => {
       e.preventDefault();
       const val = document.getElementById('newMainCategoryName').value.trim();
-      const isFixed = document.getElementById('chkNewMainFixed')?.checked;
       if (!val || appState.masterCategories[val]) {
         showToast('이미 존재하거나 잘못된 대분류 이름입니다.', 'warn');
         return;
@@ -3855,8 +3859,8 @@
       appState.activeManageMainCat = val;
       
       saveMasterCategories();
-      populateFilterDropdowns(); // update dropdowns globally
-      renderTable();
+      populateFilterDropdowns();
+      renderAll();
       renderManageMainCategories();
       renderManageSubCategories();
       e.target.reset();
@@ -3867,7 +3871,6 @@
       e.preventDefault();
       const mainCat = appState.activeManageMainCat;
       const val = document.getElementById('newSubCategoryName').value.trim();
-      const isFixed = document.getElementById('chkNewSubFixed')?.checked;
       if (!mainCat || !val || appState.masterCategories[mainCat].includes(val)) {
         showToast('이미 존재하거나 잘못된 소분류 이름입니다.', 'warn');
         return;
@@ -3876,7 +3879,8 @@
       
       saveMasterCategories();
       populateFilterDropdowns();
-      renderTable();
+      renderAll();
+      renderManageMainCategories();
       renderManageSubCategories();
       e.target.reset();
       showToast(`'${mainCat}'에 소분류 '${val}'가 추가되었습니다.`, 'success');
@@ -3893,9 +3897,11 @@
       
       // Delete Main Category
       if (e.target.closest('.btn-delete-main-cat')) {
-        const cat = e.target.closest('.btn-delete-main-cat').dataset.cat;
+        e.stopPropagation();
+        const cat = e.target.closest('.btn-delete-main-cat').dataset.cat?.trim();
+        if (!cat) return;
         
-        const usedRecs = appState.records.filter(r => r.category === cat);
+        const usedRecs = appState.records.filter(r => r.category && r.category.trim() === cat);
         const usedCount = usedRecs.length;
 
         if (usedCount > 0) {
@@ -3929,12 +3935,18 @@
           appState.activeManageMainCat = remainingCats.length > 0 ? remainingCats[0] : null;
         }
 
+        // 만약 삭제된 대분류로 필터링되어 있었다면 전체로 리셋
+        if (appState.filterCategory === cat) {
+          appState.filterCategory = 'ALL';
+          const sel = document.getElementById('filterCategory');
+          if (sel) sel.value = 'ALL';
+        }
+
         saveMasterCategories();
-        populateFilterDropdowns();
-        renderTable();
         renderManageMainCategories();
         renderManageSubCategories();
-        renderKPIs();
+        populateFilterDropdowns();
+        renderAll();
         if (usedCount > 0) {
           showToast(`대분류 '${cat}'가 삭제되었으며, 기존 내역 ${usedCount}건이 '미분류'로 이동되었습니다.`, 'success');
         } else {
@@ -3979,7 +3991,7 @@
           saveData();
           saveRules();
           populateFilterDropdowns();
-          renderTable();
+          renderAll();
           renderManageMainCategories();
           renderManageSubCategories();
           showToast(`대분류가 '${oldCat}'에서 '${trimmedCat}'(으)로 변경되었습니다.`, 'success');
@@ -3990,9 +4002,10 @@
     document.getElementById('subCategoryList')?.addEventListener('click', e => {
       // Delete Sub Category
       if (e.target.closest('.btn-delete-sub-cat')) {
+        e.stopPropagation();
         const btn = e.target.closest('.btn-delete-sub-cat');
-        const sub = btn.dataset.sub;
-        const mainCat = btn.dataset.cat || appState.activeManageMainCat;
+        const sub = btn.dataset.sub?.trim();
+        const mainCat = (btn.dataset.cat || appState.activeManageMainCat)?.trim();
         
         if (!mainCat || !appState.masterCategories[mainCat]) {
           alert('대분류를 먼저 선택해주세요.');
@@ -4000,7 +4013,7 @@
         }
 
         const usedRecs = appState.records.filter(r => 
-          (r.category === mainCat || !r.category) && r.subCategory === sub
+          (r.category === mainCat || !r.category) && r.subCategory && r.subCategory.trim() === sub
         );
         const usedCount = usedRecs.length;
 
@@ -4027,12 +4040,12 @@
           if (!confirm(`소분류 '${mainCat} > ${sub}'를 삭제하시겠습니까?\n(현재 이 소분류를 사용하는 지출 내역이 없습니다.)`)) return;
         }
 
-        appState.masterCategories[mainCat] = appState.masterCategories[mainCat].filter(s => s !== sub);
+        appState.masterCategories[mainCat] = (appState.masterCategories[mainCat] || []).filter(s => s.trim() !== sub);
         saveMasterCategories();
-        populateFilterDropdowns();
-        renderTable();
         renderManageSubCategories();
-        renderKPIs();
+        renderManageMainCategories();
+        populateFilterDropdowns();
+        renderAll();
         if (usedCount > 0) {
           showToast(`소분류 '${sub}'가 삭제되었으며, 기존 내역 ${usedCount}건의 소분류가 초기화되었습니다.`, 'success');
         } else {
@@ -4042,12 +4055,13 @@
       
       // Edit Sub Category
       if (e.target.closest('.btn-edit-sub-cat')) {
-        const oldSub = e.target.closest('.btn-edit-sub-cat').dataset.sub;
-        const mainCat = appState.activeManageMainCat;
+        e.stopPropagation();
+        const oldSub = e.target.closest('.btn-edit-sub-cat').dataset.sub?.trim();
+        const mainCat = appState.activeManageMainCat?.trim();
         if (!mainCat || !appState.masterCategories[mainCat]) return;
         
         const newSub = prompt(`'${oldSub}' 소분류의 새 이름을 입력하세요:`, oldSub);
-        if (newSub && newSub.trim() !== '' && newSub !== oldSub) {
+        if (newSub && newSub.trim() !== '' && newSub.trim() !== oldSub) {
           const trimmedSub = newSub.trim();
           if (appState.masterCategories[mainCat].includes(trimmedSub)) {
             alert('이미 존재하는 소분류 이름입니다.');
@@ -4078,8 +4092,9 @@
           saveData();
           saveRules();
           populateFilterDropdowns();
-          renderTable();
+          renderAll();
           renderManageSubCategories();
+          renderManageMainCategories();
           showToast(`소분류가 '${oldSub}'에서 '${trimmedSub}'(으)로 변경되었습니다.`, 'success');
         }
       }
@@ -4278,12 +4293,19 @@
         appState.activeManageMainCat = remainingCats.length > 0 ? remainingCats[0] : null;
       }
 
+      // 만약 현재 필터링 중인 대분류가 삭제되었다면 필터 리셋
+      if (appState.filterCategory && !appState.masterCategories[appState.filterCategory]) {
+        appState.filterCategory = 'ALL';
+        const sel = document.getElementById('filterCategory');
+        if (sel) sel.value = 'ALL';
+      }
+
       saveMasterCategories();
       renderManageMainCategories();
       renderManageSubCategories();
       populateFilterDropdowns();
       renderAll();
-      alert(`카테고리 정리 완료! 🧹\n미사용 대분류 ${removedMainCount}개, 미사용 소분류 ${removedSubCount}개가 깔끔하게 정리되었습니다.`);
+      showToast(`카테고리 정리 완료! 🧹 미사용 대분류 ${removedMainCount}개, 미사용 소분류 ${removedSubCount}개가 깔끔하게 정리되었습니다.`, 'success');
     });
     
     document.getElementById('btnDoneCardManageModal')?.addEventListener('click', () => {
