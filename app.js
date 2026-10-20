@@ -886,6 +886,9 @@
     renderInstallmentTracking();
     updateCharts(getFilteredRecords(true));
     renderTable();
+    if (typeof currentMainView !== 'undefined' && currentMainView === 'annual' && typeof renderAnnualTaxView === 'function') {
+      renderAnnualTaxView();
+    }
   }
 
   function renderInstallmentTracking() {
@@ -1100,10 +1103,8 @@
         const color = colors[colorIdx % colors.length];
         
         let settleBadgeHtml = '';
-        let formulaSubHtml = '';
         if (tSettle > 0) {
           settleBadgeHtml = `<span class="kpi-tx-settle-badge" title="원금 ${formatCurrency(tGross)}원 - 정산 ${formatCurrency(tSettle)}원">👥 정산 -${formatCurrency(tSettle)}원</span>`;
-          formulaSubHtml = `<div class="kpi-formula-sub" title="원금에서 정산 회수액을 차감한 실부담액입니다">(원금 ${formatCurrency(tGross)}원 - 정산 ${formatCurrency(tSettle)}원)</div>`;
         }
 
         const cardEl = document.createElement('div');
@@ -1115,7 +1116,6 @@
                 <span class="kpi-label">${t}</span>
                 <span class="kpi-header-count">(총 ${tCnt}건)</span>
               </div>
-              ${formulaSubHtml}
             </div>
             <div class="kpi-header-action">
               ${settleBadgeHtml}
@@ -1159,11 +1159,7 @@
       const extraList = [...typeNames];
       if (livingSettleAmt > 0) extraList.push('생활비 정산회수');
       const excludeText = extraList.length > 0 ? `(총 지출 - ${extraList.join(', ')})` : '';
-      if (livingSettleAmt > 0) {
-        kpiLivingFormulaEl.innerHTML = `${excludeText}<br><span style="color:var(--text-muted); font-size:0.7rem;">(원금 ${formatCurrency(livingGrossAmt)}원 - 정산 ${formatCurrency(livingSettleAmt)}원)</span>`;
-      } else {
-        kpiLivingFormulaEl.textContent = excludeText;
-      }
+      kpiLivingFormulaEl.textContent = excludeText;
     }
     const kpiLivingTopRightEl = document.getElementById('kpiLivingTopRight');
     if (kpiLivingTopRightEl) {
@@ -3086,6 +3082,9 @@
 
   // --- Attach Event Listeners ---
   function attachEventListeners() {
+    initMainViewTabs();
+    initAnnualTaxViewControls();
+
     // Theme Toggle
     document.getElementById('btnThemeToggle')?.addEventListener('click', toggleTheme);
 
@@ -5801,6 +5800,592 @@
     }
   }
 
+  // ==========================================================================
+  // Annual Tax & Monthly Card Aggregation (연말정산 / 월별 카드 소비 취합)
+  // ==========================================================================
+  let currentMainView = 'monthly'; // 'monthly' | 'annual'
+  let annualSelectedYear = null;
+  let annualSettleMode = 'net'; // 'net' | 'gross'
+  let annualCardFilter = 'all'; // 'all' | 'physical' | 'pay' | 'cash'
+  let annualStackedChartInstance = null;
+
+  function initMainViewTabs() {
+    const tabMonthly = document.getElementById('tabMonthlyView');
+    const tabAnnual = document.getElementById('tabAnnualView');
+    const monthlyContainer = document.getElementById('monthlyViewContainer');
+    const annualContainer = document.getElementById('annualViewContainer');
+
+    tabMonthly?.addEventListener('click', () => {
+      if (currentMainView === 'monthly') return;
+      currentMainView = 'monthly';
+      tabMonthly.classList.add('active');
+      tabAnnual?.classList.remove('active');
+      if (monthlyContainer) monthlyContainer.style.display = 'block';
+      if (annualContainer) annualContainer.style.display = 'none';
+      renderAll();
+    });
+
+    tabAnnual?.addEventListener('click', () => {
+      if (currentMainView === 'annual') return;
+      currentMainView = 'annual';
+      tabAnnual.classList.add('active');
+      tabMonthly?.classList.remove('active');
+      if (monthlyContainer) monthlyContainer.style.display = 'none';
+      if (annualContainer) annualContainer.style.display = 'block';
+      renderAnnualTaxView();
+    });
+  }
+
+  function initAnnualTaxViewControls() {
+    // Year Select
+    document.getElementById('annualYearSelect')?.addEventListener('change', (e) => {
+      annualSelectedYear = parseInt(e.target.value, 10);
+      renderAnnualTaxView();
+    });
+
+    // Settle Mode Toggle
+    document.getElementById('btnAnnualNet')?.addEventListener('click', () => {
+      if (annualSettleMode === 'net') return;
+      annualSettleMode = 'net';
+      document.getElementById('btnAnnualNet')?.classList.add('active');
+      document.getElementById('btnAnnualGross')?.classList.remove('active');
+      renderAnnualTaxView();
+    });
+
+    document.getElementById('btnAnnualGross')?.addEventListener('click', () => {
+      if (annualSettleMode === 'gross') return;
+      annualSettleMode = 'gross';
+      document.getElementById('btnAnnualGross')?.classList.add('active');
+      document.getElementById('btnAnnualNet')?.classList.remove('active');
+      renderAnnualTaxView();
+    });
+
+    // Card Type Filter Tabs
+    document.querySelectorAll('.annual-type-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const type = e.currentTarget.dataset.type || 'all';
+        annualCardFilter = type;
+        document.querySelectorAll('.annual-type-tab').forEach(t => t.classList.toggle('active', t === e.currentTarget));
+        renderAnnualTaxView();
+      });
+    });
+
+    // Export CSV
+    document.getElementById('btnExportAnnualExcel')?.addEventListener('click', exportAnnualMatrixToCSV);
+  }
+
+  function renderAnnualTaxView() {
+    const annualContainer = document.getElementById('annualViewContainer');
+    if (!annualContainer) return;
+
+    // 1. Determine available years from appState.records
+    const allYears = Array.from(new Set(
+      appState.records
+        .map(r => r.date ? r.date.substring(0, 4) : null)
+        .filter(y => y && /^\d{4}$/.test(y))
+    )).sort().reverse();
+
+    if (allYears.length === 0) {
+      allYears.push(String(new Date().getFullYear()));
+    }
+
+    if (!annualSelectedYear || !allYears.includes(String(annualSelectedYear))) {
+      if (appState.currentMonth && appState.currentMonth !== 'ALL') {
+        const mYear = appState.currentMonth.split('-')[0];
+        if (allYears.includes(mYear)) {
+          annualSelectedYear = parseInt(mYear, 10);
+        } else {
+          annualSelectedYear = parseInt(allYears[0], 10);
+        }
+      } else {
+        annualSelectedYear = parseInt(allYears[0], 10);
+      }
+    }
+
+    // Populate year select
+    const yearSelect = document.getElementById('annualYearSelect');
+    if (yearSelect) {
+      yearSelect.innerHTML = allYears.map(y => `<option value="${y}" ${parseInt(y, 10) === annualSelectedYear ? 'selected' : ''}>${y}년</option>`).join('');
+    }
+
+    // 2. Filter records for selected year
+    const yearPrefix = String(annualSelectedYear);
+    const yearRecords = appState.records.filter(r => r.date && r.date.startsWith(yearPrefix));
+
+    // 3. Collect all cards (configured + existing in year records)
+    const cardSet = new Set(Object.keys(CARD_CONFIG));
+    yearRecords.forEach(r => {
+      if (r.actualCard) cardSet.add(r.actualCard);
+    });
+    cardSet.add('현금');
+
+    // Build card data map
+    const cardMap = {};
+    cardSet.forEach(card => {
+      const conf = CARD_CONFIG[card] || { type: card === '현금' ? 'cash' : 'pay', color: '#6366f1' };
+      const rawType = conf.type || (card === '현금' ? 'cash' : 'pay');
+      cardMap[card] = {
+        name: card,
+        type: rawType,
+        color: conf.color || '#6366f1',
+        monthlyAmounts: Array(12).fill(0),
+        monthlyGross: Array(12).fill(0),
+        monthlySettle: Array(12).fill(0),
+        monthlyCounts: Array(12).fill(0),
+        yearTotal: 0,
+        yearGross: 0,
+        yearSettle: 0,
+        yearCount: 0
+      };
+    });
+
+    // Populate amounts
+    yearRecords.forEach(r => {
+      const card = r.actualCard || '기타';
+      if (!cardMap[card]) {
+        cardMap[card] = {
+          name: card,
+          type: 'pay',
+          color: '#6366f1',
+          monthlyAmounts: Array(12).fill(0),
+          monthlyGross: Array(12).fill(0),
+          monthlySettle: Array(12).fill(0),
+          monthlyCounts: Array(12).fill(0),
+          yearTotal: 0,
+          yearGross: 0,
+          yearSettle: 0,
+          yearCount: 0
+        };
+      }
+
+      const mIdx = parseInt(r.date.split('-')[1], 10) - 1;
+      if (mIdx >= 0 && mIdx < 12) {
+        const gross = Number(r.amount) || 0;
+        const settle = Number(r.settleAmount) || 0;
+        const net = Math.max(0, gross - settle);
+        const amt = (annualSettleMode === 'gross') ? gross : net;
+
+        cardMap[card].monthlyAmounts[mIdx] += amt;
+        cardMap[card].monthlyGross[mIdx] += gross;
+        cardMap[card].monthlySettle[mIdx] += settle;
+        cardMap[card].monthlyCounts[mIdx]++;
+
+        cardMap[card].yearTotal += amt;
+        cardMap[card].yearGross += gross;
+        cardMap[card].yearSettle += settle;
+        cardMap[card].yearCount++;
+      }
+    });
+
+    // Totals across all cards (unfiltered by card type tab)
+    let grandTotalAllCards = 0;
+    let grandGrossAllCards = 0;
+    let grandSettleAllCards = 0;
+    let grandCountAllCards = yearRecords.length;
+
+    let typeSums = { physical: 0, pay: 0, cash: 0 };
+    let monthlyTotalsAll = Array(12).fill(0);
+
+    Object.values(cardMap).forEach(c => {
+      grandTotalAllCards += c.yearTotal;
+      grandGrossAllCards += c.yearGross;
+      grandSettleAllCards += c.yearSettle;
+      const t = c.type === 'physical' ? 'physical' : (c.type === 'cash' || c.name === '현금' ? 'cash' : 'pay');
+      typeSums[t] = (typeSums[t] || 0) + c.yearTotal;
+      for (let i = 0; i < 12; i++) {
+        monthlyTotalsAll[i] += c.monthlyAmounts[i];
+      }
+    });
+
+    // Update Filter Tab Count Badges
+    const allCardsList = Object.values(cardMap);
+    const cntAll = allCardsList.length;
+    const cntPhysical = allCardsList.filter(c => c.type === 'physical').length;
+    const cntPay = allCardsList.filter(c => c.type === 'pay').length;
+    const cntCash = allCardsList.filter(c => c.type === 'cash' || c.name === '현금').length;
+
+    if (document.getElementById('annualCntAll')) document.getElementById('annualCntAll').textContent = cntAll;
+    if (document.getElementById('annualCntPhysical')) document.getElementById('annualCntPhysical').textContent = cntPhysical;
+    if (document.getElementById('annualCntPay')) document.getElementById('annualCntPay').textContent = cntPay;
+    if (document.getElementById('annualCntCash')) document.getElementById('annualCntCash').textContent = cntCash;
+
+    // 4. Update KPI Summary Cards
+    const elTotalAmt = document.getElementById('annualTotalAmount');
+    if (elTotalAmt) elTotalAmt.textContent = formatCurrency(grandTotalAllCards);
+
+    const elTotalCount = document.getElementById('annualTotalCountHeader');
+    if (elTotalCount) elTotalCount.textContent = `(총 ${grandCountAllCards}건)`;
+
+    const elSettleBadge = document.getElementById('annualTotalSettleBadge');
+    if (elSettleBadge) {
+      if (grandSettleAllCards > 0 && annualSettleMode === 'net') {
+        elSettleBadge.innerHTML = `<span class="kpi-tx-settle-badge" title="연간 정산 회수액">👥 정산 -${formatCurrency(grandSettleAllCards)}원 반영</span>`;
+      } else if (annualSettleMode === 'gross') {
+        elSettleBadge.innerHTML = `<span class="kpi-tx-settle-badge" style="background:rgba(99,102,241,0.15); color:#818cf8; border-color:rgba(99,102,241,0.3);">💳 결제원금 기준</span>`;
+      } else {
+        elSettleBadge.innerHTML = '';
+      }
+    }
+
+    // Monthly Average
+    const activeMonths = monthlyTotalsAll.filter(t => t > 0).length || 1;
+    const monthlyAvg = Math.round(grandTotalAllCards / activeMonths);
+    const elMonthlyAvg = document.getElementById('annualMonthlyAvg');
+    if (elMonthlyAvg) elMonthlyAvg.textContent = formatCurrency(monthlyAvg);
+    const elActiveMonths = document.getElementById('annualActiveMonthsHeader');
+    if (elActiveMonths) elActiveMonths.textContent = `(활동 ${activeMonths}개월 기준)`;
+
+    // Top Card
+    const sortedAllCards = [...allCardsList].sort((a, b) => b.yearTotal - a.yearTotal);
+    const topCard = sortedAllCards[0];
+    const elTopCardName = document.getElementById('annualTopCardName');
+    const elTopCardAmt = document.getElementById('annualTopCardAmount');
+    const elTopCardShare = document.getElementById('annualTopCardShare');
+
+    if (topCard && topCard.yearTotal > 0) {
+      if (elTopCardName) elTopCardName.textContent = topCard.name;
+      if (elTopCardAmt) elTopCardAmt.textContent = `(${formatCurrency(topCard.yearTotal)}원)`;
+      const share = grandTotalAllCards > 0 ? ((topCard.yearTotal / grandTotalAllCards) * 100).toFixed(1) : 0;
+      if (elTopCardShare) elTopCardShare.textContent = `(비중 ${share}%)`;
+    } else {
+      if (elTopCardName) elTopCardName.textContent = '-';
+      if (elTopCardAmt) elTopCardAmt.textContent = '';
+      if (elTopCardShare) elTopCardShare.textContent = '';
+    }
+
+    // Type Breakdown
+    const elBreakdown = document.getElementById('annualTypeBreakdown');
+    if (elBreakdown) {
+      const pAmt = typeSums.physical || 0;
+      const payAmt = typeSums.pay || 0;
+      const cAmt = typeSums.cash || 0;
+      const pShare = grandTotalAllCards > 0 ? ((pAmt / grandTotalAllCards) * 100).toFixed(1) : 0;
+      const payShare = grandTotalAllCards > 0 ? ((payAmt / grandTotalAllCards) * 100).toFixed(1) : 0;
+      const cShare = grandTotalAllCards > 0 ? ((cAmt / grandTotalAllCards) * 100).toFixed(1) : 0;
+
+      elBreakdown.innerHTML = `
+        <div class="annual-type-badge-item">
+          <span class="annual-type-badge-name"><span class="matrix-badge-type physical">💳 실물</span> 카드</span>
+          <span class="annual-type-badge-val">${formatCurrency(pAmt)}원 (${pShare}%)</span>
+        </div>
+        <div class="annual-type-badge-item">
+          <span class="annual-type-badge-name"><span class="matrix-badge-type pay">📱 간편</span> 결제/계좌</span>
+          <span class="annual-type-badge-val">${formatCurrency(payAmt)}원 (${payShare}%)</span>
+        </div>
+        <div class="annual-type-badge-item">
+          <span class="annual-type-badge-name"><span class="matrix-badge-type cash">💵 현금</span> 지출</span>
+          <span class="annual-type-badge-val">${formatCurrency(cAmt)}원 (${cShare}%)</span>
+        </div>
+      `;
+    }
+
+    // 5. Render Matrix Table
+    const matrixTitle = document.getElementById('annualMatrixTitle');
+    if (matrixTitle) {
+      matrixTitle.textContent = `📋 [${annualSelectedYear}년] 월별 카드 소비 취합표 (${annualSettleMode === 'net' ? '실부담액 기준' : '결제 원금 기준'})`;
+    }
+    const matrixBadge = document.getElementById('annualMatrixTotalBadge');
+    if (matrixBadge) {
+      matrixBadge.textContent = `연간 합계: ${formatCurrency(grandTotalAllCards)}원`;
+    }
+
+    const tbody = document.getElementById('annualMatrixBody');
+    const tfoot = document.getElementById('annualMatrixFoot');
+    if (!tbody || !tfoot) return;
+    tbody.innerHTML = '';
+    tfoot.innerHTML = '';
+
+    // Group cards according to filter
+    const physicalList = allCardsList.filter(c => c.type === 'physical').sort((a, b) => b.yearTotal - a.yearTotal);
+    const payList = allCardsList.filter(c => c.type === 'pay').sort((a, b) => b.yearTotal - a.yearTotal);
+    const cashList = allCardsList.filter(c => c.type === 'cash' || c.name === '현금').sort((a, b) => b.yearTotal - a.yearTotal);
+
+    const groupsToRender = [];
+    if (annualCardFilter === 'all' || annualCardFilter === 'physical') {
+      groupsToRender.push({ title: '💳 실물 카드', type: 'physical', list: physicalList });
+    }
+    if (annualCardFilter === 'all' || annualCardFilter === 'pay') {
+      groupsToRender.push({ title: '📱 간편결제 / 계좌', type: 'pay', list: payList });
+    }
+    if (annualCardFilter === 'all' || annualCardFilter === 'cash') {
+      groupsToRender.push({ title: '💵 현금', type: 'cash', list: cashList });
+    }
+
+    const currentTableMonthlyTotals = Array(12).fill(0);
+    let currentTableGrandTotal = 0;
+
+    groupsToRender.forEach(g => {
+      if (g.list.length === 0) return;
+
+      let groupMonthlySums = Array(12).fill(0);
+      let groupYearTotal = 0;
+
+      g.list.forEach(c => {
+        const tr = document.createElement('tr');
+        const conf = CARD_CONFIG[c.name] || { color: '#6366f1' };
+        const share = grandTotalAllCards > 0 ? ((c.yearTotal / grandTotalAllCards) * 100).toFixed(1) : 0;
+        const avg = Math.round(c.yearTotal / 12);
+
+        let monthsHtml = '';
+        for (let m = 0; m < 12; m++) {
+          const val = c.monthlyAmounts[m];
+          groupMonthlySums[m] += val;
+          currentTableMonthlyTotals[m] += val;
+
+          if (val > 0) {
+            monthsHtml += `<td class="cell-has-amt" data-year="${annualSelectedYear}" data-month="${m+1}" data-card="${c.name}" title="${annualSelectedYear}년 ${m+1}월 '${c.name}' 내역으로 이동">${formatCurrency(val)}</td>`;
+          } else {
+            monthsHtml += `<td class="cell-zero-amt">-</td>`;
+          }
+        }
+
+        groupYearTotal += c.yearTotal;
+        currentTableGrandTotal += c.yearTotal;
+
+        const typeBadge = g.type === 'physical' 
+          ? `<span class="matrix-badge-type physical">실물</span>`
+          : (g.type === 'cash' ? `<span class="matrix-badge-type cash">현금</span>` : `<span class="matrix-badge-type pay">간편</span>`);
+
+        tr.innerHTML = `
+          <td class="sticky-col">
+            <span class="card-chip-dot" style="background:${conf.color || '#6366f1'};"></span>
+            <strong>${c.name}</strong>
+          </td>
+          <td style="text-align: center;">${typeBadge}</td>
+          ${monthsHtml}
+          <td class="cell-annual-total">${formatCurrency(c.yearTotal)}</td>
+          <td>${formatCurrency(avg)}</td>
+          <td>${share}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Group Subtotal Row
+      if (g.list.length > 0) {
+        const subTr = document.createElement('tr');
+        subTr.className = 'row-subtotal';
+        const groupShare = grandTotalAllCards > 0 ? ((groupYearTotal / grandTotalAllCards) * 100).toFixed(1) : 0;
+        const groupAvg = Math.round(groupYearTotal / 12);
+
+        let subMonthsHtml = '';
+        for (let m = 0; m < 12; m++) {
+          const v = groupMonthlySums[m];
+          subMonthsHtml += `<td>${v > 0 ? formatCurrency(v) : '-'}</td>`;
+        }
+
+        subTr.innerHTML = `
+          <td class="sticky-col">${g.title} 소계 (${g.list.length}개)</td>
+          <td style="text-align: center;">-</td>
+          ${subMonthsHtml}
+          <td class="cell-annual-total">${formatCurrency(groupYearTotal)}</td>
+          <td>${formatCurrency(groupAvg)}</td>
+          <td>${groupShare}%</td>
+        `;
+        tbody.appendChild(subTr);
+      }
+    });
+
+    // Footer: Grand Total Row
+    const grandTr = document.createElement('tr');
+    grandTr.className = 'row-grand-total';
+    let footMonthsHtml = '';
+    for (let m = 0; m < 12; m++) {
+      const v = currentTableMonthlyTotals[m];
+      footMonthsHtml += `<td>${v > 0 ? formatCurrency(v) : '-'}</td>`;
+    }
+    const grandAvg = Math.round(currentTableGrandTotal / 12);
+    const grandShare = grandTotalAllCards > 0 ? ((currentTableGrandTotal / grandTotalAllCards) * 100).toFixed(1) : 0;
+
+    grandTr.innerHTML = `
+      <td class="sticky-col">월별 총 지출액 합계</td>
+      <td style="text-align: center;">-</td>
+      ${footMonthsHtml}
+      <td class="cell-annual-total" style="color: #ffffff; background: rgba(99, 102, 241, 0.4);">${formatCurrency(currentTableGrandTotal)}</td>
+      <td>${formatCurrency(grandAvg)}</td>
+      <td>${grandShare}%</td>
+    `;
+    tfoot.appendChild(grandTr);
+
+    // Attach Cell Click Event (jump to monthly view with card & month filtered)
+    tbody.querySelectorAll('.cell-has-amt').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const y = cell.dataset.year;
+        const m = String(cell.dataset.month).padStart(2, '0');
+        const card = cell.dataset.card;
+        const targetMonth = `${y}-${m}`;
+
+        // Switch to monthly view
+        currentMainView = 'monthly';
+        document.getElementById('tabMonthlyView')?.classList.add('active');
+        document.getElementById('tabAnnualView')?.classList.remove('active');
+        const mCont = document.getElementById('monthlyViewContainer');
+        const aCont = document.getElementById('annualViewContainer');
+        if (mCont) mCont.style.display = 'block';
+        if (aCont) aCont.style.display = 'none';
+
+        // Set month filter
+        const monthSelect = document.getElementById('globalMonthFilter');
+        if (monthSelect) {
+          monthSelect.value = targetMonth;
+          appState.currentMonth = targetMonth;
+        }
+
+        // Set card filter
+        appState.filterCard = card;
+        const filterCardEl = document.getElementById('filterCard');
+        if (filterCardEl) filterCardEl.value = card;
+
+        renderAll();
+
+        // Scroll to transaction table
+        document.getElementById('txTable')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        showToast(`${y}년 ${parseInt(m, 10)}월 '${card}' 지출 내역으로 이동했습니다.`, 'info');
+      });
+    });
+
+    // 6. Render Stacked Bar Chart
+    renderAnnualStackedChart(allCardsList);
+  }
+
+  function renderAnnualStackedChart(allCardsList) {
+    const canvas = document.getElementById('annualStackedBarChart');
+    if (!canvas) return;
+
+    if (annualStackedChartInstance) {
+      annualStackedChartInstance.destroy();
+      annualStackedChartInstance = null;
+    }
+
+    const labels = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+
+    let cardsForChart = allCardsList.filter(c => c.yearTotal > 0);
+    if (annualCardFilter === 'physical') {
+      cardsForChart = cardsForChart.filter(c => c.type === 'physical');
+    } else if (annualCardFilter === 'pay') {
+      cardsForChart = cardsForChart.filter(c => c.type === 'pay');
+    } else if (annualCardFilter === 'cash') {
+      cardsForChart = cardsForChart.filter(c => c.type === 'cash' || c.name === '현금');
+    }
+
+    cardsForChart.sort((a, b) => b.yearTotal - a.yearTotal);
+
+    const datasets = cardsForChart.map(c => {
+      const conf = CARD_CONFIG[c.name] || { color: '#6366f1' };
+      return {
+        label: c.name,
+        data: c.monthlyAmounts,
+        backgroundColor: conf.color || '#6366f1',
+        borderRadius: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)'
+      };
+    });
+
+    const ctx = canvas.getContext('2d');
+    annualStackedChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        scales: {
+          x: {
+            stacked: true,
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: 'rgba(255, 255, 255, 0.7)', font: { weight: '600' } }
+          },
+          y: {
+            stacked: true,
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: {
+              color: 'rgba(255, 255, 255, 0.7)',
+              callback: v => formatCurrency(v) + '원'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              boxWidth: 12,
+              padding: 12,
+              color: 'rgba(255, 255, 255, 0.85)',
+              font: { family: 'Pretendard', size: 12, weight: '600' }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            titleColor: '#ffffff',
+            bodyColor: '#e2e8f0',
+            borderColor: 'rgba(99, 102, 241, 0.4)',
+            borderWidth: 1,
+            padding: 12,
+            callbacks: {
+              label: (item) => {
+                const val = item.raw || 0;
+                if (val === 0) return null;
+                return ` ${item.dataset.label}: ${formatCurrency(val)}원`;
+              },
+              footer: (items) => {
+                const total = items.reduce((sum, item) => sum + (item.raw || 0), 0);
+                return `총 월 지출: ${formatCurrency(total)}원`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function exportAnnualMatrixToCSV() {
+    const year = annualSelectedYear || new Date().getFullYear();
+    const modeLabel = annualSettleMode === 'net' ? '실부담액기준' : '결제원금기준';
+
+    const table = document.getElementById('annualMatrixTable');
+    if (!table) return;
+
+    let csv = '\uFEFF'; // UTF-8 BOM
+    csv += `연말정산 및 월별 카드 소비 취합표 (${year}년, ${annualSettleMode === 'net' ? '실부담 기준' : '결제 원금 기준'})\r\n\r\n`;
+
+    const headers = ['결제수단', '구분', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '연간합계', '월평균', '비중'];
+    csv += headers.map(h => `"${h}"`).join(',') + '\r\n';
+
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(tr => {
+      const cells = Array.from(tr.querySelectorAll('td')).map(td => {
+        let text = td.textContent.trim().replace(/\s+/g, ' ');
+        return `"${text.replace(/"/g, '""')}"`;
+      });
+      csv += cells.join(',') + '\r\n';
+    });
+
+    const footRows = table.querySelectorAll('tfoot tr');
+    footRows.forEach(tr => {
+      const cells = Array.from(tr.querySelectorAll('td')).map(td => {
+        let text = td.textContent.trim().replace(/\s+/g, ' ');
+        return `"${text.replace(/"/g, '""')}"`;
+      });
+      csv += cells.join(',') + '\r\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `연말정산_카드별_월별소비취합_${year}년_${modeLabel}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`${year}년 연말정산 취합표가 CSV로 다운로드되었습니다.`, 'success');
+  }
 
   async function initAuthAndLockScreen() {
     const lockScreen = document.getElementById('lockScreen');

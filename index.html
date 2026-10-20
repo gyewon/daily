@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=23">
+  <link rel="stylesheet" href="style.css?v=24">
 </head>
 
 <body>
@@ -133,10 +133,26 @@
     <!-- Main Container -->
     <main class="app-main">
 
+      <!-- 메인 화면 뷰 전환 탭 (월간 대시보드 vs 연말정산·월별 카드 취합) -->
+      <nav class="main-view-nav" aria-label="화면 뷰 선택">
+        <div class="view-tabs-container">
+          <button type="button" class="view-tab-btn active" data-view="monthly" id="tabMonthlyView">
+            <span class="tab-icon">📊</span>
+            <span class="tab-title">월간 가계부 & 지출 현황</span>
+          </button>
+          <button type="button" class="view-tab-btn" data-view="annual" id="tabAnnualView">
+            <span class="tab-icon">📑</span>
+            <span class="tab-title">연말정산 / 월별 카드 소비 취합</span>
+            <span class="tab-pill">연간 분석</span>
+          </button>
+        </div>
+      </nav>
 
+      <!-- View 1: 월간 가계부 & 지출 현황 (기존 뷰) -->
+      <div id="monthlyViewContainer" class="main-view-container active">
 
-      <!-- KPI Summary Cards -->
-      <section class="kpi-grid">
+        <!-- KPI Summary Cards -->
+        <section class="kpi-grid">
         <!-- KPI 1: 총 지출 -->
         <div class="kpi-card highlight-card">
           <div class="kpi-header">
@@ -489,6 +505,170 @@
         </div>
 
       </section>
+
+      </div> <!-- end monthlyViewContainer -->
+
+      <!-- View 2: 연말정산 / 월별 카드 소비 취합 뷰 -->
+      <div id="annualViewContainer" class="main-view-container" style="display: none;">
+        <!-- 연간 컨트롤 툴바 -->
+        <section class="panel annual-controls-panel">
+          <div class="annual-toolbar-header">
+            <div class="annual-title-group">
+              <div class="annual-badge-row">
+                <span class="annual-icon">📑</span>
+                <h2>연말정산 / 월별 카드 소비 취합</h2>
+              </div>
+              <p class="annual-subtitle">선택한 연도의 1월~12월 카드별 월별 소비 금액을 한눈에 집계하고 연말정산 소득공제(신용/체크/현금)용으로 비교·활용하세요.</p>
+            </div>
+            
+            <div class="annual-actions-group">
+              <div class="annual-control-item">
+                <label for="annualYearSelect" class="annual-control-label">📅 연도 선택</label>
+                <select id="annualYearSelect" class="annual-select">
+                  <!-- Dynamically populated years -->
+                </select>
+              </div>
+
+              <div class="annual-control-item">
+                <label class="annual-control-label">기준 선택</label>
+                <div class="annual-settle-toggle-group">
+                  <button type="button" class="btn-annual-settle active" id="btnAnnualNet" title="정산받은 금액을 차감한 실제 내 순수 지출액 기준">👥 실부담 기준 (정산 차감)</button>
+                  <button type="button" class="btn-annual-settle" id="btnAnnualGross" title="정산 차감 전 결제 원금 기준 (연말정산 카드사 명세서 대조용)">💳 결제 원금 기준</button>
+                </div>
+              </div>
+
+              <button type="button" id="btnExportAnnualExcel" class="btn btn-secondary btn-sm btn-annual-export" title="월별 카드 소비 취합표를 엑셀(CSV) 파일로 다운로드합니다">
+                <span class="btn-icon">📥</span> 취합표 엑셀(CSV) 다운로드
+              </button>
+            </div>
+          </div>
+
+          <!-- 대상 수단 빠른 필터 탭 -->
+          <div class="annual-type-filter-bar">
+            <span class="filter-bar-label">수단 필터:</span>
+            <div class="annual-type-tabs">
+              <button type="button" class="annual-type-tab active" data-type="all">전체 수단 보기 (<span id="annualCntAll">0</span>)</button>
+              <button type="button" class="annual-type-tab" data-type="physical">💳 실물 카드 (<span id="annualCntPhysical">0</span>)</button>
+              <button type="button" class="annual-type-tab" data-type="pay">📱 간편결제/계좌 (<span id="annualCntPay">0</span>)</button>
+              <button type="button" class="annual-type-tab" data-type="cash">💵 현금 (<span id="annualCntCash">0</span>)</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 연간 핵심 요약 KPI 카드 -->
+        <section class="kpi-grid annual-kpi-grid">
+          <div class="kpi-card highlight-card">
+            <div class="kpi-header">
+              <div class="kpi-title-row">
+                <span class="kpi-label">연간 총 소비액</span>
+                <span class="kpi-header-count" id="annualTotalCountHeader">(0건)</span>
+              </div>
+              <div id="annualTotalSettleBadge" class="kpi-header-action"></div>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="annualTotalAmount">0</span>
+              <span class="kpi-unit">원</span>
+            </div>
+          </div>
+
+          <div class="kpi-card card-accent-blue">
+            <div class="kpi-header">
+              <div class="kpi-title-row">
+                <span class="kpi-label">월평균 소비액</span>
+                <span class="kpi-header-count" id="annualActiveMonthsHeader">(활동 0개월)</span>
+              </div>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="annualMonthlyAvg">0</span>
+              <span class="kpi-unit">원</span>
+            </div>
+          </div>
+
+          <div class="kpi-card card-accent-orange">
+            <div class="kpi-header">
+              <div class="kpi-title-row">
+                <span class="kpi-label">최다 소비 결제수단</span>
+                <span class="kpi-header-count" id="annualTopCardShare"></span>
+              </div>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="annualTopCardName" style="font-size: 1.25rem; font-weight: 700;">-</span>
+              <span class="kpi-unit" id="annualTopCardAmount" style="font-size: 0.92rem; color: var(--text-muted); margin-left: 6px;"></span>
+            </div>
+          </div>
+
+          <div class="kpi-card card-accent-purple">
+            <div class="kpi-header">
+              <div class="kpi-title-row">
+                <span class="kpi-label">수단 유형별 구성비</span>
+              </div>
+            </div>
+            <div id="annualTypeBreakdown" class="annual-type-breakdown-row">
+              <!-- Dynamically populated badges: 실물 카드 / 간편결제 / 현금 -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 연간 월별 카드 소비 취합 매트릭스 표 -->
+        <section class="panel annual-matrix-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h3 id="annualMatrixTitle">📋 [2026년] 월별 카드 소비 취합표</h3>
+              <p>각 카드의 1월부터 12월까지 월별 지출액과 연간 누적 합계 (금액 클릭 시 해당 월/카드 내역으로 즉시 이동)</p>
+            </div>
+            <div class="panel-badge" id="annualMatrixTotalBadge">연간 합계 0원</div>
+          </div>
+
+          <div class="mobile-table-hint">
+            <span>👈 좌우로 스크롤하여 1월부터 12월 전체 내역을 확인하세요 👉</span>
+          </div>
+
+          <div class="table-responsive annual-table-responsive">
+            <table class="tx-table annual-matrix-table" id="annualMatrixTable">
+              <thead>
+                <tr>
+                  <th class="th-annual-card sticky-col">결제수단 이름</th>
+                  <th class="th-annual-type">구분</th>
+                  <th class="th-annual-m">1월</th>
+                  <th class="th-annual-m">2월</th>
+                  <th class="th-annual-m">3월</th>
+                  <th class="th-annual-m">4월</th>
+                  <th class="th-annual-m">5월</th>
+                  <th class="th-annual-m">6월</th>
+                  <th class="th-annual-m">7월</th>
+                  <th class="th-annual-m">8월</th>
+                  <th class="th-annual-m">9월</th>
+                  <th class="th-annual-m">10월</th>
+                  <th class="th-annual-m">11월</th>
+                  <th class="th-annual-m">12월</th>
+                  <th class="th-annual-sum">연간 합계</th>
+                  <th class="th-annual-avg">월평균</th>
+                  <th class="th-annual-share">비중</th>
+                </tr>
+              </thead>
+              <tbody id="annualMatrixBody">
+                <!-- Dynamically populated rows -->
+              </tbody>
+              <tfoot id="annualMatrixFoot">
+                <!-- Dynamically populated monthly totals -->
+              </tfoot>
+            </table>
+          </div>
+        </section>
+
+        <!-- 연간 월별 카드 소비 추이 차트 -->
+        <section class="panel annual-chart-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h3>📊 월별 카드 소비 추이 (누적 막대 그래프)</h3>
+              <p>월별 총 지출액과 각 카드가 차지한 지출 비중을 시각적으로 비교합니다.</p>
+            </div>
+          </div>
+          <div class="chart-canvas-box annual-chart-canvas-box" style="position: relative; height: 380px; width: 100%;">
+            <canvas id="annualStackedBarChart"></canvas>
+          </div>
+        </section>
+      </div>
 
     </main>
 
@@ -1097,7 +1277,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=33"></script>
 </body>
 
 </html>
