@@ -886,9 +886,9 @@ body {
 .card-brand-name {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
-  flex: 1 1 58%;
+  flex: 1 1 auto;
   overflow: hidden;
 }
 
@@ -907,8 +907,8 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   letter-spacing: -0.3px;
-  flex: 1 1 auto;
   min-width: 0;
+  flex: 0 1 auto;
 }
 
 .card-amount-group {

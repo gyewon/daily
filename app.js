@@ -1345,7 +1345,7 @@
           <div class="card-brand-name">
             <span class="card-brand-chip" style="background: ${conf.color};"></span>
             <span class="card-title">${cardName}</span>
-            ${!hasExtraSubline ? statusPillHtml : ''}
+            ${statusPillHtml}
           </div>
           <div class="card-amount-group">
             <div>
@@ -1363,7 +1363,6 @@
             <div class="card-complete-info">
               <span class="card-complete-label">완료 금액:</span>
               <strong class="card-complete-amt">${formatCurrency(completedAmt)}원</strong>
-              ${hasExtraSubline ? statusPillHtml : ''}
             </div>
             ${conf.target > 0 ? `
             <div class="card-target-badge" title="목표 실적은 할부(-${formatCurrency(instAmt)}원)를 제외한 실적인정액(${formatCurrency(performanceAmt)}원) 기준으로 산정됩니다">
