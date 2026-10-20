@@ -1294,6 +1294,8 @@
       const targetPercent = conf.target > 0 ? Math.min(100, Math.round((amt / conf.target) * 100)) : 100;
       const isTargetMet = conf.target > 0 && amt >= conf.target;
 
+      const isComplete = cnt > 0 && completedCnt === cnt;
+
       const cardEl = document.createElement('div');
       cardEl.className = `card-item ${appState.filterCard === cardName ? 'active-filter' : ''}`;
       cardEl.title = `${cardName} 내역 필터링`;
@@ -1303,35 +1305,34 @@
             <span class="card-brand-chip" style="background: ${conf.color};"></span>
             <span class="card-title">${cardName}</span>
           </div>
-          <div class="card-amount-group" style="display: flex; align-items: center; gap: 10px;">
-            ${conf.target > 0 ? `
-            <span class="card-meta-text" style="background: var(--bg-input); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; border: 1px solid var(--border-color);">
-              목표 ${formatCurrency(conf.target)}원 <strong style="color:${isTargetMet ? 'var(--danger-color)' : 'var(--text-main)'};">(${targetPercent}%) ${isTargetMet ? '👑' : ''}</strong>
-            </span>
-            ` : ''}
+          <div class="card-amount-group">
             <div>
               <span class="card-amount">${formatCurrency(amt)}원</span>
               <span class="card-share">(${share}%)</span>
-              ${settleAmt > 0 ? `
-              <div style="font-size: 0.78rem; color: #10b981; font-weight: 600; text-align: right; margin-top: 2px;">
-                👥 정산 -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)
-              </div>
-              ` : ''}
             </div>
+            ${settleAmt > 0 ? `
+            <div class="card-settle-info">
+              👥 정산 -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)
+            </div>
+            ` : ''}
           </div>
         </div>
         <div class="card-item-bottom">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span class="card-meta-text" style="font-size: 0.85rem; font-weight: 500;">
-              결제 완료: <strong style="color: var(--primary-color); font-size: 0.95rem;">${completedCnt}</strong> <span style="color: var(--text-muted);">/ ${cnt}건</span>
-              ${cnt > 0 && completedCnt === cnt ? '<span style="color: #10b981; font-weight: 700; margin-left: 6px; font-size: 0.85rem;">✅ 결제완료</span>' : ''}
-            </span>
+          <div class="card-meta-row">
+            <div class="card-complete-info">
+              <span class="card-complete-label">완료 금액:</span>
+              <strong class="card-complete-amt">${formatCurrency(completedAmt)}원</strong>
+              <span class="card-complete-count">(${completedCnt}/${cnt}건)</span>
+              ${isComplete ? '<span class="card-complete-badge">✅ 결제완료</span>' : ''}
+            </div>
+            ${conf.target > 0 ? `
+            <div class="card-target-badge">
+              목표 ${formatCurrency(conf.target)}원 <strong class="${isTargetMet ? 'target-met' : ''}">(${targetPercent}%) ${isTargetMet ? '👑' : ''}</strong>
+            </div>
+            ` : ''}
           </div>
-          <div class="card-bar-bg" style="margin-bottom: 4px;">
+          <div class="card-bar-bg">
             <div class="card-bar-fill" style="width: ${share}%; background: ${conf.color};"></div>
-          </div>
-          <div style="text-align: right; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-            (완료 금액: ${formatCurrency(completedAmt)}원)
           </div>
         </div>
       `;
@@ -1375,8 +1376,8 @@
             👥 정산 -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)
           </div>
           ` : ''}
-          <div style="font-size:0.8rem; font-weight:500; margin-top:4px; color:var(--text-main);">
-            완료: <strong style="color:var(--primary-color);">${completedCnt}</strong> <span style="color:var(--text-muted); font-size:0.75rem;">/ ${cnt}건</span>
+          <div style="font-size:0.78rem; font-weight:500; margin-top:4px; color:var(--text-main);">
+            완료 금액: <strong style="color:var(--primary-color);">${formatCurrency(completedAmt)}원</strong> <span style="color:var(--text-muted); font-size:0.75rem;">(${completedCnt}/${cnt}건)</span>
           </div>
         </div>
       `;
@@ -1417,7 +1418,7 @@
           </div>
           ` : ''}
           <div class="cash-card-meta">
-            완료: <strong style="color:var(--primary-color);">${cashCompletedCnt}</strong> <span style="color:var(--text-muted); font-size:0.75rem;">/ ${cashCnt}건</span>
+            완료 금액: <strong style="color:var(--primary-color);">${formatCurrency(cashCompletedAmt)}원</strong> <span style="color:var(--text-muted); font-size:0.75rem;">(${cashCompletedCnt}/${cashCnt}건)</span>
             ${cashCnt > 0 && cashCompletedCnt === cashCnt ? '<span style="color: #10b981; font-weight: 700; margin-left: 4px;">✅</span>' : ''}
           </div>
         </div>
