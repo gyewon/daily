@@ -1763,7 +1763,10 @@
               <div class="chart-summary-main-line">
                 <span class="chart-summary-title">📈 차트 총합계:</span>
                 <span class="chart-summary-amount">${formatCurrency(totalIncludedNetAmt)}원</span>
-                <span class="chart-badge-excluded">⚠️ ${excludedSet.size}개 카테고리 제외됨</span>
+                <span class="chart-badge-excluded">⚠️ ${excludedSet.size}개 제외됨</span>
+                <button id="btnRestoreExcludesHeader" class="btn btn-secondary btn-sm chart-summary-action-btn" title="제외된 카테고리를 모두 다시 차트에 포함합니다">
+                  제외 모두 해제 ↺
+                </button>
               </div>
               ${totalIncludedSettleAmt > 0 ? `
               <div class="chart-summary-sub-line">
@@ -1773,9 +1776,6 @@
               </div>
               ` : ''}
             </div>
-            <button id="btnRestoreExcludesHeader" class="btn btn-secondary btn-sm chart-summary-action-btn">
-              제외 모두 해제 ↺
-            </button>
           </div>
         `;
         document.getElementById('btnRestoreExcludesHeader')?.addEventListener('click', () => {
