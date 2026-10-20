@@ -855,12 +855,13 @@ body {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 13px 16px;
+  padding: 11px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   transition: all var(--transition-fast);
   cursor: pointer;
+  min-width: 0;
 }
 
 .card-item:hover {
@@ -878,32 +879,36 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .card-brand-name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 58%;
+  overflow: hidden;
 }
 
 .card-brand-chip {
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
 .card-title {
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.3px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .card-amount-group {
@@ -914,7 +919,7 @@ body {
 
 .card-amount {
   font-family: 'Outfit', 'Pretendard', sans-serif;
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.2px;
@@ -2806,14 +2811,11 @@ select option:hover {
 
   .panel-badge {
     align-self: flex-start;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
     padding: 6px 10px;
     border-radius: 8px;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     line-height: 1.35;
+    word-break: keep-all;
   }
 
   .chart-tab-group {
