@@ -610,6 +610,17 @@ body {
   cursor: pointer;
   transition: all var(--transition-fast);
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.kpi-header .kpi-mini-btn .btn-text-short {
+  display: none;
+}
+
+.kpi-header .kpi-mini-btn .btn-text-full {
+  display: inline;
 }
 
 .kpi-header .kpi-mini-btn:hover {
@@ -2738,8 +2749,17 @@ select option:hover {
   }
 
   .kpi-mini-btn {
-    padding: 3px 6px;
+    padding: 2px 6px;
     font-size: 0.68rem;
+    letter-spacing: -0.2px;
+  }
+
+  .kpi-header .kpi-mini-btn .btn-text-full {
+    display: none !important;
+  }
+
+  .kpi-header .kpi-mini-btn .btn-text-short {
+    display: inline !important;
   }
 
   /* Smart Tip Banner */

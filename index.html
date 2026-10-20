@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="style.css?v=27">
 </head>
 
 <body>
@@ -190,14 +190,18 @@
         <!-- Dynamic Custom Type KPIs will be inserted here -->
         <div id="dynamicKpiContainer" style="display: contents;"></div>
 
-        <!-- KPI 4: 남은 결제 금액 -->
+        <!-- KPI 4: 남은 금액 (총 지출 - 결제 완료) -->
         <div class="kpi-card card-accent-purple">
           <div class="kpi-header">
             <div class="kpi-title-row">
-              <span class="kpi-label">남은 결제 금액</span>
+              <span class="kpi-label">남은 금액</span>
               <span class="kpi-header-count" id="kpiExcludedCountHeader"></span>
             </div>
-            <button id="btnFilterExcluded" class="kpi-mini-btn" title="미완료된 항목만 모아보기">미완료 목록 &rarr;</button>
+            <button id="btnFilterExcluded" class="kpi-mini-btn" title="미완료된 항목만 모아보기">
+              <span class="btn-text-full">미완료 목록</span>
+              <span class="btn-text-short">미완료</span>
+              &rarr;
+            </button>
           </div>
           <div class="kpi-value-row">
             <span class="kpi-value" id="kpiExcludedAmount">0</span>
