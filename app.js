@@ -1131,7 +1131,11 @@
             </div>
             <div class="kpi-header-action">
               ${tSettle > 0 ? `<span class="kpi-tx-settle-badge" title="정산 -${formatCurrency(tSettle)}원">👥 정산반영</span>` : ''}
-              <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">모아보기 &rarr;</button>
+              <button class="kpi-mini-btn" title="${t} 항목만 즉시 필터링">
+                <span class="btn-text-full">모아보기</span>
+                <span class="btn-text-short">목록</span>
+                &rarr;
+              </button>
             </div>
           </div>
           <div class="kpi-value-row">
@@ -5738,41 +5742,140 @@
   const modalManageTypes = document.getElementById('modalManageTypes');
   const btnManageTypes = document.getElementById('btnManageTypes');
   const btnCloseManageTypes = document.getElementById('btnCloseManageTypes');
+  const btnDoneManageTypes = document.getElementById('btnDoneManageTypes');
   const btnAddType = document.getElementById('btnAddType');
   const newTypeNameInput = document.getElementById('newTypeName');
+  const newTypeCategoryChips = document.getElementById('newTypeCategoryChips');
   const typeListContainer = document.getElementById('typeListContainer');
+
+  function renderNewTypeCategoryChips() {
+    if (!newTypeCategoryChips) return;
+    newTypeCategoryChips.innerHTML = '';
+    const mainCats = Object.keys(appState.masterCategories || {}).sort();
+    if (mainCats.length === 0) {
+      newTypeCategoryChips.innerHTML = '<span style="font-size: 0.76rem; color: var(--text-muted); padding: 4px;">등록된 대분류가 없습니다.</span>';
+      return;
+    }
+    mainCats.forEach(cat => {
+      const label = document.createElement('label');
+      label.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.78rem; cursor: pointer; user-select: none;';
+      label.innerHTML = `
+        <input type="checkbox" value="${cat}" class="new-type-cat-check" style="cursor: pointer; margin: 0;">
+        <span>${cat}</span>
+      `;
+      newTypeCategoryChips.appendChild(label);
+    });
+  }
 
   function renderManageTypes() {
     if (!typeListContainer) return;
     typeListContainer.innerHTML = '';
+    renderNewTypeCategoryChips();
     
-    for (const t in appState.customTypes) {
+    const allMainCats = Object.keys(appState.masterCategories || {}).sort();
+    const typeEntries = Object.entries(appState.customTypes);
+
+    if (typeEntries.length === 0) {
+      typeListContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 15px;">등록된 사용자 지정 유형이 없습니다.</div>';
+      return;
+    }
+
+    typeEntries.forEach(([t, cats]) => {
+      const catList = Array.isArray(cats) ? cats : [];
       const typeCard = document.createElement('div');
-      typeCard.style.cssText = 'background: var(--bg-body); border-radius: 8px; padding: 12px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;';
+      typeCard.style.cssText = 'background: var(--bg-body); border-radius: 8px; padding: 12px 14px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;';
+      
+      // Header: Type Name & Delete Button
+      const headerRow = document.createElement('div');
+      headerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
       
       const titleSpan = document.createElement('span');
-      titleSpan.style.fontWeight = 'bold';
-      titleSpan.textContent = t;
-      typeCard.appendChild(titleSpan);
+      titleSpan.style.cssText = 'font-weight: 700; font-size: 0.95rem; color: var(--primary-light, #818cf8); display: flex; align-items: center; gap: 6px;';
+      titleSpan.innerHTML = `🏷️ <span>${t}</span> <small style="font-weight: 500; font-size: 0.74rem; color: var(--text-muted);">(${catList.length}개 카테고리 연결됨)</small>`;
+      headerRow.appendChild(titleSpan);
       
       const delBtn = document.createElement('button');
+      delBtn.type = 'button';
       delBtn.textContent = '유형 삭제';
-      delBtn.style.cssText = 'background: transparent; color: var(--color-danger); border: none; cursor: pointer; font-size: 0.85rem;';
+      delBtn.style.cssText = 'background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 0.78rem; font-weight: 600;';
       delBtn.onclick = () => {
-        if(confirm(`'${t}' 유형을 삭제하시겠습니까? 속한 카테고리는 모두 변동비로 돌아갑니다.`)) {
+        if (confirm(`'${t}' 유형을 삭제하시겠습니까? 연결된 카테고리의 지출은 즉시 일반 생활비(변동비)로 복귀합니다.`)) {
           delete appState.customTypes[t];
           saveCustomTypes();
           renderManageTypes();
           renderTypeFilter();
-          renderTable();
-          renderKPIs();
           renderManageMainCategories();
+          renderAll();
+          showToast(`'${t}' 유형이 삭제되고 실시간 반영되었습니다.`, 'success');
         }
       };
-      typeCard.appendChild(delBtn);
-      
+      headerRow.appendChild(delBtn);
+      typeCard.appendChild(headerRow);
+
+      // Category Badges & Add Dropdown
+      const catContainer = document.createElement('div');
+      catContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 5px; align-items: center;';
+
+      if (catList.length === 0) {
+        const emptyNotice = document.createElement('span');
+        emptyNotice.style.cssText = 'font-size: 0.76rem; color: var(--text-muted);';
+        emptyNotice.textContent = '연결된 카테고리 없음 (아래에서 카테고리를 추가하세요)';
+        catContainer.appendChild(emptyNotice);
+      } else {
+        catList.forEach(c => {
+          const badge = document.createElement('span');
+          badge.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px 8px; font-size: 0.78rem; font-weight: 600;';
+          badge.innerHTML = `
+            <span>${c}</span>
+            <button type="button" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.85rem; padding: 0; line-height: 1;" title="카테고리 연결 해제">&times;</button>
+          `;
+          badge.querySelector('button').onclick = () => {
+            appState.customTypes[t] = appState.customTypes[t].filter(item => item !== c);
+            saveCustomTypes();
+            renderManageTypes();
+            renderAll();
+            showToast(`'${t}' 유형에서 '${c}' 분류가 제외되었습니다.`, 'info');
+          };
+          catContainer.appendChild(badge);
+        });
+      }
+      typeCard.appendChild(catContainer);
+
+      // Add Category Quick Dropdown Row
+      const unassignedCats = allMainCats.filter(c => !catList.includes(c));
+      if (unassignedCats.length > 0) {
+        const addCatRow = document.createElement('div');
+        addCatRow.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-top: 4px;';
+        
+        const sel = document.createElement('select');
+        sel.className = 'select-custom';
+        sel.style.cssText = 'padding: 3px 8px; font-size: 0.78rem; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-main); flex: 1;';
+        sel.innerHTML = '<option value="">+ 카테고리 추가 연결...</option>' + unassignedCats.map(c => `<option value="${c}">${c}</option>`).join('');
+        
+        sel.onchange = () => {
+          const val = sel.value;
+          if (!val) return;
+          if (!appState.customTypes[t]) appState.customTypes[t] = [];
+          if (!appState.customTypes[t].includes(val)) {
+            // 다른 유형에 이미 속해있다면 안내 후 이동
+            for (const otherT in appState.customTypes) {
+              if (otherT !== t && appState.customTypes[otherT].includes(val)) {
+                appState.customTypes[otherT] = appState.customTypes[otherT].filter(x => x !== val);
+              }
+            }
+            appState.customTypes[t].push(val);
+            saveCustomTypes();
+            renderManageTypes();
+            renderAll();
+            showToast(`'${val}' 카테고리가 '${t}' 유형으로 연결되었습니다.`, 'success');
+          }
+        };
+        addCatRow.appendChild(sel);
+        typeCard.appendChild(addCatRow);
+      }
+
       typeListContainer.appendChild(typeCard);
-    }
+    });
   }
 
   if (btnManageTypes) {
@@ -5786,10 +5889,18 @@
       modalManageTypes.style.display = 'none';
     });
   }
+  if (btnDoneManageTypes) {
+    btnDoneManageTypes.addEventListener('click', () => {
+      modalManageTypes.style.display = 'none';
+    });
+  }
   if (btnAddType) {
     btnAddType.addEventListener('click', () => {
       const v = newTypeNameInput.value.trim();
-      if (!v) return;
+      if (!v) {
+        showToast('유형 이름을 입력해주세요.', 'warn');
+        return;
+      }
       if (appState.customTypes[v]) {
         showToast('이미 존재하는 유형입니다.', 'warn');
         return;
@@ -5798,13 +5909,33 @@
         showToast('사용할 수 없는 이름입니다.', 'warn');
         return;
       }
-      appState.customTypes[v] = [];
+
+      // Collect selected categories from checkboxes
+      const selectedCats = [];
+      const checkedBoxes = newTypeCategoryChips ? newTypeCategoryChips.querySelectorAll('.new-type-cat-check:checked') : [];
+      checkedBoxes.forEach(cb => {
+        if (cb.value) selectedCats.push(cb.value);
+      });
+
+      // Remove selected categories from any other custom type so there is no duplicate
+      selectedCats.forEach(cat => {
+        for (const otherT in appState.customTypes) {
+          if (appState.customTypes[otherT].includes(cat)) {
+            appState.customTypes[otherT] = appState.customTypes[otherT].filter(x => x !== cat);
+          }
+        }
+      });
+
+      appState.customTypes[v] = selectedCats;
       newTypeNameInput.value = '';
+      
+      // Save & Live Update without page refresh!
       saveCustomTypes();
       renderManageTypes();
       renderTypeFilter();
       renderManageMainCategories();
-      showToast(`'${v}' 유형이 추가되었습니다.`, 'success');
+      renderAll();
+      showToast(`'${v}' 유형이 추가되어 즉시 가계부에 반영되었습니다! (${selectedCats.length}개 분류 연결)`, 'success');
     });
   }
 
