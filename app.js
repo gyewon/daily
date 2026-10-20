@@ -1253,15 +1253,22 @@
     const cardCompletedSums = {};
     const cardCompletedCounts = {};
     const cardSettleSums = {};
+    const cardInstallmentSums = {};
     let totalPhysicalAmt = 0;
 
     records.forEach(r => {
       const card = r.actualCard || '기타 카드';
       const amt = Number(r.amount) || 0;
       const settle = Number(r.settleAmount) || 0;
+      const isInst = r.isInstallment === 'Y' || (r.installment && r.installment !== '일시불') || (r.memo && r.memo.includes('할부'));
+
       cardSums[card] = (cardSums[card] || 0) + amt;
       cardCounts[card] = (cardCounts[card] || 0) + 1;
       cardSettleSums[card] = (cardSettleSums[card] || 0) + settle;
+
+      if (isInst) {
+        cardInstallmentSums[card] = (cardInstallmentSums[card] || 0) + amt;
+      }
 
       if (r.exclude === 'Y') {
         cardCompletedSums[card] = (cardCompletedSums[card] || 0) + amt;
@@ -1286,13 +1293,17 @@
     physicalCardNames.forEach(cardName => {
       const conf = CARD_CONFIG[cardName] || { color: '#64748b', chip: '#475569', target: 300000 };
       const amt = cardSums[cardName] || 0;
+      const instAmt = cardInstallmentSums[cardName] || 0;
       const settleAmt = cardSettleSums[cardName] || 0;
       const cnt = cardCounts[cardName] || 0;
       const completedAmt = cardCompletedSums[cardName] || 0;
       const completedCnt = cardCompletedCounts[cardName] || 0;
       const share = totalPhysicalAmt > 0 ? ((amt / totalPhysicalAmt) * 100).toFixed(1) : 0;
-      const targetPercent = conf.target > 0 ? Math.min(100, Math.round((amt / conf.target) * 100)) : 100;
-      const isTargetMet = conf.target > 0 && amt >= conf.target;
+
+      // 카드 실적 인정 기준: 카드사 혜택 규정에 따라 할부 이용금액은 전월 실적 산정에서 제외
+      const performanceAmt = Math.max(0, amt - instAmt);
+      const targetPercent = conf.target > 0 ? Math.min(100, Math.round((performanceAmt / conf.target) * 100)) : 100;
+      const isTargetMet = conf.target > 0 && performanceAmt >= conf.target;
 
       const isComplete = cnt > 0 && completedCnt === cnt;
 
@@ -1310,6 +1321,11 @@
               <span class="card-amount">${formatCurrency(amt)}원</span>
               <span class="card-share">(${share}%)</span>
             </div>
+            ${instAmt > 0 ? `
+            <div style="font-size: 0.74rem; color: #94a3b8; text-align: right; margin-top: 2px;" title="카드사 혜택 기준 할부금액은 실적 산정에서 제외됩니다">
+              실적 인정: ${formatCurrency(performanceAmt)}원 <span style="font-size:0.7rem; color:var(--text-muted);">(할부 -${formatCurrency(instAmt)}원)</span>
+            </div>
+            ` : ''}
             ${settleAmt > 0 ? `
             <div class="card-settle-info">
               👥 정산 -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)
@@ -1326,8 +1342,9 @@
               ${isComplete ? '<span class="card-complete-badge">✅ 결제완료</span>' : ''}
             </div>
             ${conf.target > 0 ? `
-            <div class="card-target-badge">
+            <div class="card-target-badge" title="목표 실적은 할부(-${formatCurrency(instAmt)}원)를 제외한 실적인정액(${formatCurrency(performanceAmt)}원) 기준으로 산정됩니다">
               목표 ${formatCurrency(conf.target)}원 <strong class="${isTargetMet ? 'target-met' : ''}">(${targetPercent}%) ${isTargetMet ? '👑' : ''}</strong>
+              ${instAmt > 0 ? `<span style="font-size:0.7rem; color:var(--text-muted); margin-left:3px;">(할부 제외)</span>` : ''}
             </div>
             ` : ''}
           </div>
