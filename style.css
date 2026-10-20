@@ -980,6 +980,11 @@ body {
   font-size: 0.74rem;
   margin-top: 2px;
   white-space: nowrap;
+  min-height: 18px;
+}
+
+.card-extra-subline.is-empty {
+  visibility: hidden;
 }
 
 .card-inst-note {
@@ -1011,12 +1016,13 @@ body {
   flex-wrap: wrap;
   gap: 4px 8px;
   font-size: 0.78rem;
+  min-height: 22px;
 }
 
 .card-complete-info {
   display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
   color: var(--text-secondary);
   font-weight: 500;
   white-space: nowrap;

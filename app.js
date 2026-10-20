@@ -1334,24 +1334,28 @@
       const cardEl = document.createElement('div');
       cardEl.className = `card-item ${appState.filterCard === cardName ? 'active-filter' : ''}`;
       cardEl.title = `${cardName} 내역 필터링`;
+
+      const hasExtraSubline = (instAmt > 0 || settleAmt > 0);
+      const statusPillHtml = isComplete 
+        ? '<span class="card-status-pill completed" title="클릭 시 결제대기로 되돌리기 가능">✅ 완료</span>' 
+        : (cnt > 0 && pendingCnt > 0 ? `<span class="card-status-pill pending" title="클릭 시 '${cardName}' 미완료 ${pendingCnt}건 일괄 결제완료">대기 ${pendingCnt}</span>` : '');
+
       cardEl.innerHTML = `
         <div class="card-item-top">
           <div class="card-brand-name">
             <span class="card-brand-chip" style="background: ${conf.color};"></span>
             <span class="card-title">${cardName}</span>
-            ${isComplete ? '<span class="card-status-pill completed" title="클릭 시 결제대기로 되돌리기 가능">✅ 완료</span>' : (cnt > 0 && pendingCnt > 0 ? `<span class="card-status-pill pending" title="클릭 시 '${cardName}' 미완료 ${pendingCnt}건 일괄 결제완료">대기 ${pendingCnt}</span>` : '')}
+            ${!hasExtraSubline ? statusPillHtml : ''}
           </div>
           <div class="card-amount-group">
             <div>
               <span class="card-amount">${formatCurrency(amt)}원</span>
             </div>
-            ${(instAmt > 0 || settleAmt > 0) ? `
-            <div class="card-extra-subline" title="실제 지출: ${formatCurrency(amt)}원 / 실적인정(할부 제외): ${formatCurrency(performanceAmt)}원 / 정산 차감: -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)">
+            <div class="card-extra-subline ${hasExtraSubline ? '' : 'is-empty'}" title="${hasExtraSubline ? `실제 지출: ${formatCurrency(amt)}원 / 실적인정(할부 제외): ${formatCurrency(performanceAmt)}원 / 정산 차감: -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)` : ''}">
               ${instAmt > 0 ? `<span class="card-inst-note">실적 ${formatCurrency(performanceAmt)}원</span>` : ''}
               ${(instAmt > 0 && settleAmt > 0) ? `<span class="card-sub-sep">·</span>` : ''}
               ${settleAmt > 0 ? `<span class="card-settle-note">👥 -${formatCurrency(settleAmt)}원</span>` : ''}
             </div>
-            ` : ''}
           </div>
         </div>
         <div class="card-item-bottom">
@@ -1359,6 +1363,7 @@
             <div class="card-complete-info">
               <span class="card-complete-label">완료 금액:</span>
               <strong class="card-complete-amt">${formatCurrency(completedAmt)}원</strong>
+              ${hasExtraSubline ? statusPillHtml : ''}
             </div>
             ${conf.target > 0 ? `
             <div class="card-target-badge" title="목표 실적은 할부(-${formatCurrency(instAmt)}원)를 제외한 실적인정액(${formatCurrency(performanceAmt)}원) 기준으로 산정됩니다">
