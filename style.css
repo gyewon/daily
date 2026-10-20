@@ -2078,6 +2078,237 @@ select option:hover {
   display: none;
 }
 
+/* Card Manage Toolbar & Filter Tabs */
+.card-manage-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.card-manage-filter-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.card-filter-tab {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.card-filter-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.card-filter-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.card-manage-batch-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 8px;
+  gap: 10px;
+}
+
+.batch-count-text {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.batch-btns-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.batch-select {
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.col-card-chk {
+  text-align: center;
+}
+
+.col-card-chk input[type="checkbox"],
+.th-card-chk input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+/* Category Auto Rules Form - 2 Column Grid */
+.new-rule-grid-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg-card);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.rule-form-row.two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.rule-form-row.full-width {
+  display: flex;
+  flex-direction: column;
+}
+
+.rule-input, .rule-select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  box-sizing: border-box;
+}
+
+.btn-add-rule {
+  width: 100%;
+  padding: 10px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Auto Installment Guide & Sync Modal Styles */
+.inst-guide-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.inst-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.inst-guide-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.inst-guide-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.inst-rule-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.inst-rule-badge {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--primary-color);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.inst-rule-item strong {
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.inst-rule-item p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.inst-rule-item code {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary-color);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.inst-preview-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.inst-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+  font-size: 0.88rem;
+}
+
+.inst-preview-diff {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  font-size: 0.8rem;
+  background: var(--bg-input);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.diff-arrow {
+  color: var(--primary-color);
+  font-weight: 700;
+  margin: 0 4px;
+}
+
 /* Category Inputs in Table */
 .cat-select-group {
   display: flex;

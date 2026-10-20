@@ -3675,8 +3675,31 @@
     // Export to Excel
     document.getElementById('btnExportExcel')?.addEventListener('click', exportToExcel);
 
-    // Auto Match Installments
-    document.getElementById('btnAutoInstallment')?.addEventListener('click', () => {
+    // Auto Match Installments Guide & Sync Modal Flow
+    const autoInstModal = document.getElementById('autoInstallmentModal');
+    const btnAutoInstallment = document.getElementById('btnAutoInstallment');
+    const btnCloseAutoInstModal = document.getElementById('btnCloseAutoInstModal');
+    const btnCloseAutoInstModalBottom = document.getElementById('btnCloseAutoInstModalBottom');
+    const btnDetectInstallments = document.getElementById('btnDetectInstallments');
+    const instSyncPreviewArea = document.getElementById('instSyncPreviewArea');
+
+    function openAutoInstallmentModal() {
+      if (instSyncPreviewArea) {
+        instSyncPreviewArea.innerHTML = `
+          <div style="text-align: center; padding: 22px 14px; background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 0.88rem; line-height: 1.6;">
+            🔍 아래 <strong>[할부 동기화 대상 감지 및 미리보기]</strong> 버튼을 누르면,<br>
+            현재 내역 중 조건에 맞는 할부 내역을 분석하여 <strong>어떤 내역이 어떻게 변경되는지</strong> 사전에 확인하고 동기화할 수 있습니다.
+          </div>
+        `;
+      }
+      autoInstModal?.classList.add('show');
+    }
+
+    btnAutoInstallment?.addEventListener('click', openAutoInstallmentModal);
+    btnCloseAutoInstModal?.addEventListener('click', () => autoInstModal?.classList.remove('show'));
+    btnCloseAutoInstModalBottom?.addEventListener('click', () => autoInstModal?.classList.remove('show'));
+
+    btnDetectInstallments?.addEventListener('click', () => {
       const sortedRecords = [...appState.records].sort((a, b) => new Date(a.date) - new Date(b.date));
       let pendingChanges = [];
 
@@ -3717,19 +3740,92 @@
         }
       });
 
+      if (!instSyncPreviewArea) return;
+
       if (pendingChanges.length === 0) {
-        showToast('매칭할 수 있는 할부 내역이 없습니다.', 'info');
+        instSyncPreviewArea.innerHTML = `
+          <div style="background: rgba(148, 163, 184, 0.08); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: var(--radius-sm); padding: 18px; text-align: center;">
+            <div style="font-size: 1.2rem; margin-bottom: 6px;">ℹ️</div>
+            <strong style="color: var(--text-primary); font-size: 0.95rem;">현재 동기화할 수 있는 새로운 할부 매칭 항목이 없습니다.</strong>
+            <p style="color: var(--text-muted); font-size: 0.82rem; margin: 8px 0 0 0; line-height: 1.5;">
+              모든 할부 결제가 이미 동기화되었거나, 이전 달에 '할부(Y)'로 등록된 건과 가맹점명 및 결제금액이 동일한 내역이 없습니다.<br>
+              이전 달의 시작 내역에 <strong>'할부(Y)'</strong>와 <strong>'1/N회'</strong> 메모가 적혀있는지 확인해주세요.
+            </p>
+          </div>
+        `;
         return;
       }
 
-      let confirmMsg = `총 ${pendingChanges.length}건의 자동 매칭 항목을 찾았습니다. 적용하시겠습니까?\n\n[변경 예정 항목]\n`;
-      pendingChanges.slice(0, 10).forEach(c => {
-        const d = c.record.date ? c.record.date.substring(5) : '';
-        confirmMsg += `- [${d} ${c.record.merchant}] 할부 N -> Y, 메모: '${c.record.memo}' -> '${c.newMemo}'\n`;
-      });
-      if (pendingChanges.length > 10) confirmMsg += `...외 ${pendingChanges.length - 10}건\n`;
+      let html = `
+        <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+          <strong style="color: var(--primary-color); font-size: 0.95rem;">
+            📋 총 ${pendingChanges.length}건의 할부 동기화 대상이 감지되었습니다.
+          </strong>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">변경 내용을 확인 후 아래 적용 버튼을 눌러주세요.</span>
+        </div>
+        <div style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
+      `;
 
-      if (confirm(confirmMsg)) {
+      pendingChanges.forEach((c, idx) => {
+        const d = c.record.date ? c.record.date.substring(5) : '';
+        const prevMemoStr = c.record.memo || '(메모 없음)';
+        const oldCatStr = c.record.category ? `${c.record.category}${c.record.subCategory ? ` > ${c.record.subCategory}` : ''}` : '(미분류)';
+        const newCatStr = c.prev.category ? `${c.prev.category}${c.prev.subCategory ? ` > ${c.prev.subCategory}` : ''}` : '(미분류)';
+
+        html += `
+          <div class="inst-preview-card">
+            <div class="inst-preview-header">
+              <span style="font-weight: 600; color: var(--text-primary);">
+                ${idx + 1}. [${d}] ${c.record.merchant}
+              </span>
+              <span style="font-weight: 700; color: var(--danger-color, #ef4444); font-family: 'Outfit', sans-serif;">
+                ${formatCurrency(c.record.amount)}원
+              </span>
+            </div>
+            <div class="inst-preview-diff">
+              <div>
+                <span style="color: var(--text-muted);">할부 상태:</span>
+                <span>${c.record.isInstallment === 'Y' ? '할부(Y)' : '일시불(N)'}</span>
+                <span class="diff-arrow">➔</span>
+                <strong style="color: #10b981;">할부(Y)</strong>
+              </div>
+              <div>
+                <span style="color: var(--text-muted);">회차 메모:</span>
+                <span>'${prevMemoStr}'</span>
+                <span class="diff-arrow">➔</span>
+                <strong style="color: var(--primary-color);">'${c.newMemo}'</strong>
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <span style="color: var(--text-muted);">카테고리:</span>
+                <span>${oldCatStr}</span>
+                <span class="diff-arrow">➔</span>
+                <strong style="color: var(--text-primary);">${newCatStr}</strong>
+                ${c.record.actualCard !== c.prev.actualCard ? `
+                  <span style="margin-left: 10px; color: var(--text-muted);">카드:</span>
+                  <span>${c.record.actualCard || '-'}</span>
+                  <span class="diff-arrow">➔</span>
+                  <strong style="color: var(--text-primary);">${c.prev.actualCard}</strong>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+        </div>
+        <button type="button" id="btnApplyInstSync" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 14px; font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span>✅</span> 위 ${pendingChanges.length}건의 내역을 할부로 동기화 적용하기
+        </button>
+      `;
+
+      instSyncPreviewArea.innerHTML = html;
+
+      document.getElementById('btnApplyInstSync')?.addEventListener('click', async () => {
+        if (!confirm(`총 ${pendingChanges.length}건의 지출 내역을 할부로 동기화하시겠습니까?\n(동기화 시 할부 여부, 회차 메모, 카테고리가 일괄 갱신됩니다.)`)) {
+          return;
+        }
+
         pendingChanges.forEach(c => {
           c.record.isInstallment = 'Y';
           c.record.category = c.prev.category;
@@ -3737,10 +3833,12 @@
           c.record.actualCard = c.prev.actualCard;
           c.record.memo = c.newMemo;
         });
-        saveData();
+
+        await saveData();
         renderAll();
-        showToast(`총 ${pendingChanges.length}건의 할부 결제를 자동으로 매칭했습니다!`, 'success');
-      }
+        autoInstModal?.classList.remove('show');
+        showToast(`🎉 총 ${pendingChanges.length}건의 할부 결제가 성공적으로 동기화되었습니다!`, 'success');
+      });
     });
 
     // Category Rules Modal
@@ -4498,33 +4596,212 @@
     });
 
     let cardManageSortDesc = false;
+    let cardManageFilter = 'all';
+    const cardManageSelected = new Set();
+
     document.getElementById('sortCardTypeHeader')?.addEventListener('click', () => {
       cardManageSortDesc = !cardManageSortDesc;
       renderManageCards();
     });
 
+    // Filter tabs for target selection
+    document.querySelectorAll('.card-filter-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        cardManageFilter = e.currentTarget.dataset.filter || 'all';
+        document.querySelectorAll('.card-filter-tab').forEach(t => t.classList.toggle('active', t === e.currentTarget));
+        renderManageCards();
+      });
+    });
+
+    // Header checkbox for select all visible
+    document.getElementById('chkAllManageCards')?.addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      const visibleCheckboxes = document.querySelectorAll('#cardsTableBody .chk-manage-card');
+      visibleCheckboxes.forEach(chk => {
+        if (!chk.disabled) {
+          chk.checked = isChecked;
+          const card = chk.dataset.card;
+          if (isChecked) cardManageSelected.add(card);
+          else cardManageSelected.delete(card);
+        }
+      });
+      updateCardManageBatchUI();
+    });
+
+    // Batch card type change
+    document.getElementById('batchCardTypeSelect')?.addEventListener('change', (e) => {
+      const newType = e.target.value;
+      if (!newType) return;
+      if (cardManageSelected.size === 0) {
+        alert('선택된 결제수단 대상이 없습니다.');
+        e.target.value = '';
+        return;
+      }
+      const count = cardManageSelected.size;
+      const typeLabel = (newType === 'physical') ? '실물 카드' : '간편결제 / 계좌';
+      if (!confirm(`선택한 ${count}개 결제수단의 배치 유형을 '${typeLabel}'(으)로 일괄 변경하시겠습니까?`)) {
+        e.target.value = '';
+        return;
+      }
+      cardManageSelected.forEach(card => {
+        if (CARD_CONFIG[card] && card !== '현금') {
+          CARD_CONFIG[card].type = newType;
+        }
+      });
+      saveCards();
+      e.target.value = '';
+      renderManageCards();
+      populateFilterDropdowns();
+      renderAll();
+      showToast(`${count}개 결제수단이 '${typeLabel}'(으)로 일괄 변경되었습니다.`, 'success');
+    });
+
+    // Batch card delete
+    document.getElementById('btnBatchDeleteCards')?.addEventListener('click', () => {
+      if (cardManageSelected.size === 0) {
+        alert('선택된 결제수단 대상이 없습니다.');
+        return;
+      }
+      const selectedCards = Array.from(cardManageSelected).filter(c => c !== '현금' && CARD_CONFIG[c]);
+      if (selectedCards.length === 0) {
+        alert('삭제할 수 있는 결제수단 대상이 없습니다. (현금은 고정 기본 수단)');
+        return;
+      }
+
+      const blocked = [];
+      const deletable = [];
+      selectedCards.forEach(c => {
+        const totalAmount = appState.records
+          .filter(r => r.actualCard === c && r.exclude !== 'Y')
+          .reduce((sum, r) => sum + r.amount, 0);
+        if (totalAmount > 0) {
+          blocked.push({ card: c, amount: totalAmount });
+        } else {
+          deletable.push(c);
+        }
+      });
+
+      if (blocked.length > 0 && deletable.length === 0) {
+        const listStr = blocked.map(b => `  • ${b.card}: ${b.amount.toLocaleString()}원`).join('\n');
+        alert(`선택된 결제수단에 지출 내역이 있어 삭제할 수 없습니다:\n${listStr}\n\n(지출 금액이 0원인 결제수단만 삭제할 수 있습니다)`);
+        return;
+      }
+
+      let msg = '';
+      if (blocked.length > 0) {
+        const listStr = blocked.map(b => b.card).join(', ');
+        msg = `⚠️ 지출 내역이 있는 다음 수단(${blocked.length}개)은 제외됩니다:\n[${listStr}]\n\n지출이 없는 나머지 ${deletable.length}개 결제수단을 일괄 삭제하시겠습니까?`;
+      } else {
+        msg = `선택한 ${deletable.length}개 결제수단을 일괄 삭제하시겠습니까?`;
+      }
+
+      if (!confirm(msg)) return;
+
+      deletable.forEach(c => {
+        delete CARD_CONFIG[c];
+        cardManageSelected.delete(c);
+      });
+
+      saveCards();
+      renderManageCards();
+      populateFilterDropdowns();
+      renderAll();
+      showToast(`${deletable.length}개 결제수단이 일괄 삭제되었습니다.`, 'success');
+    });
+
+    function updateCardManageBatchUI(currentVisibleCards = []) {
+      const batchBar = document.getElementById('cardManageBatchBar');
+      const countText = document.getElementById('cardManageSelectedCount');
+      const chkAll = document.getElementById('chkAllManageCards');
+
+      // Filter out cards that no longer exist
+      Array.from(cardManageSelected).forEach(c => {
+        if (!CARD_CONFIG[c]) cardManageSelected.delete(c);
+      });
+
+      const selCount = cardManageSelected.size;
+      if (batchBar) {
+        batchBar.style.display = selCount > 0 ? 'flex' : 'none';
+      }
+      if (countText) {
+        countText.textContent = `${selCount}개 선택됨`;
+      }
+
+      if (chkAll) {
+        const selectable = currentVisibleCards.filter(c => c !== '현금');
+        if (selectable.length > 0 && selectable.every(c => cardManageSelected.has(c))) {
+          chkAll.checked = true;
+          chkAll.indeterminate = false;
+        } else if (selectable.some(c => cardManageSelected.has(c))) {
+          chkAll.checked = false;
+          chkAll.indeterminate = true;
+        } else {
+          chkAll.checked = false;
+          chkAll.indeterminate = false;
+        }
+      }
+    }
+
     function renderManageCards() {
       const tbody = document.getElementById('cardsTableBody');
       if (!tbody) return;
       tbody.innerHTML = '';
-      
-      let cardNames = Object.keys(CARD_CONFIG);
+
+      const allCards = Object.keys(CARD_CONFIG);
+
+      // Update Tab Count Badges
+      const cntAll = allCards.length;
+      const cntPhysical = allCards.filter(c => CARD_CONFIG[c]?.type === 'physical').length;
+      const cntPay = allCards.filter(c => CARD_CONFIG[c]?.type === 'pay').length;
+      const cntCash = allCards.filter(c => CARD_CONFIG[c]?.type === 'cash' || c === '현금').length;
+
+      const elAll = document.getElementById('cntAllCards');
+      const elPhys = document.getElementById('cntPhysicalCards');
+      const elPay = document.getElementById('cntPayCards');
+      const elCash = document.getElementById('cntCashCards');
+
+      if (elAll) elAll.textContent = cntAll;
+      if (elPhys) elPhys.textContent = cntPhysical;
+      if (elPay) elPay.textContent = cntPay;
+      if (elCash) elCash.textContent = cntCash;
+
+      // Filter by active target tab
+      let cardNames = allCards.filter(card => {
+        const conf = CARD_CONFIG[card];
+        if (!conf) return false;
+        if (cardManageFilter === 'physical') return conf.type === 'physical';
+        if (cardManageFilter === 'pay') return conf.type === 'pay';
+        if (cardManageFilter === 'cash') return conf.type === 'cash' || card === '현금';
+        return true;
+      });
+
       cardNames.sort((a, b) => {
-        const typeA = CARD_CONFIG[a].type === 'physical' ? 0 : 1;
-        const typeB = CARD_CONFIG[b].type === 'physical' ? 0 : 1;
+        const typeA = CARD_CONFIG[a]?.type === 'physical' ? 0 : 1;
+        const typeB = CARD_CONFIG[b]?.type === 'physical' ? 0 : 1;
         if (typeA !== typeB) return cardManageSortDesc ? typeB - typeA : typeA - typeB;
         return a.localeCompare(b);
       });
+
+      if (cardNames.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 36px 16px; color: var(--text-muted); font-size: 0.95rem;">선택한 대상 유형의 결제수단이 없습니다.</td></tr>`;
+        updateCardManageBatchUI([]);
+        return;
+      }
+
       cardNames.forEach(card => {
         const tr = document.createElement('tr');
         tr.className = 'card-manage-row';
-        const conf = CARD_CONFIG[card];
-        const typeStr = conf.type === 'physical' ? '실물 카드' : '간편결제/기타';
+        const conf = CARD_CONFIG[card] || { type: 'physical' };
         
         const targetVal = conf.target || 0;
         const displayVal = targetVal > 0 ? targetVal.toLocaleString('ko-KR') : '';
         const isCash = (card === '현금');
+        const isChecked = cardManageSelected.has(card);
+
         tr.innerHTML = `
+          <td class="col-card-chk" style="text-align: center;">
+            <input type="checkbox" class="chk-manage-card" data-card="${card}" ${isCash ? 'disabled title="현금은 고정 기본 수단으로 대상 선택에서 제외됩니다."' : ''} ${isChecked ? 'checked' : ''}>
+          </td>
           <td class="col-card-name">
             <input type="text" class="input-card-name" data-old-card="${card}" value="${card}" placeholder="수단 이름" ${isCash ? 'readonly style="opacity:0.85;" title="기본 현금 수단은 이름을 변경할 수 없습니다."' : ''}>
           </td>
@@ -4549,6 +4826,21 @@
         `;
         tbody.appendChild(tr);
       });
+
+      // Checkbox event listeners
+      tbody.querySelectorAll('.chk-manage-card').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+          const card = e.target.dataset.card;
+          if (e.target.checked) {
+            cardManageSelected.add(card);
+          } else {
+            cardManageSelected.delete(card);
+          }
+          updateCardManageBatchUI(cardNames);
+        });
+      });
+
+      updateCardManageBatchUI(cardNames);
       
       tbody.querySelectorAll('.input-card-name').forEach(input => {
         input.addEventListener('blur', (e) => {
@@ -4566,6 +4858,10 @@
             }
             CARD_CONFIG[newCard] = CARD_CONFIG[oldCard];
             delete CARD_CONFIG[oldCard];
+            if (cardManageSelected.has(oldCard)) {
+              cardManageSelected.delete(oldCard);
+              cardManageSelected.add(newCard);
+            }
             appState.records.forEach(r => {
               if (r.actualCard === oldCard) r.actualCard = newCard;
             });
@@ -4589,6 +4885,7 @@
           if (CARD_CONFIG[card] && CARD_CONFIG[card].type !== newType) {
             CARD_CONFIG[card].type = newType;
             saveCards();
+            renderManageCards();
             renderAll();
             showToast(`'${card}' 배치 유형이 변경되었습니다.`, 'success');
           }
@@ -4638,6 +4935,7 @@
           
           if (confirm(`'${card}' 결제수단을 삭제하시겠습니까?`)) {
             delete CARD_CONFIG[card];
+            cardManageSelected.delete(card);
             saveCards();
             renderManageCards();
             populateFilterDropdowns();

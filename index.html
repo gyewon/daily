@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=23">
 </head>
 
 <body>
@@ -577,17 +577,25 @@
           가맹점명에 특정 키워드가 포함되어 있으면 자동으로 지정된 카테고리로 변경합니다. (예: '스타벅스' &rarr; '카페/간식')
         </p>
         
-        <form id="newRuleForm" style="display: flex; gap: 8px; margin-bottom: 20px;">
-          <input type="text" id="ruleKeyword" placeholder="키워드 (예: 쿠팡)" required style="flex: 1.5; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main);">
-          <input type="number" id="ruleAmount" placeholder="금액 (선택)" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main);">
-          <input type="number" id="ruleDate" placeholder="일 (선택, 1~31)" min="1" max="31" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main);">
-          <select id="ruleCategory" required style="flex: 1.5; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main);">
-            <option value="">대분류 선택</option>
-          </select>
-          <select id="ruleSubCategory" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main);">
-            <option value="">소분류 선택</option>
-          </select>
-          <button type="submit" id="ruleSubmitBtn" class="btn btn-primary" style="white-space: nowrap;">추가</button>
+        <form id="newRuleForm" class="new-rule-grid-form">
+          <div class="rule-form-row full-width">
+            <input type="text" id="ruleKeyword" placeholder="가맹점 키워드 입력 (예: 쿠팡, 스타벅스)" required class="rule-input">
+          </div>
+          <div class="rule-form-row two-cols">
+            <input type="number" id="ruleAmount" placeholder="금액 조건 (선택)" class="rule-input">
+            <input type="number" id="ruleDate" placeholder="일 조건 (선택, 1~31)" min="1" max="31" class="rule-input">
+          </div>
+          <div class="rule-form-row two-cols">
+            <select id="ruleCategory" required class="rule-select">
+              <option value="">대분류 선택 *</option>
+            </select>
+            <select id="ruleSubCategory" class="rule-select">
+              <option value="">소분류 선택</option>
+            </select>
+          </div>
+          <div class="rule-form-row full-width">
+            <button type="submit" id="ruleSubmitBtn" class="btn btn-primary btn-add-rule">➕ 새 분류 규칙 추가</button>
+          </div>
         </form>
 
         <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
@@ -676,10 +684,34 @@
           <button type="submit" class="btn btn-primary btn-add-card">추가</button>
         </form>
         
+        <!-- 대상 선택 툴바 (탭 필터 + 일괄 작업 바) -->
+        <div class="card-manage-toolbar">
+          <div class="card-manage-filter-tabs">
+            <button type="button" class="card-filter-tab active" data-filter="all">전체 (<span id="cntAllCards">0</span>)</button>
+            <button type="button" class="card-filter-tab" data-filter="physical">💳 실물 카드 (<span id="cntPhysicalCards">0</span>)</button>
+            <button type="button" class="card-filter-tab" data-filter="pay">📱 간편결제/계좌 (<span id="cntPayCards">0</span>)</button>
+            <button type="button" class="card-filter-tab" data-filter="cash">💵 현금 (<span id="cntCashCards">0</span>)</button>
+          </div>
+          <div id="cardManageBatchBar" class="card-manage-batch-bar" style="display: none;">
+            <span id="cardManageSelectedCount" class="batch-count-text">0개 선택됨</span>
+            <div class="batch-btns-wrap">
+              <select id="batchCardTypeSelect" class="batch-select">
+                <option value="">배치유형 일괄변경...</option>
+                <option value="physical">실물 카드로 변경</option>
+                <option value="pay">간편결제/계좌로 변경</option>
+              </select>
+              <button type="button" id="btnBatchDeleteCards" class="btn btn-secondary btn-sm" style="color: var(--danger-color, #ef4444); border-color: rgba(239, 68, 68, 0.4);">🗑️ 선택 일괄 삭제</button>
+            </div>
+          </div>
+        </div>
+
         <div class="card-manage-table-container">
           <table class="tx-table card-manage-table">
             <thead>
               <tr>
+                <th class="th-card-chk" style="width: 38px; text-align: center;">
+                  <input type="checkbox" id="chkAllManageCards" title="전체 선택">
+                </th>
                 <th class="th-card-name">결제수단 이름</th>
                 <th id="sortCardTypeHeader" class="th-card-type" title="클릭하여 정렬">배치(유형) <span style="font-size:0.8em; color:var(--text-muted);">↕</span></th>
                 <th class="th-card-target">실적 목표 (원)</th>
@@ -693,6 +725,72 @@
       </div>
       <div class="modal-footer">
         <button type="button" id="btnDoneCardManageModal" class="btn btn-primary">확인 (닫기)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Auto Installment Guide & Sync -->
+  <div id="autoInstallmentModal" class="modal-backdrop">
+    <div class="modal-dialog modal-lg" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3>🔗 할부 자동 연결 및 동기화 안내</h3>
+        <button id="btnCloseAutoInstModal" class="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 22px; max-height: 75vh; overflow-y: auto;">
+        
+        <!-- 설명 섹션 1: 기능 안내 -->
+        <div class="inst-guide-card">
+          <div class="inst-guide-title">
+            <span class="inst-guide-icon">💡</span>
+            <strong>어떤 기능인가요?</strong>
+          </div>
+          <p class="inst-guide-desc">
+            매달 정기적으로 분할 청구되는 <strong>할부 결제(예: 3개월, 6개월, 12개월 등)</strong>를 이전 달 내역과 자동으로 매칭하여, <strong>다음 회차 할부(Y), 카테고리, 결제카드, 회차 메모</strong>를 자동으로 연결해주는 기능입니다.
+          </p>
+        </div>
+
+        <!-- 설명 섹션 2: 작성 팁 및 동기화 조건 -->
+        <div class="inst-guide-card">
+          <div class="inst-guide-title">
+            <span class="inst-guide-icon">📝</span>
+            <strong>어떻게 적어야 자동 동기화되나요? (작성 팁)</strong>
+          </div>
+          <div class="inst-guide-rules">
+            <div class="inst-rule-item">
+              <span class="inst-rule-badge">조건 1</span>
+              <div>
+                <strong>가맹점명과 결제금액 일치</strong>
+                <p>이전 달의 할부 내역과 <strong>가맹점명</strong> 및 매달 청구되는 <strong>금액</strong>이 동일해야 자동으로 감지됩니다.</p>
+              </div>
+            </div>
+            <div class="inst-rule-item">
+              <span class="inst-rule-badge">조건 2</span>
+              <div>
+                <strong>첫 회차는 할부(Y)로 설정</strong>
+                <p>시작되는 첫 달 내역의 할부 항목을 <strong>할부(Y)</strong>로 지정해두면, 다음 달 결제건부터 자동으로 할부로 인식합니다.</p>
+              </div>
+            </div>
+            <div class="inst-rule-item">
+              <span class="inst-rule-badge">조건 3</span>
+              <div>
+                <strong>메모에 회차를 적어두면 자동 증가 (+1)</strong>
+                <p>메모에 <code>1/6</code> 또는 <code>포헤어할부 (1/5)</code>, <code>의자할부 1</code>처럼 적어두면, 다음 달 동기화 시 자동으로 <code>2/6</code>, <code>포헤어할부 (2/5)</code>, <code>의자할부 2</code>로 회차가 1씩 올라가며 완성됩니다!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 감지 결과 및 미리보기 영역 -->
+        <div id="instSyncPreviewArea" style="margin-top: 18px;">
+          <!-- 동기화 대상 목록이 동적으로 들어감 -->
+        </div>
+
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <button type="button" id="btnDetectInstallments" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px;">
+          <span>🔍</span> 할부 동기화 대상 감지 및 미리보기
+        </button>
+        <button type="button" id="btnCloseAutoInstModalBottom" class="btn btn-secondary">닫기</button>
       </div>
     </div>
   </div>
@@ -999,7 +1097,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=31"></script>
+  <script src="app.js?v=32"></script>
 </body>
 
 </html>
