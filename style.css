@@ -3026,6 +3026,21 @@ select option:hover {
     gap: 4px;
   }
 
+  .accounts-section-header,
+  .cash-section-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  .accounts-subtotal,
+  .cash-subtotal {
+    font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+  }
+
   .accounts-status-container {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
