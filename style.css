@@ -1438,6 +1438,15 @@ body {
   font-size: 0.78rem;
 }
 
+.chart-summary-guide {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  letter-spacing: -0.2px;
+  opacity: 0.9;
+}
+
 .chart-summary-count-badge {
   display: inline-flex;
   align-items: center;

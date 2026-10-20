@@ -1744,6 +1744,7 @@
                 ${catSettle > 0 ? `
                   <span class="chart-badge-settle">👥 정산 회수 -${formatCurrency(catSettle)}원</span>
                   <span class="chart-badge-gross">결제 원금 ${formatCurrency(catGross)}원</span>
+                  <span class="chart-summary-guide">💡 표시된 금액은 실부담금(결제 원금에서 정산 회수액을 차감한 실제 지출액)입니다.</span>
                 ` : ''}
                 <span class="chart-badge-info">전체 중 ${formatCurrency(totalAllNetAmt)}원</span>
               </div>
@@ -1769,6 +1770,7 @@
               <div class="chart-summary-sub-line">
                 <span class="chart-badge-settle">👥 정산 회수 -${formatCurrency(totalIncludedSettleAmt)}원</span>
                 <span class="chart-badge-gross">결제 원금 ${formatCurrency(totalIncludedGrossAmt)}원</span>
+                <span class="chart-summary-guide">💡 표시된 금액은 실부담금(카드 청구 원금에서 정산 회수액을 뺀 실제 부담액)입니다.</span>
               </div>
               ` : ''}
             </div>
@@ -1792,6 +1794,7 @@
               <div class="chart-summary-sub-line">
                 <span class="chart-badge-settle">👥 정산 회수 -${formatCurrency(totalIncludedSettleAmt)}원</span>
                 <span class="chart-badge-gross">결제 원금 ${formatCurrency(totalIncludedGrossAmt)}원</span>
+                <span class="chart-summary-guide">💡 표시된 금액은 실부담금(카드 청구 원금에서 정산 회수액을 뺀 실제 부담액)입니다.</span>
               </div>
               ` : ''}
             </div>
