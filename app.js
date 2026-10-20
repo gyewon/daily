@@ -1306,6 +1306,7 @@
       const isTargetMet = conf.target > 0 && performanceAmt >= conf.target;
 
       const isComplete = cnt > 0 && completedCnt === cnt;
+      const pendingCnt = cnt - completedCnt;
 
       const cardEl = document.createElement('div');
       cardEl.className = `card-item ${appState.filterCard === cardName ? 'active-filter' : ''}`;
@@ -1315,20 +1316,18 @@
           <div class="card-brand-name">
             <span class="card-brand-chip" style="background: ${conf.color};"></span>
             <span class="card-title">${cardName}</span>
+            ${isComplete ? '<span class="card-status-pill completed" title="클릭 시 결제대기로 되돌리기 가능">✅ 완료</span>' : (cnt > 0 && pendingCnt > 0 ? `<span class="card-status-pill pending" title="클릭 시 '${cardName}' 미완료 ${pendingCnt}건 일괄 결제완료">대기 ${pendingCnt}</span>` : '')}
           </div>
           <div class="card-amount-group">
             <div>
               <span class="card-amount">${formatCurrency(amt)}원</span>
               <span class="card-share">(${share}%)</span>
             </div>
-            ${instAmt > 0 ? `
-            <div style="font-size: 0.74rem; color: #94a3b8; text-align: right; margin-top: 2px;" title="카드사 혜택 기준 할부금액은 실적 산정에서 제외됩니다">
-              실적 인정: ${formatCurrency(performanceAmt)}원 <span style="font-size:0.7rem; color:var(--text-muted);">(할부 -${formatCurrency(instAmt)}원)</span>
-            </div>
-            ` : ''}
-            ${settleAmt > 0 ? `
-            <div class="card-settle-info">
-              👥 정산 -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)
+            ${(instAmt > 0 || settleAmt > 0) ? `
+            <div class="card-extra-subline" title="실제 지출: ${formatCurrency(amt)}원 / 실적인정(할부 제외): ${formatCurrency(performanceAmt)}원 / 정산 차감: -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)">
+              ${instAmt > 0 ? `<span class="card-inst-note">실적 ${formatCurrency(performanceAmt)}원</span>` : ''}
+              ${(instAmt > 0 && settleAmt > 0) ? `<span class="card-sub-sep">·</span>` : ''}
+              ${settleAmt > 0 ? `<span class="card-settle-note">👥 -${formatCurrency(settleAmt)}원</span>` : ''}
             </div>
             ` : ''}
           </div>
@@ -1338,15 +1337,17 @@
             <div class="card-complete-info">
               <span class="card-complete-label">완료 금액:</span>
               <strong class="card-complete-amt">${formatCurrency(completedAmt)}원</strong>
-              <span class="card-complete-count">(${completedCnt}/${cnt}건)</span>
-              ${isComplete ? '<span class="card-complete-badge">✅ 결제완료</span>' : ''}
+              <span class="card-complete-count">(${cnt > 0 ? `${completedCnt}/${cnt}건` : '0건'})</span>
             </div>
             ${conf.target > 0 ? `
             <div class="card-target-badge" title="목표 실적은 할부(-${formatCurrency(instAmt)}원)를 제외한 실적인정액(${formatCurrency(performanceAmt)}원) 기준으로 산정됩니다">
               목표 ${formatCurrency(conf.target)}원 <strong class="${isTargetMet ? 'target-met' : ''}">(${targetPercent}%) ${isTargetMet ? '👑' : ''}</strong>
-              ${instAmt > 0 ? `<span style="font-size:0.7rem; color:var(--text-muted); margin-left:3px;">(할부 제외)</span>` : ''}
             </div>
-            ` : ''}
+            ` : `
+            <div class="card-target-badge card-target-none" style="opacity: 0.45; border-style: dashed;">
+              목표 미설정
+            </div>
+            `}
           </div>
           <div class="card-bar-bg">
             <div class="card-bar-fill" style="width: ${share}%; background: ${conf.color};"></div>
@@ -1354,9 +1355,52 @@
         </div>
       `;
 
-      cardEl.addEventListener('click', () => {
+      cardEl.addEventListener('click', (e) => {
+        if (e.target.closest('.card-status-pill')) return;
         toggleCardFilter(cardName);
       });
+
+      const statusPill = cardEl.querySelector('.card-status-pill');
+      if (statusPill && cnt > 0) {
+        statusPill.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!isComplete) {
+            if (confirm(`'${cardName}'의 결제대기 내역 ${pendingCnt}건을 모두 '결제완료'로 변경하시겠습니까?`)) {
+              let updated = 0;
+              appState.records.forEach(r => {
+                if (r.actualCard === cardName && r.exclude !== 'Y') {
+                  r.exclude = 'Y';
+                  updated++;
+                }
+              });
+              if (updated > 0) {
+                await saveData();
+                renderKPIs();
+                renderCardsBreakdown();
+                renderTable();
+                showToast(`'${cardName}' ${updated}건이 결제완료 처리되었습니다.`, 'info');
+              }
+            }
+          } else {
+            if (confirm(`'${cardName}'의 결제완료 내역 ${completedCnt}건을 다시 '대기' 상태로 되돌리시겠습니까?`)) {
+              let updated = 0;
+              appState.records.forEach(r => {
+                if (r.actualCard === cardName && r.exclude === 'Y') {
+                  r.exclude = 'N';
+                  updated++;
+                }
+              });
+              if (updated > 0) {
+                await saveData();
+                renderKPIs();
+                renderCardsBreakdown();
+                renderTable();
+                showToast(`'${cardName}' ${updated}건이 결제대기로 변경되었습니다.`, 'info');
+              }
+            }
+          }
+        });
+      }
 
       physicalCardsContainer.appendChild(cardEl);
     });
@@ -1386,15 +1430,15 @@
           <span class="pay-mini-dot" style="background: ${conf.dot || conf.color};"></span>
           <span>${payName.replace('[간편결제] ', '')}</span>
         </div>
-        <div class="pay-mini-amount" style="text-align: right;">
-          <div>${formatCurrency(amt)}원</div>
+        <div class="pay-mini-amount">
+          <div class="pay-mini-val">${formatCurrency(amt)}원</div>
           ${settleAmt > 0 ? `
-          <div style="font-size:0.75rem; color:#10b981; font-weight:600; margin-top:2px;">
-            👥 정산 -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)
+          <div class="pay-mini-settle">
+            👥 정산 -${formatCurrency(settleAmt)}원
           </div>
           ` : ''}
-          <div style="font-size:0.78rem; font-weight:500; margin-top:4px; color:var(--text-main);">
-            완료 금액: <strong style="color:var(--primary-color);">${formatCurrency(completedAmt)}원</strong> <span style="color:var(--text-muted); font-size:0.75rem;">(${completedCnt}/${cnt}건)</span>
+          <div class="pay-mini-meta">
+            ${cnt > 0 ? `완료: <strong>${formatCurrency(completedAmt)}원</strong> <span class="pay-cnt">(${completedCnt}/${cnt}건)</span>` : '<span style="color:var(--text-muted); font-size:0.75rem;">지출 없음</span>'}
           </div>
         </div>
       `;

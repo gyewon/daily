@@ -863,6 +863,61 @@ body {
   letter-spacing: -0.2px;
 }
 
+.card-status-pill {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.card-status-pill:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.card-status-pill.completed {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.card-status-pill.pending {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+}
+
+.card-extra-subline {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.card-inst-note {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.card-sub-sep {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.card-settle-note {
+  color: #10b981;
+  font-weight: 600;
+}
+
 .card-item-bottom {
   display: flex;
   flex-direction: column;
@@ -874,8 +929,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 8px;
   font-size: 0.8rem;
 }
 
@@ -885,7 +940,8 @@ body {
   gap: 4px;
   color: var(--text-secondary);
   font-weight: 500;
-  flex-wrap: wrap;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .card-complete-label {
@@ -1012,6 +1068,28 @@ body {
   font-size: 0.96rem;
   font-weight: 600;
   color: var(--text-primary);
+  text-align: right;
+}
+
+.pay-mini-val {
+  font-family: 'Outfit', 'Pretendard', sans-serif;
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pay-mini-settle {
+  font-size: 0.74rem;
+  color: #10b981;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.pay-mini-meta {
+  font-size: 0.76rem;
+  font-weight: 500;
+  margin-top: 4px;
+  color: var(--text-main);
 }
 
 /* Cash Spend Section */
@@ -2399,22 +2477,75 @@ select option:hover {
   }
 
   .card-meta-row {
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     gap: 4px;
+    flex-wrap: nowrap !important;
+  }
+
+  .card-complete-info {
+    font-size: 0.72rem;
+    gap: 2px;
+    white-space: nowrap;
   }
 
   .card-complete-amt {
-    font-size: 0.82rem;
+    font-size: 0.8rem;
+  }
+
+  .card-complete-count {
+    font-size: 0.7rem;
   }
 
   .card-target-badge {
-    font-size: 0.72rem;
-    padding: 1px 6px;
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+
+  .card-extra-subline {
+    font-size: 0.7rem;
+    gap: 4px;
   }
 
   .accounts-status-container {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .pay-mini-card {
+    padding: 8px 10px;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .pay-mini-title {
+    font-size: 0.76rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    gap: 4px;
+  }
+
+  .pay-mini-dot {
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+  }
+
+  .pay-mini-val {
+    font-size: 0.88rem;
+  }
+
+  .pay-mini-settle {
+    font-size: 0.68rem;
+  }
+
+  .pay-mini-meta {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Table Controls & Filter Bar */
