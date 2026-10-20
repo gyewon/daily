@@ -106,12 +106,12 @@ body {
 /* Layout */
 .app-layout {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 24px 32px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   box-sizing: border-box;
 }
 
@@ -781,7 +781,7 @@ body {
 /* Split Dashboard Layout */
 .dashboard-split-layout {
   display: grid;
-  grid-template-columns: 1fr 1.08fr;
+  grid-template-columns: 1.22fr 1fr;
   gap: 20px;
 }
 
@@ -877,28 +877,28 @@ body {
 .card-item-top {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
 }
 
 .card-brand-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
 }
 
 .card-brand-chip {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 3px;
   flex-shrink: 0;
 }
 
 .card-title {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -909,14 +909,16 @@ body {
 .card-amount-group {
   text-align: right;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .card-amount {
   font-family: 'Outfit', 'Pretendard', sans-serif;
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
 }
 
 .card-share {
@@ -1001,9 +1003,9 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: nowrap;
-  gap: 8px;
-  font-size: 0.8rem;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 0.78rem;
 }
 
 .card-complete-info {
@@ -1018,51 +1020,25 @@ body {
 
 .card-complete-label {
   color: var(--text-muted);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
 }
 
 .card-complete-amt {
   color: var(--text-primary);
   font-weight: 700;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-family: 'Outfit', 'Pretendard', sans-serif;
 }
 
-.card-complete-count {
-  color: var(--text-muted);
-  font-size: 0.76rem;
-}
-
-.card-pending-badge {
-  color: #f59e0b;
-  font-size: 0.72rem;
-  font-weight: 600;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.28);
-  border-radius: 4px;
-  padding: 1px 5px;
-  letter-spacing: -0.2px;
-}
-
-.card-done-badge {
-  color: #10b981;
-  font-size: 0.72rem;
-  font-weight: 600;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.28);
-  border-radius: 4px;
-  padding: 1px 5px;
-  letter-spacing: -0.2px;
-}
-
 .card-target-badge {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   background: var(--bg-input);
-  padding: 2px 7px;
-  border-radius: 5px;
+  padding: 1px 6px;
+  border-radius: 4px;
   border: 1px solid var(--border-color);
   white-space: nowrap;
+  margin-left: auto;
 }
 
 .card-target-badge strong {
@@ -2862,43 +2838,45 @@ select option:hover {
     max-height: 250px;
   }
 
+  /* 모바일에서는 카드 정보를 여유롭게 1개씩(1열) 전체 표시하여 글자 잘림 방지 */
   .cards-status-container {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
   }
 
   .card-item {
-    padding: 10px 10px;
-    gap: 6px;
+    padding: 12px 14px;
+    gap: 8px;
     min-width: 0;
   }
 
   .card-title {
-    font-size: 0.82rem;
+    font-size: 0.92rem;
+    font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .card-amount {
-    font-size: 0.92rem;
+    font-size: 1.02rem;
   }
 
   .card-meta-row {
-    font-size: 0.74rem;
-    gap: 4px;
-    flex-wrap: nowrap !important;
+    font-size: 0.78rem;
+    gap: 6px;
+    flex-wrap: wrap !important;
   }
 
   .card-complete-info {
-    font-size: 0.72rem;
-    gap: 2px;
+    font-size: 0.76rem;
+    gap: 4px;
     white-space: nowrap;
   }
 
   .card-complete-amt {
-    font-size: 0.8rem;
+    font-size: 0.84rem;
   }
 
   .card-complete-count {
