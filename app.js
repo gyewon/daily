@@ -1356,7 +1356,7 @@
             <div class="card-complete-info">
               <span class="card-complete-label">완료 금액:</span>
               <strong class="card-complete-amt">${formatCurrency(completedAmt)}원</strong>
-              <span class="card-complete-count">(${cnt > 0 ? `${completedCnt}/${cnt}건` : '0건'})</span>
+              ${pendingCnt > 0 ? `<span class="card-pending-badge">대기 ${pendingCnt}건</span>` : (cnt > 0 ? `<span class="card-done-badge">전체완료</span>` : '')}
             </div>
             ${conf.target > 0 ? `
             <div class="card-target-badge" title="목표 실적은 할부(-${formatCurrency(instAmt)}원)를 제외한 실적인정액(${formatCurrency(performanceAmt)}원) 기준으로 산정됩니다">
@@ -1457,7 +1457,7 @@
           </div>
           ` : ''}
           <div class="pay-mini-meta">
-            ${cnt > 0 ? `완료: <strong>${formatCurrency(completedAmt)}원</strong> <span class="pay-cnt">(${completedCnt}/${cnt}건)</span>` : '<span style="color:var(--text-muted); font-size:0.75rem;">지출 없음</span>'}
+            ${cnt > 0 ? `완료: <strong>${formatCurrency(completedAmt)}원</strong>${(cnt - completedCnt) > 0 ? ` <span class="card-pending-badge" style="font-size:0.7rem; padding:1px 4px;">대기 ${cnt - completedCnt}</span>` : ' <span style="color:#10b981; font-size:0.7rem;">완료</span>'}` : '<span style="color:var(--text-muted); font-size:0.75rem;">지출 없음</span>'}
           </div>
         </div>
       `;
@@ -1478,6 +1478,7 @@
       const cashCnt = cardCounts['현금'] || 0;
       const cashCompletedAmt = cardCompletedSums['현금'] || 0;
       const cashCompletedCnt = cardCompletedCounts['현금'] || 0;
+      const cashPendingCnt = cashCnt - cashCompletedCnt;
 
       const cashEl = document.createElement('div');
       cashEl.className = `cash-card-item ${appState.filterCard === '현금' ? 'active-filter' : ''}`;
@@ -1498,8 +1499,8 @@
           </div>
           ` : ''}
           <div class="cash-card-meta">
-            완료 금액: <strong style="color:var(--primary-color);">${formatCurrency(cashCompletedAmt)}원</strong> <span style="color:var(--text-muted); font-size:0.75rem;">(${cashCompletedCnt}/${cashCnt}건)</span>
-            ${cashCnt > 0 && cashCompletedCnt === cashCnt ? '<span style="color: #10b981; font-weight: 700; margin-left: 4px;">✅</span>' : ''}
+            완료 금액: <strong style="color:var(--primary-color);">${formatCurrency(cashCompletedAmt)}원</strong>
+            ${cashPendingCnt > 0 ? `<span class="card-pending-badge" style="margin-left:4px;">대기 ${cashPendingCnt}건</span>` : (cashCnt > 0 ? '<span style="color: #10b981; font-weight: 700; margin-left: 4px;">✅ 완료</span>' : '')}
           </div>
         </div>
       `;
