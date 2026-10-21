@@ -358,13 +358,31 @@ def sync_records_to_supabase(new_raw_records):
             f"{SUPABASE_URL}/rest/v1/app_settings",
             headers={**SUPABASE_HEADERS, "Prefer": "resolution=merge-duplicates"},
             json=payload,
-            timeout=15
+            timeout=30
         )
         if resp.status_code in (200, 201, 204):
             print(f"[Sync] ✅ Supabase 동기화 성공! ({len(added_records)}건 추가)")
             return len(added_records), True
         else:
-            print(f"[Sync] ❌ Supabase 저장 실패: {resp.status_code} {resp.text}")
+            print(f"[Sync] ❌ Supabase 일괄 저장 실패: {resp.status_code} {resp.text}")
+            # Fallback: save one by one
+            rec_resp = requests.post(
+                f"{SUPABASE_URL}/rest/v1/app_settings",
+                headers={**SUPABASE_HEADERS, "Prefer": "resolution=merge-duplicates"},
+                json=[{"key": "records", "value": all_records}],
+                timeout=30
+            )
+            if rec_resp.status_code in (200, 201, 204):
+                requests.post(
+                    f"{SUPABASE_URL}/rest/v1/app_settings",
+                    headers={**SUPABASE_HEADERS, "Prefer": "resolution=merge-duplicates"},
+                    json=[{"key": "notification_logs", "value": notification_logs}],
+                    timeout=15
+                )
+                print(f"[Sync] ✅ Supabase 개별 저장 성공! ({len(added_records)}건 추가)")
+                return len(added_records), True
+            else:
+                print(f"[Sync] ❌ Supabase records 단독 저장도 실패: {rec_resp.status_code} {rec_resp.text}")
     except Exception as e:
         print(f"[Sync] 네트워크 오류: {e}")
 
