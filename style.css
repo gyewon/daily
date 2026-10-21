@@ -2977,12 +2977,36 @@ select option:hover {
     display: flex !important;
     flex-direction: column !important;
     gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .card-item {
     padding: 12px 14px;
     gap: 8px;
     min-width: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .card-item:hover {
+    transform: none !important;
+  }
+
+  .card-item-top {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .card-brand-name {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
   }
 
   .card-title {
@@ -2991,16 +3015,30 @@ select option:hover {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0 !important;
+  }
+
+  .card-amount-group {
+    flex-shrink: 0 !important;
+    text-align: right !important;
+    min-width: fit-content !important;
   }
 
   .card-amount {
     font-size: 1.02rem;
+    white-space: nowrap !important;
+  }
+
+  .card-item-bottom {
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .card-meta-row {
     font-size: 0.78rem;
     gap: 6px;
     flex-wrap: wrap !important;
+    width: 100% !important;
   }
 
   .card-complete-info {
