@@ -1303,10 +1303,16 @@
       }
     });
 
-    // Render Physical Cards (사용금액 높은 순 정렬)
+    // Render Physical Cards (지출 있는 카드 우선, 지출 0원이지만 목표 실적이 있는 카드만 표시, 목표 없는 0원 카드는 숨김)
     physicalCardsContainer.innerHTML = '';
     const physicalCardNames = Object.keys(CARD_CONFIG)
-      .filter(c => CARD_CONFIG[c].type === 'physical')
+      .filter(c => {
+        if (CARD_CONFIG[c].type !== 'physical') return false;
+        const amt = cardSums[c] || 0;
+        const target = CARD_CONFIG[c].target || 0;
+        // 지출이 있거나(amt > 0), 목표 실적이 설정된 카드(target > 0)만 표시
+        return amt > 0 || target > 0;
+      })
       .sort((a, b) => {
         const diff = (cardSums[b] || 0) - (cardSums[a] || 0);
         if (diff !== 0) return diff;
