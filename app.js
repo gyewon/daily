@@ -3035,6 +3035,39 @@
       });
       grid.appendChild(btn);
     });
+
+    // '+ 대분류 추가' 버튼
+    const addMainBtn = document.createElement('button');
+    addMainBtn.type = 'button';
+    addMainBtn.className = 'quick-cat-btn';
+    addMainBtn.style.borderStyle = 'dashed';
+    addMainBtn.style.color = 'var(--text-muted)';
+    addMainBtn.innerHTML = `<span class="icon">➕</span><span>대분류 추가</span>`;
+    addMainBtn.addEventListener('click', () => {
+      const newCat = prompt('추가할 새 대분류 이름을 입력하세요:');
+      if (newCat && newCat.trim()) {
+        const val = newCat.trim();
+        const existingKey = Object.keys(appState.masterCategories || {}).find(
+          k => k.trim().toLowerCase() === val.toLowerCase()
+        );
+        if (existingKey) {
+          showToast(`'${existingKey}'은(는) 이미 등록되어 있는 대분류입니다.`, 'warn');
+          quickCatSelectedMain = existingKey;
+          renderQuickMainCategories(existingKey);
+          return;
+        }
+        if (!appState.masterCategories) appState.masterCategories = {};
+        appState.masterCategories[val] = [];
+        appState.activeManageMainCat = val;
+        saveMasterCategories();
+        populateFilterDropdowns();
+        renderAll();
+        renderQuickMainCategories(val);
+        applyCategorySelection(val, '');
+        showToast(`새 대분류 '${val}'가 추가 및 적용되었습니다.`, 'success');
+      }
+    });
+    grid.appendChild(addMainBtn);
   }
 
   function renderQuickSubCategories(mainCat, activeSub) {
@@ -4103,6 +4136,9 @@
 
       if (existingKey) {
         showToast(`'${existingKey}'은(는) 이미 등록되어 있는 대분류입니다.`, 'warn');
+        appState.activeManageMainCat = existingKey;
+        renderManageMainCategories();
+        renderManageSubCategories();
         return;
       }
 
@@ -4425,11 +4461,12 @@
       const container = document.getElementById('mainCategoryList');
       if (!container) return;
       container.innerHTML = '';
-      const mainCats = Object.keys(appState.masterCategories).sort();
+      const mainCats = Object.keys(appState.masterCategories || {}).sort((a, b) => a.localeCompare(b, 'ko'));
       if (mainCats.length === 0) {
         container.innerHTML = '<div style="color:var(--text-muted); font-size:0.9rem; padding:10px;">대분류가 없습니다.</div>';
         return;
       }
+      let activeItemEl = null;
       mainCats.forEach(cat => {
         const div = document.createElement('div');
         div.className = 'main-cat-item';
@@ -4444,6 +4481,7 @@
         if (appState.activeManageMainCat === cat) {
           div.style.background = 'var(--bg-input)';
           div.style.border = '1px solid var(--border-focus)';
+          activeItemEl = div;
         } else {
           div.style.background = 'transparent';
           div.addEventListener('mouseenter', () => div.style.background = 'var(--bg-surface)');
@@ -4462,6 +4500,12 @@
         `;
         container.appendChild(div);
       });
+
+      if (activeItemEl) {
+        setTimeout(() => {
+          activeItemEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }, 50);
+      }
     }
 
     function renderManageSubCategories() {
