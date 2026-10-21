@@ -4089,11 +4089,24 @@
 
     document.getElementById('newMainCategoryForm')?.addEventListener('submit', e => {
       e.preventDefault();
-      const val = document.getElementById('newMainCategoryName').value.trim();
-      if (!val || appState.masterCategories[val]) {
-        showToast('이미 존재하거나 잘못된 대분류 이름입니다.', 'warn');
+      const inputEl = document.getElementById('newMainCategoryName');
+      const val = inputEl ? inputEl.value.trim() : '';
+      if (!val) {
+        showToast('대분류 이름을 입력해주세요.', 'warn');
         return;
       }
+      
+      // 기존 대분류와 공백/대소문자 무시 비교
+      const existingKey = Object.keys(appState.masterCategories || {}).find(
+        k => k.trim().toLowerCase() === val.toLowerCase()
+      );
+
+      if (existingKey) {
+        showToast(`'${existingKey}'은(는) 이미 등록되어 있는 대분류입니다.`, 'warn');
+        return;
+      }
+
+      if (!appState.masterCategories) appState.masterCategories = {};
       appState.masterCategories[val] = [];
       appState.activeManageMainCat = val;
       
@@ -4109,12 +4122,30 @@
     document.getElementById('newSubCategoryForm')?.addEventListener('submit', e => {
       e.preventDefault();
       const mainCat = appState.activeManageMainCat;
-      const val = document.getElementById('newSubCategoryName').value.trim();
-      if (!mainCat || !val || appState.masterCategories[mainCat].includes(val)) {
-        showToast('이미 존재하거나 잘못된 소분류 이름입니다.', 'warn');
+      const inputEl = document.getElementById('newSubCategoryName');
+      const val = inputEl ? inputEl.value.trim() : '';
+      
+      if (!mainCat) {
+        showToast('소분류를 추가할 대분류를 먼저 선택해주세요.', 'warn');
         return;
       }
-      appState.masterCategories[mainCat].push(val);
+      if (!val) {
+        showToast('소분류 이름을 입력해주세요.', 'warn');
+        return;
+      }
+
+      const currentSubList = appState.masterCategories[mainCat] || [];
+      const existingSub = currentSubList.find(
+        s => s.trim().toLowerCase() === val.toLowerCase()
+      );
+
+      if (existingSub) {
+        showToast(`'${mainCat}'에 이미 '${existingSub}' 소분류가 존재합니다.`, 'warn');
+        return;
+      }
+
+      currentSubList.push(val);
+      appState.masterCategories[mainCat] = currentSubList;
       
       saveMasterCategories();
       populateFilterDropdowns();
