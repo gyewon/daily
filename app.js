@@ -962,6 +962,8 @@
     // (당월 청구분 결제 완료 여부(exclude === 'Y')와 상관없이 앞으로 갚아야 할 남은 회차가 있는 한 추적)
     const installmentRecords = appState.records.filter(r => r.isInstallment === 'Y' && !r.isCanceled && (Number(r.amount) || 0) > 0);
     
+    const trackingMap = {};
+
     // 날짜 오름차순으로 정렬하여 회차 순서 파악
     const sortedInstRecords = [...installmentRecords].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
