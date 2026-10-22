@@ -1511,18 +1511,20 @@
         <div class="card-item-top">
           <div class="card-brand-name">
             <span class="card-brand-chip" style="background: ${displayColor};"></span>
-            <span class="card-title">${cardName}</span>
+            <span class="card-title" title="${cardName}">${cardName}</span>
+          </div>
+          <div class="card-amount-val">
+            <span class="card-amount">${formatCurrency(amt)}원</span>
+          </div>
+        </div>
+        <div class="card-item-sub">
+          <div class="card-pill-wrap">
             ${statusPillHtml}
           </div>
-          <div class="card-amount-group">
-            <div>
-              <span class="card-amount">${formatCurrency(amt)}원</span>
-            </div>
-            <div class="card-extra-subline ${hasExtraSubline ? '' : 'is-empty'}" title="${hasExtraSubline ? `실제 지출: ${formatCurrency(amt)}원 / ${showInstPerf ? `실적인정(할부 제외): ${formatCurrency(performanceAmt)}원 / ` : ''}${settleAmt > 0 ? `정산 차감: -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)` : ''}` : ''}">
-              ${showInstPerf ? `<span class="card-inst-note">실적 ${formatCurrency(performanceAmt)}원</span>` : ''}
-              ${(showInstPerf && settleAmt > 0) ? `<span class="card-sub-sep">·</span>` : ''}
-              ${settleAmt > 0 ? `<span class="card-settle-note">👥 -${formatCurrency(settleAmt)}원</span>` : ''}
-            </div>
+          <div class="card-extra-subline ${hasExtraSubline ? '' : 'is-empty'}" title="${hasExtraSubline ? `실제 지출: ${formatCurrency(amt)}원 / ${showInstPerf ? `실적인정(할부 제외): ${formatCurrency(performanceAmt)}원 / ` : ''}${settleAmt > 0 ? `정산 차감: -${formatCurrency(settleAmt)}원 (실부담 ${formatCurrency(amt - settleAmt)}원)` : ''}` : ''}">
+            ${showInstPerf ? `<span class="card-inst-note">실적 ${formatCurrency(performanceAmt)}원</span>` : ''}
+            ${(showInstPerf && settleAmt > 0) ? `<span class="card-sub-sep">·</span>` : ''}
+            ${settleAmt > 0 ? `<span class="card-settle-note">👥 -${formatCurrency(settleAmt)}원</span>` : ''}
           </div>
         </div>
         <div class="card-item-bottom">
