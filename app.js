@@ -1030,26 +1030,50 @@
         
         const dateStr = item.lastDate ? item.lastDate.substring(5).replace('-', '/') : '';
         const memoLabel = item.memo ? item.memo.replace(/\(\d+\s*\/\s*\d+\)/, '').replace(/할부\s*\d+\/\d+/, '').trim() : '';
+        const percent = Math.min(100, Math.round((item.currentIdx / item.totalIdx) * 100));
+
         html += `
-          <li style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <strong style="color: var(--text-main); font-size: 0.95rem;">${item.merchant}${memoLabel ? ` <span style="font-size:0.85em; font-weight:normal; color:var(--text-secondary);">(${memoLabel})</span>` : ''}</strong>
-              <span style="color: var(--text-muted); font-size: 0.85em;">[${item.card}]</span>
+          <div class="inst-card">
+            <div class="inst-card-top">
+              <div class="inst-merchant-title-wrap">
+                <div class="inst-merchant-title">${item.merchant}</div>
+                ${memoLabel ? `<span class="inst-memo-badge">${memoLabel}</span>` : ''}
+              </div>
+              <div class="inst-amount-highlight">
+                <div class="inst-left-amt">${formatCurrency(leftAmt)}원 남음</div>
+                <div class="inst-left-months-pill">${monthsLeft}개월 남음</div>
+              </div>
             </div>
-            <div style="text-align: right; display: flex; flex-direction: column; gap: 4px;">
-              <div style="font-weight: bold; color: var(--danger); font-size: 1rem;">${formatCurrency(leftAmt)}원 남음</div>
-              <div style="color: var(--text-muted); font-size: 0.8em;">(진행: ${item.currentIdx}/${item.totalIdx}회, ${monthsLeft}개월 남음 · 월 ${formatCurrency(item.amount)}원, 최근청구: ${dateStr})</div>
+            
+            <div class="inst-progress-container">
+              <div class="inst-progress-bar-bg">
+                <div class="inst-progress-bar-fill" style="width: ${percent}%;"></div>
+              </div>
+              <div class="inst-progress-meta">
+                <span class="inst-progress-round">진행 <strong>${item.currentIdx}/${item.totalIdx}회</strong> (${percent}%)</span>
+                <span class="inst-monthly-charge">월 ${formatCurrency(item.amount)}원</span>
+              </div>
             </div>
-          </li>
+
+            <div class="inst-card-bottom">
+              <span class="inst-card-pill">[${item.card}]</span>
+              <span class="inst-last-date">최근 청구: ${dateStr}</span>
+            </div>
+          </div>
         `;
       }
     });
     
     if (activeCount > 0) {
       panel.style.display = 'block';
-      document.getElementById('kpiTotalInstallmentLeft').textContent = formatCurrency(totalLeft);
-      document.getElementById('kpiInstallmentCount').textContent = `진행 중인 할부 ${activeCount}건`;
-      document.getElementById('installmentTrackingList').innerHTML = html;
+      const elLeft = document.getElementById('kpiTotalInstallmentLeft');
+      if (elLeft) elLeft.textContent = formatCurrency(totalLeft);
+      const elCount = document.getElementById('kpiInstallmentCount');
+      if (elCount) elCount.textContent = `진행 중인 할부 ${activeCount}건`;
+      const elBadge = document.getElementById('kpiInstallmentCountBadge');
+      if (elBadge) elBadge.textContent = `${activeCount}건 진행 중`;
+      const elList = document.getElementById('installmentTrackingList');
+      if (elList) elList.innerHTML = html;
     } else {
       panel.style.display = 'none';
     }

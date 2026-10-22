@@ -330,39 +330,44 @@
               <div id="settlementsVisualContainer"></div>
             </div>
           </div>
-
-          <!-- Installment Tracking Panel -->
-          <div id="installmentTrackerPanel" style="margin-top: 24px; border-top: 1px dashed var(--border-color); padding-top: 16px; display: none;">
-            <div class="panel-header" style="margin-bottom: 12px; padding-bottom: 0; border-bottom: none;">
-              <div class="panel-title-group">
-                <h3>📆 할부 잔액 추적</h3>
-                <p>앞으로 더 갚아야 할 남은 할부 총액 (가장 최근 청구된 날짜 기준 자동 계산)</p>
-              </div>
-            </div>
-            <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch;">
-              <div class="kpi-card" style="flex: 1; min-width: 200px; margin: 0; background: var(--bg-secondary); border: 1px solid var(--border-color);">
-                <div class="kpi-header">
-                  <span class="kpi-label">남은 할부 원금 총액</span>
-                  <span class="kpi-icon-pill">📉</span>
-                </div>
-                <div class="kpi-value-row">
-                  <span class="kpi-value" id="kpiTotalInstallmentLeft" style="color: var(--danger);">0</span>
-                  <span class="kpi-unit">원</span>
-                </div>
-                <div class="kpi-footer">
-                  <span class="kpi-subtext" id="kpiInstallmentCount">진행 중인 할부 0건</span>
-                </div>
-              </div>
-              <div style="flex: 2; min-width: 300px; border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; background: var(--bg-card); max-height: 300px; overflow-y: auto;">
-                <ul id="installmentTrackingList" style="list-style: none; margin: 0; padding: 0; font-size: 0.95rem; display: flex; flex-direction: column; gap: 8px;">
-                  <!-- dynamically injected -->
-                </ul>
-              </div>
-            </div>
-          </div>
         </section>
 
       </div>
+
+      <!-- Section: Installment Tracking Panel (Full-Width Dashboard Section) -->
+      <section id="installmentTrackerPanel" class="panel installment-tracker-panel" style="display: none;">
+        <div class="panel-header installment-panel-header">
+          <div class="panel-title-group">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span class="panel-icon-badge">📆</span>
+              <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-primary);">할부 잔액 추적</h3>
+              <span class="panel-tag-badge" id="kpiInstallmentCountBadge">진행 중 0건</span>
+            </div>
+            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 0.88rem;">앞으로 더 갚아야 할 남은 할부 총액 (가장 최근 청구된 날짜 기준 자동 계산)</p>
+          </div>
+          
+          <div class="installment-header-kpis">
+            <div class="installment-kpi-badge">
+              <span class="inst-kpi-label">남은 할부 원금 총액</span>
+              <div class="inst-kpi-val-wrap">
+                <span class="inst-kpi-val" id="kpiTotalInstallmentLeft">0</span>
+                <span class="inst-kpi-unit">원</span>
+              </div>
+            </div>
+            <div class="installment-kpi-badge secondary">
+              <span class="inst-kpi-label">진행 건수</span>
+              <div class="inst-kpi-val-wrap">
+                <span class="inst-kpi-val sub" id="kpiInstallmentCount">진행 중인 할부 0건</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modern Spacious Grid of Installment Cards -->
+        <div id="installmentTrackingList" class="installment-cards-grid">
+          <!-- Dynamically populated cards -->
+        </div>
+      </section>
 
       <!-- Section: Detailed Transactions Table -->
       <section class="panel table-panel">
@@ -1264,7 +1269,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=64"></script>
+  <script src="app.js?v=65"></script>
 </body>
 
 </html>
