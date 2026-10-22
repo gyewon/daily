@@ -5783,16 +5783,60 @@
       }
     }
 
+    // --- 마이너스 금액 헷징(상계) 처리: 새로 들어온 신규 업로드 데이터 내부에서만 맞물릴 때 상계 ---
+    let hedgeCount = 0;
+    if (pendingUploadMode === 'bank') {
+      const toRemoveFromUpload = new Set();
+      const uploadNegatives = pendingUploadedRecords.filter(r => r.amount < 0);
+
+      uploadNegatives.forEach(neg => {
+        // 새로 업로드한 엑셀 목록 내부에서 동일 가맹점, 동일 절대값 금액을 가진 양수 결제 내역 찾기 (ex: +5,000원 결제 & -5,000원 취소)
+        const posRec = pendingUploadedRecords.find(r =>
+          !toRemoveFromUpload.has(r) &&
+          r !== neg &&
+          r.amount === Math.abs(neg.amount) &&
+          (r.merchant || '').trim() === (neg.merchant || '').trim()
+        );
+
+        if (posRec) {
+          toRemoveFromUpload.add(neg);
+          toRemoveFromUpload.add(posRec);
+
+          // 상계된 내역은 휴지통(블랙리스트)에 추가하여 추후 재업로드 시에도 들어오지 않도록 방지
+          const negSig = getSignature(neg);
+          const posSig = getSignature(posRec);
+          appState.deletedSignatures.add(negSig);
+          appState.deletedSignatures.add(posSig);
+          supabase.from('deleted_signatures').insert([{ signature: negSig }, { signature: posSig }]); // background
+
+          hedgeCount++;
+        }
+      });
+
+      if (toRemoveFromUpload.size > 0) {
+        pendingUploadedRecords = pendingUploadedRecords.filter(r => !toRemoveFromUpload.has(r));
+      }
+
+      // 짝 없는 단독 마이너스 건도 지출 목록에 잘못 들어가지 않도록 필터링
+      pendingUploadedRecords = pendingUploadedRecords.filter(r => r.amount > 0);
+    }
+
     let addedCount = 0;
     let dupCount = 0;
 
     if (isAppend) {
+      // 기존 데이터는 100% 보존 (Read-only)하고 오직 기존에 없는 신규 지출만 누적 추가
       const existingSigs = new Set(appState.records.map(r => getSignature(r)));
+      let maxId = appState.records.reduce((max, r) => Math.max(max, Number(r.id) || 0), 0);
+
       pendingUploadedRecords.forEach(newRec => {
         const sig = getSignature(newRec);
         if (!existingSigs.has(sig)) {
           existingSigs.add(sig);
           checkFixedCategory(newRec);
+          maxId++;
+          newRec.id = maxId;
+          newRec.origId = maxId;
           appState.records.push(newRec);
           addedCount++;
         } else {
@@ -5800,59 +5844,23 @@
         }
       });
     } else {
-      pendingUploadedRecords.forEach(r => checkFixedCategory(r));
+      // 백업 복원 모드: 전체 복구
+      pendingUploadedRecords.forEach((r, idx) => {
+        checkFixedCategory(r);
+        r.id = idx + 1;
+        r.origId = idx + 1;
+      });
       await supabase.from('records').delete().neq('id', 0);
       appState.records = [...pendingUploadedRecords];
       autoFlagInstallments();
       addedCount = pendingUploadedRecords.length;
     }
 
-
-    // --- 마이너스 금액 헷징(상계) 처리 ---
-    let toRemove = new Set();
-    // 상계처리는 뱅크샐러드 업로드에만 적용 (백업 복원은 저장된 그대로 복원)
-    let negatives = pendingUploadMode === 'bank' ? appState.records.filter(r => r.amount < 0) : [];
-    let hedgeCount = 0;
-
-    negatives.forEach(neg => {
-      // 동일 가맹점, 동일 절대값 금액을 가진 양수 결제 내역 찾기 (이미 제거 대상이 아닌 것만)
-      const posRec = appState.records.find(r =>
-        !toRemove.has(r) &&
-        r !== neg &&
-        r.amount === Math.abs(neg.amount) &&
-        r.merchant.trim() === neg.merchant.trim()
-      );
-
-      if (posRec) {
-        toRemove.add(neg);
-        toRemove.add(posRec);
-
-        // 상계된 내역도 휴지통(블랙리스트)에 추가하여 이후 중복 업로드 방지 및 내역 투명성 제공
-        const negSig = getSignature(neg);
-        const posSig = getSignature(posRec);
-        appState.deletedSignatures.add(negSig);
-        appState.deletedSignatures.add(posSig);
-        supabase.from('deleted_signatures').insert([{ signature: negSig }, { signature: posSig }]); // background
-
-        hedgeCount++;
-      }
-    });
-
-    if (toRemove.size > 0) {
-      appState.records = appState.records.filter(r => !toRemove.has(r));
-    }
-
-    // 날짜/시간 정렬
+    // 날짜/시간 정렬 (기존 데이터의 결제완료, 메모, 카드변경 등 속성은 그대로 유지)
     appState.records.sort((a, b) => {
-      const dComp = a.date.localeCompare(b.date);
+      const dComp = (a.date || '').localeCompare(b.date || '');
       if (dComp !== 0) return dComp;
       return (a.time || '').localeCompare(b.time || '');
-    });
-
-    // ID 재부여
-    appState.records.forEach((r, idx) => {
-      r.id = idx + 1;
-      r.origId = idx + 1;
     });
 
     // --- 자동 카테고리 등록 ---
