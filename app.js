@@ -551,32 +551,59 @@
   
   function autoFlagInstallments() {
     let changed = false;
-    // Group by time + merchant + card
-    const groups = {};
+    
+    // 1. 메모에 할부 키워드가 있거나 installment 필드가 일시불이 아닌 경우 플래그 활성화 (정산 메모 제외)
     appState.records.forEach(r => {
-      const key = `${r.time}|${r.merchant}|${r.actualCard}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(r);
-      // Also, if memo contains '할부', auto-flag
-      if ((r.memo && r.memo.includes('할부')) || (r.installment && r.installment !== '일시불')) {
+      const memo = r.memo || '';
+      if (memo.includes('정산') || memo.includes('더치페이')) return;
+      if (memo.includes('할부') || (r.installment && r.installment !== '일시불')) {
         if (r.isInstallment !== 'Y') {
           r.isInstallment = 'Y';
           changed = true;
         }
       }
     });
-    
-    // If multiple records share the exact same time, merchant, and card, but have different dates, they are installments.
-    for (const key in groups) {
-      if (groups[key].length > 1) {
-        groups[key].forEach(r => {
-          if (r.isInstallment !== 'Y') {
-            r.isInstallment = 'Y';
-            changed = true;
-          }
-        });
+
+    // 2. 가맹점 및 금액이 동일한 다회차 할부 자동 연계 (이전 달에 할부 회차 메모가 있으면 다음 달 결제 건에 자동 승계)
+    const sorted = [...appState.records].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const chainMap = {}; // key: merchant + amount
+    sorted.forEach(r => {
+      const amt = Number(r.amount) || 0;
+      if (amt <= 0 || !r.merchant) return;
+      const key = `${r.merchant.trim()}_${amt}`;
+      
+      const memo = r.memo || '';
+      const match = memo.match(/(.*?)(\d+)\s*\/\s*(\d+)(.*)/);
+      if (match) {
+        const curr = parseInt(match[2], 10);
+        const total = parseInt(match[3], 10);
+        chainMap[key] = {
+          prefix: match[1],
+          currentIdx: curr,
+          totalIdx: total,
+          suffix: match[4],
+          card: r.actualCard,
+          lastDate: r.date
+        };
+      } else if (chainMap[key] && chainMap[key].currentIdx < chainMap[key].totalIdx) {
+        // 이전 달에 할부 진행 중이던 내역과 가맹점/금액이 일치하고 현재 메모가 비어있으면 다음 회차 자동 부여
+        const prev = chainMap[key];
+        const nextIdx = prev.currentIdx + 1;
+        r.isInstallment = 'Y';
+        r.memo = `${prev.prefix}${nextIdx}/${prev.totalIdx}${prev.suffix}`.trim();
+        // 간편결제로 매핑되어 있고 이전 할부 카드가 있으면 실물 카드도 자동 승계
+        if ((!r.actualCard || r.actualCard.includes('간편결제') || r.actualCard === '미등록') && prev.card) {
+          r.actualCard = prev.card;
+        }
+        chainMap[key] = {
+          ...prev,
+          currentIdx: nextIdx,
+          lastDate: r.date
+        };
+        changed = true;
       }
-    }
+    });
+
     return changed;
   }
 
@@ -920,19 +947,21 @@
     
     installmentRecords.forEach(r => {
       if (!r.memo) return;
+      if (r.memo.includes('정산') || r.memo.includes('더치페이')) return; // 정산 및 더치페이 메모 제외
       const match = r.memo.match(/(.*?)(\d+)\s*\/\s*(\d+)(.*)/);
       if (match) {
         const currentIdx = parseInt(match[2], 10);
         const totalIdx = parseInt(match[3], 10);
         
-        // 가맹점, 카드, 총 할부개월수, 월 청구금액 기준으로 할부 건 그룹화
-        const key = `${r.merchant}_${r.actualCard}_${totalIdx}_${r.amount}`;
+        // 가맹점, 총 할부개월수, 월 청구금액 기준으로 할부 건 그룹화 (결제수단 표기 차이에도 안전하게 연계)
+        const key = `${r.merchant.trim()}_${totalIdx}_${r.amount}`;
         
         // 더 최신 회차이거나, 동일 회차라도 더 최근 날짜인 경우 갱신
         if (!trackingMap[key] || currentIdx > trackingMap[key].currentIdx || (currentIdx === trackingMap[key].currentIdx && new Date(r.date) > new Date(trackingMap[key].lastDate))) {
+          const preferredCard = (!r.actualCard || r.actualCard.includes('간편결제')) && trackingMap[key]?.card && !trackingMap[key].card.includes('간편결제') ? trackingMap[key].card : r.actualCard;
           trackingMap[key] = {
             merchant: r.merchant,
-            card: r.actualCard,
+            card: preferredCard,
             amount: Number(r.amount) || 0,
             currentIdx: currentIdx,
             totalIdx: totalIdx,
