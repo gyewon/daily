@@ -2436,6 +2436,71 @@
     });
   }
 
+  // --- Bulk Action Logic ---
+  function updateBulkActionUI() {
+    const checkedBoxes = document.querySelectorAll('.row-check:checked');
+    const bulkBar = document.getElementById('bulkActionBar');
+    const bulkCount = document.getElementById('bulkCount');
+    const bulkSum = document.getElementById('bulkSum');
+    const bulkSettleBadge = document.getElementById('bulkSettleBadge');
+    const selectAllCheckbox = document.getElementById('selectAllRows');
+
+    const totalRows = document.querySelectorAll('.row-check').length;
+    if (selectAllCheckbox) {
+      if (totalRows > 0) {
+        selectAllCheckbox.checked = (checkedBoxes.length === totalRows);
+      } else {
+        selectAllCheckbox.checked = false;
+      }
+    }
+
+    if (bulkBar) {
+      if (checkedBoxes.length > 0) {
+        bulkBar.style.display = 'flex';
+        if (bulkCount) bulkCount.textContent = checkedBoxes.length;
+
+        let grossSum = 0;
+        let settleSum = 0;
+        let settledCount = 0;
+
+        checkedBoxes.forEach(cb => {
+          const id = Number(cb.dataset.id);
+          const rec = appState.records.find(r => r.id === id);
+          const amt = Number(cb.dataset.amount) || (rec ? Number(rec.amount) || 0 : 0);
+          const settle = rec ? Number(rec.settleAmount) || 0 : (Number(cb.dataset.settle) || 0);
+          grossSum += amt;
+          if (settle > 0) {
+            settleSum += settle;
+            settledCount++;
+          }
+        });
+
+        const netSum = Math.max(0, grossSum - settleSum);
+
+        if (bulkSum) bulkSum.textContent = formatCurrency(grossSum);
+
+        if (bulkSettleBadge) {
+          if (settleSum > 0) {
+            bulkSettleBadge.style.display = 'inline-flex';
+            bulkSettleBadge.innerHTML = `
+              <span class="bulk-settle-pill" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #10b981; padding: 2px 8px; border-radius: 6px; font-size: 0.82rem; font-weight: 600;">
+                👥 정산 회수 -${formatCurrency(settleSum)}원 <small style="font-size: 0.75rem; opacity: 0.85;">(${settledCount}건)</small>
+              </span>
+              <span style="color: #10b981; font-weight: 700; font-size: 0.95rem; margin-left: 2px;">
+                👉 실부담 ${formatCurrency(netSum)}원
+              </span>
+            `;
+          } else {
+            bulkSettleBadge.style.display = 'none';
+            bulkSettleBadge.innerHTML = '';
+          }
+        }
+      } else {
+        bulkBar.style.display = 'none';
+      }
+    }
+  }
+
   // --- Render Transactions Table ---
   function renderTable() {
     saveUIState();
@@ -3509,71 +3574,6 @@
     const tableBody = document.getElementById('txTableBody');
     tableBody?.addEventListener('change', handleTableChange);
     tableBody?.addEventListener('click', handleTableClick);
-
-    // Bulk Action Logic
-    function updateBulkActionUI() {
-      const checkedBoxes = document.querySelectorAll('.row-check:checked');
-      const bulkBar = document.getElementById('bulkActionBar');
-      const bulkCount = document.getElementById('bulkCount');
-      const bulkSum = document.getElementById('bulkSum');
-      const bulkSettleBadge = document.getElementById('bulkSettleBadge');
-      const selectAllCheckbox = document.getElementById('selectAllRows');
-
-      const totalRows = document.querySelectorAll('.row-check').length;
-      if (selectAllCheckbox) {
-        if (totalRows > 0) {
-          selectAllCheckbox.checked = (checkedBoxes.length === totalRows);
-        } else {
-          selectAllCheckbox.checked = false;
-        }
-      }
-
-      if (bulkBar) {
-        if (checkedBoxes.length > 0) {
-          bulkBar.style.display = 'flex';
-          if (bulkCount) bulkCount.textContent = checkedBoxes.length;
-
-          let grossSum = 0;
-          let settleSum = 0;
-          let settledCount = 0;
-
-          checkedBoxes.forEach(cb => {
-            const id = Number(cb.dataset.id);
-            const rec = appState.records.find(r => r.id === id);
-            const amt = Number(cb.dataset.amount) || (rec ? Number(rec.amount) || 0 : 0);
-            const settle = rec ? Number(rec.settleAmount) || 0 : (Number(cb.dataset.settle) || 0);
-            grossSum += amt;
-            if (settle > 0) {
-              settleSum += settle;
-              settledCount++;
-            }
-          });
-
-          const netSum = Math.max(0, grossSum - settleSum);
-
-          if (bulkSum) bulkSum.textContent = formatCurrency(grossSum);
-
-          if (bulkSettleBadge) {
-            if (settleSum > 0) {
-              bulkSettleBadge.style.display = 'inline-flex';
-              bulkSettleBadge.innerHTML = `
-                <span class="bulk-settle-pill" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #10b981; padding: 2px 8px; border-radius: 6px; font-size: 0.82rem; font-weight: 600;">
-                  👥 정산 회수 -${formatCurrency(settleSum)}원 <small style="font-size: 0.75rem; opacity: 0.85;">(${settledCount}건)</small>
-                </span>
-                <span style="color: #10b981; font-weight: 700; font-size: 0.95rem; margin-left: 2px;">
-                  👉 실부담 ${formatCurrency(netSum)}원
-                </span>
-              `;
-            } else {
-              bulkSettleBadge.style.display = 'none';
-              bulkSettleBadge.innerHTML = '';
-            }
-          }
-        } else {
-          bulkBar.style.display = 'none';
-        }
-      }
-    }
 
     document.getElementById('txTable')?.addEventListener('change', e => {
       if (e.target.id === 'selectAllRows') {
