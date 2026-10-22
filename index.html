@@ -361,6 +361,13 @@
               </div>
             </div>
           </div>
+
+          <div class="inst-sort-controls" style="display: flex; align-items: center; gap: 8px; width: 100%; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px;">
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">정렬:</span>
+            <button type="button" class="btn-inst-sort active" data-sort="payoff" title="남은 개월 수가 적어 가장 먼저 완납/종료되는 순서로 정렬합니다">⚡ 완납 임박순 (먼저 끝나는 순)</button>
+            <button type="button" class="btn-inst-sort" data-sort="firstDate" title="할부 결제를 가장 먼저 끊은(시작한) 날짜 순서로 정렬합니다">📅 최초 결제일순 (먼저 끊은 날짜)</button>
+            <button type="button" class="btn-inst-sort" data-sort="amount" title="남은 할부 잔액이 큰 순서로 정렬합니다">💰 잔액 큰순</button>
+          </div>
         </div>
 
         <!-- Modern Spacious Grid of Installment Cards -->
@@ -1269,7 +1276,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=65"></script>
+  <script src="app.js?v=66"></script>
 </body>
 
 </html>

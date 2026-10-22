@@ -222,7 +222,8 @@
         currentPage: appState.currentPage,
         pageSize: appState.pageSize,
         activeChartTab: appState.activeChartTab,
-        chartSettleMode: appState.chartSettleMode
+        chartSettleMode: appState.chartSettleMode,
+        installmentSort: appState.installmentSort
       }));
     } catch(e) {}
   }
@@ -235,6 +236,7 @@
         Object.assign(appState, parsed);
         if (parsed.chartSettleMode) appState.chartSettleMode = parsed.chartSettleMode;
         if (parsed.activeChartTab) appState.activeChartTab = parsed.activeChartTab;
+        if (parsed.installmentSort) appState.installmentSort = parsed.installmentSort;
         
         // 새로고침 시 페이지네이션은 유지하되 필터는 모두 해제
         appState.filterCard = 'ALL';
@@ -554,6 +556,7 @@
     
     // 1. 메모에 할부 키워드, 회차 형식(\d+/\d+), 개월 수, 또는 installment 필드가 일시불이 아닌 경우 플래그 활성화 (정산 메모 제외)
     appState.records.forEach(r => {
+      if (r.manualInst === 'N') return; // 사용자가 직접 일시불(N)로 설정한 내역은 자동 플래그 제외
       const memo = r.memo || '';
       if (memo.includes('정산') || memo.includes('더치페이')) return;
       const hasInstPattern = memo.includes('할부') || /\d+\s*\/\s*\d+/.test(memo) || /\d+\s*개월/.test(memo) || (r.installment && r.installment !== '일시불');
@@ -594,6 +597,7 @@
           lastDate: r.date
         };
       } else if (chainMap[key] && chainMap[key].currentIdx < chainMap[key].totalIdx) {
+        if (r.manualInst === 'N') return; // 사용자가 직접 일시불(N)로 설정한 내역은 자동 연계 제외
         // 이전 달에 할부 진행 중이던 내역과 가맹점/금액이 일치하고 현재 메모가 비어있거나 할부 메모이면 다음 회차 자동 부여
         const prev = chainMap[key];
         const nextIdx = prev.currentIdx + 1;
@@ -995,18 +999,33 @@
         currentIdx = Math.min(totalIdx, trackingMap[key].currentIdx + 1);
       }
       
-      // 더 최신 회차이거나, 동일 회차라도 더 최근 날짜인 경우 갱신
-      if (!trackingMap[key] || currentIdx > trackingMap[key].currentIdx || (currentIdx === trackingMap[key].currentIdx && new Date(r.date) > new Date(trackingMap[key].lastDate))) {
-        const preferredCard = (!r.actualCard || r.actualCard.includes('간편결제')) && trackingMap[key]?.card && !trackingMap[key].card.includes('간편결제') ? trackingMap[key].card : r.actualCard;
+      // 더 최신 회차이거나, 동일 회차라도 더 최근 날짜인 경우 갱신 & 최초 결제일(firstDate) 추적
+      if (!trackingMap[key]) {
+        const preferredCard = (!r.actualCard || r.actualCard.includes('간편결제')) ? r.actualCard : r.actualCard;
         trackingMap[key] = {
           merchant: r.merchant,
           card: preferredCard,
           amount: Number(r.amount) || 0,
           currentIdx: currentIdx,
           totalIdx: totalIdx,
+          firstDate: r.date,
           lastDate: r.date,
           memo: memo || (r.installment ? `${r.installment} 할부` : '할부')
         };
+      } else {
+        if (r.date && (!trackingMap[key].firstDate || new Date(r.date) < new Date(trackingMap[key].firstDate))) {
+          trackingMap[key].firstDate = r.date;
+        }
+        if (currentIdx > trackingMap[key].currentIdx || (currentIdx === trackingMap[key].currentIdx && new Date(r.date) > new Date(trackingMap[key].lastDate))) {
+          const preferredCard = (!r.actualCard || r.actualCard.includes('간편결제')) && trackingMap[key]?.card && !trackingMap[key].card.includes('간편결제') ? trackingMap[key].card : r.actualCard;
+          trackingMap[key].merchant = r.merchant;
+          trackingMap[key].card = preferredCard;
+          trackingMap[key].amount = Number(r.amount) || trackingMap[key].amount;
+          trackingMap[key].currentIdx = currentIdx;
+          trackingMap[key].totalIdx = totalIdx;
+          trackingMap[key].lastDate = r.date;
+          trackingMap[key].memo = memo || trackingMap[key].memo;
+        }
       }
     });
     
@@ -1014,11 +1033,27 @@
     let activeCount = 0;
     let html = '';
     
-    // 남은 잔여 금액이 큰 순서대로 정렬하여 표시
+    // 할부 정렬 기준: 'payoff' (완납/종료 임박순 - 제일 먼저 청구가 끊기는 순), 'firstDate' (최초 결제일순 - 제일 먼저 끊은 순), 'amount' (잔액 큰순)
+    const sortMode = appState.installmentSort || 'payoff';
+
     const sortedItems = Object.values(trackingMap).sort((a, b) => {
-      const leftA = (a.totalIdx - a.currentIdx) * a.amount;
-      const leftB = (b.totalIdx - b.currentIdx) * b.amount;
-      return leftB - leftA;
+      const leftMonthsA = a.totalIdx - a.currentIdx;
+      const leftMonthsB = b.totalIdx - b.currentIdx;
+      const leftAmtA = leftMonthsA * a.amount;
+      const leftAmtB = leftMonthsB * b.amount;
+
+      if (sortMode === 'payoff') {
+        // 1. 완납(종료) 임박순: 남은 개월수가 적은 건이 제일 먼저 청구가 끊김
+        if (leftMonthsA !== leftMonthsB) return leftMonthsA - leftMonthsB;
+        return (a.firstDate || '').localeCompare(b.firstDate || '');
+      } else if (sortMode === 'firstDate') {
+        // 2. 최초 결제일순: 카드로 가장 먼저 할부를 끊은(결제한) 날짜순
+        if (a.firstDate !== b.firstDate) return (a.firstDate || '').localeCompare(b.firstDate || '');
+        return leftMonthsA - leftMonthsB;
+      } else {
+        // 3. 잔액 큰순
+        return leftAmtB - leftAmtA;
+      }
     });
 
     sortedItems.forEach(item => {
@@ -1029,6 +1064,7 @@
         activeCount++;
         
         const dateStr = item.lastDate ? item.lastDate.substring(5).replace('-', '/') : '';
+        const firstDateStr = item.firstDate ? item.firstDate.substring(5).replace('-', '/') : '';
         const memoLabel = item.memo ? item.memo.replace(/\(\d+\s*\/\s*\d+\)/, '').replace(/할부\s*\d+\/\d+/, '').trim() : '';
         const percent = Math.min(100, Math.round((item.currentIdx / item.totalIdx) * 100));
 
@@ -1057,7 +1093,7 @@
 
             <div class="inst-card-bottom">
               <span class="inst-card-pill">[${item.card}]</span>
-              <span class="inst-last-date">최근 청구: ${dateStr}</span>
+              <span class="inst-last-date">${firstDateStr ? `시작: ${firstDateStr} · ` : ''}최근: ${dateStr}</span>
             </div>
           </div>
         `;
@@ -1074,6 +1110,19 @@
       if (elBadge) elBadge.textContent = `${activeCount}건 진행 중`;
       const elList = document.getElementById('installmentTrackingList');
       if (elList) elList.innerHTML = html;
+
+      // 정렬 버튼 활성화 상태 및 클릭 이벤트 등록
+      document.querySelectorAll('.btn-inst-sort').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sort === sortMode);
+        if (!btn.dataset.bound) {
+          btn.dataset.bound = 'true';
+          btn.addEventListener('click', () => {
+            appState.installmentSort = btn.dataset.sort;
+            try { localStorage.setItem('gyewon_inst_sort', btn.dataset.sort); } catch(e){}
+            renderInstallmentTracking();
+          });
+        }
+      });
     } else {
       panel.style.display = 'none';
     }
@@ -2879,6 +2928,12 @@
           // 할부(Y) -> 일시불(N)로 변경
           rec.isInstallment = 'N';
           rec.installment = '일시불';
+          rec.manualInst = 'N'; // 사용자가 직접 일시불로 변경했음을 기록
+          if (rec.memo) {
+            rec.memo = rec.memo.replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)/g, '').replace(/할부/g, '').trim();
+          }
+          saveData();
+          renderAll();
           showToast(`[${rec.merchant}] 일시불(N)로 변경되었습니다.`, 'info');
         } else {
           // 일시불(N) -> 할부(Y)로 변경
@@ -2903,6 +2958,7 @@
           const months = parseInt(input, 10) || defaultMonths || 3;
           rec.isInstallment = 'Y';
           rec.installment = `${months}개월`;
+          delete rec.manualInst;
 
           // 메모에 회차 표기 자동 부여 (1/N)
           if (!rec.memo) {
@@ -2912,11 +2968,10 @@
           }
 
           showToast(`[${rec.merchant}] ${months}개월 할부(1/${months})로 변경되어 할부 잔액 추적에 즉시 등록되었습니다!`, 'success');
+          autoFlagInstallments();
+          saveData();
+          renderAll();
         }
-
-        autoFlagInstallments();
-        saveData();
-        renderAll();
       }
       return;
     }
@@ -3948,7 +4003,7 @@
             new Date(r.date) < new Date(current.date)
           ).pop();
 
-          if (prev && (current.isInstallment !== 'Y' || current.memo === prev.memo || !current.memo)) {
+          if (prev && (current.isInstallment !== 'Y' || current.memo === prev.memo || !current.memo || !current.memo.includes('/'))) {
             let nextMemo = current.memo;
             if (prev.memo) {
               const fractionMatch = prev.memo.match(/(.*?)(\d+)(\s*\/\s*\d+)(.*)/);
@@ -4064,10 +4119,12 @@
 
         pendingChanges.forEach(c => {
           c.record.isInstallment = 'Y';
+          c.record.installment = c.prev.installment || '3개월';
           c.record.category = c.prev.category;
           c.record.subCategory = c.prev.subCategory;
           c.record.actualCard = c.prev.actualCard;
           c.record.memo = c.newMemo;
+          delete c.record.manualInst;
         });
 
         await saveData();

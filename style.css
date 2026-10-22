@@ -5269,3 +5269,29 @@ select option:hover {
   font-size: 0.78rem;
 }
 
+/* Sort Controls */
+.btn-inst-sort {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-inst-sort:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.btn-inst-sort.active {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border-color: #6366f1;
+}
+
+
