@@ -408,9 +408,14 @@ def fetch_gmail_banksalad_attachments(cfg, check_all=False):
         mail.login(user, pwd)
         mail.select("INBOX")
 
+        # 여러 검색 쿼리로 뱅크샐러드 메일 탐색 (제목/발신자 기반)
         search_queries = [
-            '(OR SUBJECT "뱅크샐러드" SUBJECT "가계부")',
-            '(OR FROM "banksalad" SUBJECT "banksalad")'
+            '(SUBJECT "뱅크샐러드")',
+            '(SUBJECT "가계부")',
+            '(FROM "no-reply@banksalad.com")',
+            '(FROM "banksalad")',
+            '(SUBJECT "banksalad")',
+            '(SUBJECT "허계원")',
         ]
 
         found_msg_ids = set()
@@ -422,19 +427,22 @@ def fetch_gmail_banksalad_attachments(cfg, check_all=False):
             except Exception:
                 pass
 
+        # 검색 결과가 없으면 최근 30개 메일에서 zip 첨부파일 있는 것 찾기
         if not found_msg_ids:
+            print("[Gmail] 뱅크샐러드 메일 키워드 검색 결과 없음. 최근 30개 메일에서 ZIP 첨부파일 탐색 중...")
             try:
                 status, data = mail.search(None, 'ALL')
                 if status == 'OK' and data[0]:
                     all_ids = data[0].split()
-                    found_msg_ids.update(all_ids[-5:])
+                    # 최근 30개만 확인
+                    found_msg_ids.update(all_ids[-30:])
             except Exception:
                 pass
 
         sorted_ids = sorted(list(found_msg_ids), key=lambda x: int(x), reverse=True)
         
-        # Only check the newest unprocessed emails (max 2 newest if not check_all)
-        target_ids = sorted_ids if check_all else sorted_ids[:2]
+        # 미처리된 모든 뱅크샐러드 메일 체크 (check_all 여부와 무관하게)
+        target_ids = sorted_ids
 
         for msg_id in target_ids:
             id_str = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
@@ -460,9 +468,19 @@ def fetch_gmail_banksalad_attachments(cfg, check_all=False):
                     if decoded_fn.lower().endswith('.zip'):
                         zip_attachments.append((decoded_fn, part.get_payload(decode=True)))
 
+            # ZIP 첨부파일이 없는 메일은 바로 스킵 (예: 일반 상업 메일)
+            if not zip_attachments:
+                # 오래된 메일(ZIP 없는 것)은 처리완료로 마킹해서 다음에 다시 검색하지 않도록
+                processed_ids.add(id_str)
+                continue
+
+            print(f"[Gmail] 메일 발견: '{subject}' (from: {from_addr})")
             zip_success = False
             for fn, zip_bytes in zip_attachments:
-                print(f"[Gmail] 최신 메일 첨부파일 처리 중: {fn} (메일 제목: {subject})...")
+                if not zip_bytes:
+                    print(f"[Gmail] ⚠️ {fn}: ZIP 데이터가 비어있습니다.")
+                    continue
+                print(f"[Gmail] 첨부파일 처리 중: {fn} ({len(zip_bytes):,} bytes)...")
                 tmp_zip = os.path.join(BASE_DIR, "scratch", f"mail_{int(time.time())}.zip")
                 os.makedirs(os.path.dirname(tmp_zip), exist_ok=True)
                 with open(tmp_zip, 'wb') as f:
@@ -471,6 +489,7 @@ def fetch_gmail_banksalad_attachments(cfg, check_all=False):
                 xlsx_path = extract_excel_from_zip(tmp_zip, zip_pwd)
                 if xlsx_path and os.path.exists(xlsx_path):
                     raw_recs = parse_banksalad_excel(xlsx_path)
+                    print(f"[Gmail] 엑셀 파싱 완료: {len(raw_recs)}개 기록 발견")
                     if raw_recs:
                         count, ok = sync_records_to_supabase(raw_recs)
                         if ok:
@@ -479,8 +498,11 @@ def fetch_gmail_banksalad_attachments(cfg, check_all=False):
                             print(f"[Gmail] ✅ {fn} 파일 처리 및 동기화 성공! (신규 {count}건 반영)")
                         else:
                             print(f"[Gmail] ⚠️ {fn} Supabase 동기화 실패. 메일을 미완료 상태로 유지하여 다음에 재시도합니다.")
+                    else:
+                        print(f"[Gmail] ⚠️ {fn}: 엑셀에서 지출 내역이 없습니다 (지출만 비기됝? 혹은 별도 형식?)")
+                        zip_success = True  # 엑셀은 정상 파싱되었으니 이 메일은 완료 처리
                 else:
-                    print(f"[Gmail] ❌ {fn} 압축 해제 실패: 압축 비밀번호(생년월일 6자리)가 맞는지 확인해주세요. (현재 입력값: {zip_pwd})")
+                    print(f"[Gmail] ❌ {fn} 압축 해제 실패 - 암호({zip_pwd})을 확인하세요.")
 
             if zip_success:
                 processed_ids.add(id_str)
@@ -528,7 +550,18 @@ def run_daemon_loop():
         open_gui_settings()
         cfg = load_config()
 
-    # Mark existing emails so daemon only reacts to NEW incoming emails
+    # 데몬 시작 시 먼저 미처리 뱅크샐러드 메일 전체 동기화 1회 실행
+    print('\n[데몬 시작] 기존 미처리 뱅크샐러드 메일 전체 확인 중...')
+    try:
+        cnt = fetch_gmail_banksalad_attachments(cfg, check_all=True)
+        if cnt > 0:
+            print(f'[데몬 시작] 초기 동기화 완료: 신규 지출 {cnt}건 반영')
+        else:
+            print('[데몬 시작] 미처리 신규 내역 없음.')
+    except Exception as e:
+        print(f'[데몬 시작] 초기 동기화 오류: {e}')
+
+    # 이후 새로 수신되는 메일만 감시하기 위해 현재 메일함 전체를 처리됨으로 마킹
     mark_all_current_mails_as_processed()
 
     interval = max(10, cfg.get("check_interval_seconds", 60))
