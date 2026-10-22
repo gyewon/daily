@@ -285,12 +285,9 @@
       const cache = localStorage.getItem('gyewon_appState_cache');
       if (cache) {
         const parsed = JSON.parse(cache);
-        // 캐시된 records가 24시간 이상 됐으면 Supabase에서 새로 가져오도록 records 무시
-        const cacheTs = parsed.cacheTimestamp || 0;
-        const cacheAgeHours = (Date.now() - cacheTs) / (1000 * 60 * 60);
-        const recordsCacheValid = cacheAgeHours < 24;
-        if (parsed.records && recordsCacheValid) appState.records = parsed.records;
-        // 설정값들은 항상 캐시에서 로드 (사용자 커스텀 설정)
+        // records는 캐시에서 로드하되, 이후 loadData()가 항상 Supabase에서 최신 데이터로 덮어씀
+        if (parsed.records) appState.records = parsed.records;
+        // 사용자 설정값들은 항상 캐시에서 로드
         if (parsed.categoryRules) appState.categoryRules = parsed.categoryRules;
         if (parsed.customTypes) appState.customTypes = parsed.customTypes;
         if (parsed.masterCategories) appState.masterCategories = parsed.masterCategories;
@@ -314,8 +311,7 @@
         deletedSignatures: Array.from(appState.deletedSignatures),
         notificationLogs: appState.notificationLogs,
         cardConfig: CARD_CONFIG,
-        chartExcludedCategories: Array.from(appState.chartExcludedCategories),
-        cacheTimestamp: Date.now()
+        chartExcludedCategories: Array.from(appState.chartExcludedCategories)
       }));
     } catch (e) { console.error('Local cache save failed', e); }
   }
