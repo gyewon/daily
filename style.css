@@ -875,6 +875,50 @@ body {
   box-shadow: 0 0 0 1px var(--primary);
 }
 
+/* 실질 지출 현황 - 완료된 카드 회색 스타일링 */
+.card-item.card-completed-gray {
+  background: rgba(30, 41, 59, 0.4);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.card-item.card-completed-gray:hover {
+  background: rgba(51, 65, 85, 0.5);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.card-item.card-completed-gray .card-title {
+  color: #94a3b8;
+}
+
+.card-item.card-completed-gray .card-brand-chip {
+  background: #64748b !important;
+}
+
+.card-item.card-completed-gray .card-bar-fill {
+  background: #64748b !important;
+}
+
+.card-item.card-completed-gray .card-status-pill.completed {
+  color: #94a3b8;
+  background: rgba(100, 116, 139, 0.15);
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+[data-theme="light"] .card-item.card-completed-gray {
+  background: rgba(241, 245, 249, 0.7);
+  border-color: rgba(203, 213, 225, 0.8);
+}
+
+[data-theme="light"] .card-item.card-completed-gray .card-title {
+  color: #64748b;
+}
+
+[data-theme="light"] .card-item.card-completed-gray .card-status-pill.completed {
+  color: #64748b;
+  background: rgba(100, 116, 139, 0.12);
+  border-color: rgba(100, 116, 139, 0.25);
+}
+
 .card-item-top {
   display: flex;
   justify-content: space-between;

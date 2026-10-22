@@ -35,6 +35,7 @@
   let CARD_CONFIG = {
     '신한카드_더모아': { color: '#3b82f6', chip: '#2563eb', target: 500000, type: 'physical' },
     '우리카드_KT Plus': { color: '#06b6d4', chip: '#0891b2', target: 400000, type: 'physical' },
+    '우리카드_코웨이': { color: '#0284c7', chip: '#0369a1', dot: '#0284c7', target: 300000, type: 'physical' },
     '하나카드_MG+ S': { color: '#ec4899', chip: '#db2777', target: 500000, type: 'physical' }, // Pink
     '국민카드_톡마포': { color: '#f59e0b', chip: '#d97706', target: 300000, type: 'physical' },
     '신한카드_다드림 LOVE': { color: '#ef4444', chip: '#dc2626', target: 300000, type: 'physical' },
@@ -1484,6 +1485,8 @@
       const cnt = cardCounts[cardName] || 0;
       const completedAmt = cardCompletedSums[cardName] || 0;
       const completedCnt = cardCompletedCounts[cardName] || 0;
+      const isComplete = cnt > 0 && completedCnt === cnt;
+      const pendingCnt = cnt - completedCnt;
       const completionRate = amt > 0 ? Math.min(100, Math.round((completedAmt / amt) * 100)) : (cnt > 0 && isComplete ? 100 : 0);
 
       // 카드 실적 인정 기준: 카드사 혜택 규정에 따라 할부 이용금액은 전월 실적 산정에서 제외
@@ -1491,11 +1494,11 @@
       const targetPercent = conf.target > 0 ? Math.min(100, Math.round((performanceAmt / conf.target) * 100)) : 100;
       const isTargetMet = conf.target > 0 && performanceAmt >= conf.target;
 
-      const isComplete = cnt > 0 && completedCnt === cnt;
-      const pendingCnt = cnt - completedCnt;
+      // 완료된 카드는 회색(#64748b)으로 표시하여 완료 상태임을 시각적으로 명확화
+      const displayColor = isComplete ? '#64748b' : conf.color;
 
       const cardEl = document.createElement('div');
-      cardEl.className = `card-item ${appState.filterCard === cardName ? 'active-filter' : ''}`;
+      cardEl.className = `card-item ${appState.filterCard === cardName ? 'active-filter' : ''} ${isComplete ? 'card-completed-gray' : ''}`;
       cardEl.title = `${cardName} 내역 필터링`;
 
       const showInstPerf = conf.target > 0 && instAmt > 0;
@@ -1507,7 +1510,7 @@
       cardEl.innerHTML = `
         <div class="card-item-top">
           <div class="card-brand-name">
-            <span class="card-brand-chip" style="background: ${conf.color};"></span>
+            <span class="card-brand-chip" style="background: ${displayColor};"></span>
             <span class="card-title">${cardName}</span>
             ${statusPillHtml}
           </div>
@@ -1539,7 +1542,7 @@
             `}
           </div>
           <div class="card-bar-bg" title="결제 완료 진행률: ${completionRate}% (${formatCurrency(completedAmt)}원 / ${formatCurrency(amt)}원)">
-            <div class="card-bar-fill" style="width: ${completionRate}%; background: ${conf.color};"></div>
+            <div class="card-bar-fill" style="width: ${completionRate}%; background: ${displayColor};"></div>
           </div>
         </div>
       `;
