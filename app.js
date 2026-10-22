@@ -176,7 +176,7 @@
     if (appState.notificationLogs.length > 50) {
       appState.notificationLogs.pop();
     }
-    saveData();
+    saveNotificationLogs();
     if (document.getElementById('notificationLogModal')?.classList.contains('show')) {
       renderNotificationLogs();
     }
@@ -488,6 +488,15 @@
   }
 
   
+  async function saveNotificationLogs() {
+    saveLocalCache();
+    try {
+      await supabase.from('app_settings').upsert({ key: 'notification_logs', value: appState.notificationLogs });
+    } catch (e) {
+      console.error('Failed to save notification logs:', e);
+    }
+  }
+
   async function saveCardConfig() {
     await supabase.from('app_settings').upsert({ key: 'card_config', value: CARD_CONFIG });
   }
