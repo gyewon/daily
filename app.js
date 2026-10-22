@@ -1461,15 +1461,22 @@
       }
     });
 
-    // Render Physical Cards (지출 있는 카드 우선, 지출 0원이지만 목표 실적이 있는 카드만 표시, 목표 없는 0원 카드는 숨김)
+    const isAllMonth = appState.globalMonth === 'ALL';
+    const cardDesc = document.querySelector('.card-performance-panel .panel-title-group p');
+    if (cardDesc) {
+      cardDesc.textContent = isAllMonth
+        ? '전체 기간 동안 지출이 발생한 카드별 누적 청구 및 결제완료 현황입니다'
+        : '당월 지출이 있거나 목표 실적이 설정된 카드만 표시됩니다 (미사용·목표 없는 카드는 자동 숨김)';
+    }
+
+    // Render Physical Cards (전체 월 보기: 지출 발생한 카드만 표시, 특정 월 보기: 지출 있거나 목표 실적 있는 카드 표시)
     physicalCardsContainer.innerHTML = '';
     const physicalCardNames = Object.keys(CARD_CONFIG)
       .filter(c => {
         if (CARD_CONFIG[c].type !== 'physical') return false;
         const amt = cardSums[c] || 0;
         const target = CARD_CONFIG[c].target || 0;
-        // 지출이 있거나(amt > 0), 목표 실적이 설정된 카드(target > 0)만 표시
-        return amt > 0 || target > 0;
+        return isAllMonth ? (amt > 0) : (amt > 0 || target > 0);
       })
       .sort((a, b) => {
         const diff = (cardSums[b] || 0) - (cardSums[a] || 0);
@@ -1489,7 +1496,7 @@
       const pendingCnt = cnt - completedCnt;
       const completionRate = amt > 0 ? Math.min(100, Math.round((completedAmt / amt) * 100)) : (cnt > 0 && isComplete ? 100 : 0);
 
-      // 카드 실적 인정 기준: 카드사 혜택 규정에 따라 할부 이용금액은 전월 실적 산정에서 제외
+      // 카드 실적 인정 기준: 카드사 혜택 규정에 따라 할부 이용금액은 전월 실적 산정에서 제외 (전체 월 보기에서는 실적/목표 제외)
       const performanceAmt = Math.max(0, amt - instAmt);
       const targetPercent = conf.target > 0 ? Math.min(100, Math.round((performanceAmt / conf.target) * 100)) : 100;
       const isTargetMet = conf.target > 0 && performanceAmt >= conf.target;
@@ -1501,11 +1508,22 @@
       cardEl.className = `card-item ${appState.filterCard === cardName ? 'active-filter' : ''} ${isComplete ? 'card-completed-gray' : ''}`;
       cardEl.title = `${cardName} 내역 필터링`;
 
-      const showInstPerf = conf.target > 0 && instAmt > 0;
+      // 전체 월 보기에서는 목표 및 실적 표시 제외 (정산 정보만 표시)
+      const showInstPerf = !isAllMonth && conf.target > 0 && instAmt > 0;
       const hasExtraSubline = showInstPerf || settleAmt > 0;
       const statusPillHtml = isComplete 
         ? '<span class="card-status-pill completed" title="클릭 시 결제대기로 되돌리기 가능">✅ 완료</span>' 
         : (cnt > 0 && pendingCnt > 0 ? `<span class="card-status-pill pending" title="클릭 시 '${cardName}' 미완료 ${pendingCnt}건 일괄 결제완료">대기 ${pendingCnt}</span>` : '');
+
+      const targetBadgeHtml = !isAllMonth ? (conf.target > 0 ? `
+        <div class="card-target-badge" title="목표 실적은 할부(-${formatCurrency(instAmt)}원)를 제외한 실적인정액(${formatCurrency(performanceAmt)}원) 기준으로 산정됩니다">
+          목표 ${formatCurrency(conf.target)}원 <strong class="${isTargetMet ? 'target-met' : ''}">(${targetPercent}%) ${isTargetMet ? '👑' : ''}</strong>
+        </div>
+      ` : `
+        <div class="card-target-badge card-target-none" style="opacity: 0.45; border-style: dashed;">
+          목표 미설정
+        </div>
+      `) : '';
 
       cardEl.innerHTML = `
         <div class="card-item-top">
@@ -1533,15 +1551,7 @@
               <span class="card-complete-label">완료 금액:</span>
               <strong class="card-complete-amt">${formatCurrency(completedAmt)}원</strong>
             </div>
-            ${conf.target > 0 ? `
-            <div class="card-target-badge" title="목표 실적은 할부(-${formatCurrency(instAmt)}원)를 제외한 실적인정액(${formatCurrency(performanceAmt)}원) 기준으로 산정됩니다">
-              목표 ${formatCurrency(conf.target)}원 <strong class="${isTargetMet ? 'target-met' : ''}">(${targetPercent}%) ${isTargetMet ? '👑' : ''}</strong>
-            </div>
-            ` : `
-            <div class="card-target-badge card-target-none" style="opacity: 0.45; border-style: dashed;">
-              목표 미설정
-            </div>
-            `}
+            ${targetBadgeHtml}
           </div>
           <div class="card-bar-bg" title="결제 완료 진행률: ${completionRate}% (${formatCurrency(completedAmt)}원 / ${formatCurrency(amt)}원)">
             <div class="card-bar-fill" style="width: ${completionRate}%; background: ${displayColor};"></div>
