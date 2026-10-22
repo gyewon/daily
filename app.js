@@ -285,9 +285,11 @@
       const cache = localStorage.getItem('gyewon_appState_cache');
       if (cache) {
         const parsed = JSON.parse(cache);
-        // records는 캐시에서 로드하되, 이후 loadData()가 항상 Supabase에서 최신 데이터로 덮어씀
-        if (parsed.records) appState.records = parsed.records;
-        // 사용자 설정값들은 항상 캐시에서 로드
+        // 캐시는 화면 즉시 표시(0ms) 및 오프라인 보호용으로 안전하게 로드 (임의 폐기 금지)
+        // 이후 loadData()가 Supabase에서 최신 데이터를 가져와 안전하게 화면과 캐시를 갱신함
+        if (parsed.records && Array.isArray(parsed.records) && parsed.records.length > 0) {
+          appState.records = parsed.records;
+        }
         if (parsed.categoryRules) appState.categoryRules = parsed.categoryRules;
         if (parsed.customTypes) appState.customTypes = parsed.customTypes;
         if (parsed.masterCategories) appState.masterCategories = parsed.masterCategories;
@@ -435,7 +437,11 @@
           if (s.key === 'deleted_signatures') appState.deletedSignatures = new Set(s.value);
           if (s.key === 'notification_logs') appState.notificationLogs = s.value;
           if (s.key === 'card_config') CARD_CONFIG = s.value;
-          if (s.key === 'records') appState.records = s.value || [];
+          if (s.key === 'records') {
+            if (Array.isArray(s.value) && s.value.length > 0) {
+              appState.records = s.value;
+            }
+          }
         });
       }
 
@@ -479,8 +485,8 @@
     
     if (!appState.records || appState.records.length === 0) {
       if (window.INITIAL_DATA && window.INITIAL_DATA.records && window.INITIAL_DATA.records.length > 0) {
+        console.warn("Using fallback INITIAL_DATA without overwriting Supabase");
         appState.records = JSON.parse(JSON.stringify(window.INITIAL_DATA.records));
-        saveData();
       }
     }
   }
