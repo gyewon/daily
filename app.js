@@ -6209,6 +6209,7 @@
   let annualSelectedYear = null;
   let annualSettleMode = 'net'; // 'net' | 'gross'
   let annualCardFilter = 'all'; // 'all' | 'physical' | 'pay' | 'cash'
+  let annualCollapsedGroups = new Set();
   let annualStackedChartInstance = null;
 
   function initMainViewTabs() {
@@ -6270,6 +6271,18 @@
         document.querySelectorAll('.annual-type-tab').forEach(t => t.classList.toggle('active', t === e.currentTarget));
         renderAnnualTaxView();
       });
+    });
+
+    // Toggle All Annual Groups (전체 펼치기 / 전체 접기)
+    document.getElementById('btnToggleAllAnnualGroups')?.addEventListener('click', () => {
+      const allTypes = ['physical', 'pay', 'cash'];
+      const allCollapsed = allTypes.every(t => annualCollapsedGroups.has(t));
+      if (allCollapsed) {
+        annualCollapsedGroups.clear();
+      } else {
+        allTypes.forEach(t => annualCollapsedGroups.add(t));
+      }
+      renderAnnualTaxView();
     });
 
     // Export CSV
@@ -6534,8 +6547,67 @@
       let groupMonthlySums = Array(12).fill(0);
       let groupYearTotal = 0;
 
+      // 1. Calculate group sums first
+      g.list.forEach(c => {
+        for (let m = 0; m < 12; m++) {
+          const val = c.monthlyAmounts[m];
+          groupMonthlySums[m] += val;
+          currentTableMonthlyTotals[m] += val;
+        }
+        groupYearTotal += c.yearTotal;
+        currentTableGrandTotal += c.yearTotal;
+      });
+
+      const isCollapsed = annualCollapsedGroups.has(g.type);
+      const groupShare = grandTotalAllCards > 0 ? ((groupYearTotal / grandTotalAllCards) * 100).toFixed(1) : 0;
+      const groupAvg = Math.round(groupYearTotal / 12);
+
+      let subMonthsHtml = '';
+      for (let m = 0; m < 12; m++) {
+        const v = groupMonthlySums[m];
+        subMonthsHtml += `<td>${v > 0 ? formatCurrency(v) : '-'}</td>`;
+      }
+
+      // 2. Group Subtotal Row rendered AT THE TOP of each group (목록 위에 소계 배치)
+      const subTr = document.createElement('tr');
+      subTr.className = `row-subtotal row-group-header ${isCollapsed ? 'is-collapsed' : ''}`;
+      subTr.dataset.groupType = g.type;
+      subTr.title = `클릭 시 '${g.title}' 카드 목록을 ${isCollapsed ? '펼칩니다' : '접습니다'}`;
+
+      subTr.innerHTML = `
+        <td class="sticky-col group-toggle-cell">
+          <span class="group-toggle-icon">${isCollapsed ? '▶' : '▼'}</span>
+          <span class="group-title-text">${g.title} 소계</span>
+          <span class="group-count-badge">(${g.list.length}개)</span>
+          <span class="group-hint-text">${isCollapsed ? '펼치기' : '접기'}</span>
+        </td>
+        <td style="text-align: center;"><span class="group-type-label">소계</span></td>
+        ${subMonthsHtml}
+        <td class="cell-annual-total">${formatCurrency(groupYearTotal)}</td>
+        <td>${formatCurrency(groupAvg)}</td>
+        <td>${groupShare}%</td>
+      `;
+
+      subTr.addEventListener('click', () => {
+        if (annualCollapsedGroups.has(g.type)) {
+          annualCollapsedGroups.delete(g.type);
+        } else {
+          annualCollapsedGroups.add(g.type);
+        }
+        renderAnnualTaxView();
+      });
+
+      tbody.appendChild(subTr);
+
+      // 3. Child Card Rows (소계 행 아래에 각 카드 목록 렌더링)
       g.list.forEach(c => {
         const tr = document.createElement('tr');
+        tr.className = `row-card-item ${isCollapsed ? 'is-collapsed' : ''}`;
+        tr.dataset.groupType = g.type;
+        if (isCollapsed) {
+          tr.style.display = 'none';
+        }
+
         const conf = CARD_CONFIG[c.name] || { color: '#6366f1' };
         const share = grandTotalAllCards > 0 ? ((c.yearTotal / grandTotalAllCards) * 100).toFixed(1) : 0;
         const avg = Math.round(c.yearTotal / 12);
@@ -6543,9 +6615,6 @@
         let monthsHtml = '';
         for (let m = 0; m < 12; m++) {
           const val = c.monthlyAmounts[m];
-          groupMonthlySums[m] += val;
-          currentTableMonthlyTotals[m] += val;
-
           if (val > 0) {
             monthsHtml += `<td class="cell-has-amt" data-year="${annualSelectedYear}" data-month="${m+1}" data-card="${c.name}" title="${annualSelectedYear}년 ${m+1}월 '${c.name}' 내역으로 이동">${formatCurrency(val)}</td>`;
           } else {
@@ -6553,15 +6622,12 @@
           }
         }
 
-        groupYearTotal += c.yearTotal;
-        currentTableGrandTotal += c.yearTotal;
-
         const typeBadge = g.type === 'physical' 
           ? `<span class="matrix-badge-type physical">실물</span>`
           : (g.type === 'cash' ? `<span class="matrix-badge-type cash">현금</span>` : `<span class="matrix-badge-type pay">간편</span>`);
 
         tr.innerHTML = `
-          <td class="sticky-col">
+          <td class="sticky-col indent-card-cell">
             <span class="card-chip-dot" style="background:${conf.color || '#6366f1'};"></span>
             <strong>${c.name}</strong>
           </td>
@@ -6573,31 +6639,18 @@
         `;
         tbody.appendChild(tr);
       });
-
-      // Group Subtotal Row
-      if (g.list.length > 0) {
-        const subTr = document.createElement('tr');
-        subTr.className = 'row-subtotal';
-        const groupShare = grandTotalAllCards > 0 ? ((groupYearTotal / grandTotalAllCards) * 100).toFixed(1) : 0;
-        const groupAvg = Math.round(groupYearTotal / 12);
-
-        let subMonthsHtml = '';
-        for (let m = 0; m < 12; m++) {
-          const v = groupMonthlySums[m];
-          subMonthsHtml += `<td>${v > 0 ? formatCurrency(v) : '-'}</td>`;
-        }
-
-        subTr.innerHTML = `
-          <td class="sticky-col">${g.title} 소계 (${g.list.length}개)</td>
-          <td style="text-align: center;">-</td>
-          ${subMonthsHtml}
-          <td class="cell-annual-total">${formatCurrency(groupYearTotal)}</td>
-          <td>${formatCurrency(groupAvg)}</td>
-          <td>${groupShare}%</td>
-        `;
-        tbody.appendChild(subTr);
-      }
     });
+
+    // Update Toggle All Button State
+    const btnToggleAll = document.getElementById('btnToggleAllAnnualGroups');
+    if (btnToggleAll) {
+      const activeGroups = groupsToRender.filter(g => g.list.length > 0);
+      const allCollapsed = activeGroups.length > 0 && activeGroups.every(g => annualCollapsedGroups.has(g.type));
+      const iconSpan = document.getElementById('toggleAllAnnualGroupsIcon');
+      const textSpan = document.getElementById('toggleAllAnnualGroupsText');
+      if (iconSpan) iconSpan.textContent = allCollapsed ? '🔽' : '🔼';
+      if (textSpan) textSpan.textContent = allCollapsed ? '전체 펼치기' : '전체 접기';
+    }
 
     // Footer: Grand Total Row
     const grandTr = document.createElement('tr');
@@ -6775,6 +6828,11 @@
     rows.forEach(tr => {
       const cells = Array.from(tr.querySelectorAll('td')).map(td => {
         let text = td.textContent.trim().replace(/\s+/g, ' ');
+        if (td.classList.contains('group-toggle-cell')) {
+          const title = td.querySelector('.group-title-text')?.textContent?.trim() || '';
+          const count = td.querySelector('.group-count-badge')?.textContent?.trim() || '';
+          text = `${title} ${count}`.trim();
+        }
         return `"${text.replace(/"/g, '""')}"`;
       });
       csv += cells.join(',') + '\r\n';

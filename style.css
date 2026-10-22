@@ -5048,17 +5048,130 @@ select option:hover {
   color: #4ade80;
 }
 
-.annual-matrix-table .row-subtotal td {
-  background: rgba(255, 255, 255, 0.03);
-  font-weight: 700;
-  color: var(--text-main);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+/* Annual Matrix Collapsible Group Header & Subtotals (목록 상단 소계 및 아코디언) */
+.annual-matrix-table .row-group-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--transition-fast);
 }
 
-.annual-matrix-table .row-subtotal td.sticky-col {
-  background: var(--bg-secondary);
-  color: var(--primary-light, #a5b4fc);
+.annual-matrix-table .row-group-header td {
+  background: rgba(30, 41, 59, 0.85);
+  font-weight: 700;
+  color: var(--text-primary);
+  border-top: 2px solid rgba(99, 102, 241, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.annual-matrix-table .row-group-header:hover td {
+  background: rgba(99, 102, 241, 0.16) !important;
+}
+
+.annual-matrix-table .row-group-header td.sticky-col {
+  background: #1e293b;
+  color: #a5b4fc;
+  border-left: 4px solid var(--primary);
+  font-weight: 700;
+}
+
+.annual-matrix-table .row-group-header.is-collapsed td.sticky-col {
+  border-left-color: #64748b;
+  color: var(--text-secondary);
+}
+
+.group-toggle-cell {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.group-toggle-icon {
+  font-size: 0.72rem;
+  color: var(--primary-light, #818cf8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.18);
+  transition: transform 0.2s ease, background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.row-group-header:hover .group-toggle-icon {
+  background: var(--primary);
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+.group-title-text {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.group-count-badge {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.group-hint-text {
+  font-size: 0.7rem;
+  color: var(--primary-light, #818cf8);
+  background: rgba(99, 102, 241, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: auto;
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+.row-group-header:hover .group-hint-text {
+  opacity: 1;
+  background: rgba(99, 102, 241, 0.3);
+}
+
+.group-type-label {
+  font-size: 0.72rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Child Card Rows Indentation (소계 아래 소속 카드 트리 인덴트) */
+.annual-matrix-table td.indent-card-cell {
+  padding-left: 28px !important;
+  position: relative;
+}
+
+.annual-matrix-table td.indent-card-cell::before {
+  content: "└";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  opacity: 0.55;
+}
+
+[data-theme="light"] .annual-matrix-table .row-group-header td {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+[data-theme="light"] .annual-matrix-table .row-group-header td.sticky-col {
+  background: #e2e8f0;
+  color: #4338ca;
+}
+
+[data-theme="light"] .group-title-text {
+  color: #0f172a;
 }
 
 .annual-matrix-table tfoot .row-grand-total td {

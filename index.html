@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="style.css?v=48">
 </head>
 
 <body>
@@ -608,7 +608,12 @@
               <h3 id="annualMatrixTitle">📋 [2026년] 월별 카드 소비 취합표</h3>
               <p>각 카드의 1월부터 12월까지 월별 지출액과 연간 누적 합계 (금액 클릭 시 해당 월/카드 내역으로 즉시 이동)</p>
             </div>
-            <div class="panel-badge" id="annualMatrixTotalBadge">연간 합계 0원</div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <button type="button" id="btnToggleAllAnnualGroups" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; padding: 5px 12px; font-weight: 600;" title="모든 수단 그룹을 한 번에 접거나 펼칩니다">
+                <span id="toggleAllAnnualGroupsIcon">🔼</span> <span id="toggleAllAnnualGroupsText">전체 접기</span>
+              </button>
+              <div class="panel-badge" id="annualMatrixTotalBadge">연간 합계 0원</div>
+            </div>
           </div>
 
           <div class="mobile-table-hint">
@@ -1276,7 +1281,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="data.js?v=4"></script>
-  <script src="app.js?v=69"></script>
+  <script src="app.js?v=70"></script>
 </body>
 
 </html>
