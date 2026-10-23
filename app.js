@@ -2765,13 +2765,6 @@
           <div>${rec.date ? rec.date.substring(5) : ''}</div>
           <small style="color:var(--text-muted); font-size:0.75rem;">${rec.time || ''}</small>
         </td>
-        <td class="col-cat">
-          <button type="button" class="btn-table-category" data-id="${rec.id}" title="클릭하여 분류(카테고리) 변경 (스크롤 없는 원터치 선택)">
-            <span class="cat-pill">${rec.category || '미분류'}</span>
-            ${rec.subCategory && rec.subCategory !== rec.category ? `<span class="cat-sub-pill">${rec.subCategory}</span>` : ''}
-            <span class="cat-edit-pencil">✏️</span>
-          </button>
-        </td>
         <td class="col-merchant" title="${rec.merchant}">
           ${rec.merchant}
         </td>
@@ -2791,6 +2784,13 @@
               </div>
             `;
           })()}
+        </td>
+        <td class="col-cat">
+          <button type="button" class="btn-table-category" data-id="${rec.id}" title="클릭하여 분류(카테고리) 변경 (스크롤 없는 원터치 선택)">
+            <span class="cat-pill">${rec.category || '미분류'}</span>
+            ${rec.subCategory && rec.subCategory !== rec.category ? `<span class="cat-sub-pill">${rec.subCategory}</span>` : ''}
+            <span class="cat-edit-pencil">✏️</span>
+          </button>
         </td>
         <td class="col-actual">
           <select class="select-table-card ${isUnmapped ? 'highlight-unmapped' : ''}" data-field="actualCard" data-id="${rec.id}">

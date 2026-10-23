@@ -3300,12 +3300,75 @@ select option:hover {
 
   #txTable {
     font-size: 0.78rem;
-    min-width: 1080px; /* Maintains clean readable cell widths for the 12-column table without crushing */
+    min-width: 980px; /* Maintains clean readable cell widths for the table without crushing */
+  }
+
+  /* 모바일에서 지출 금액(col-amt)을 스크롤 없이 바로 정면에 표시하기 위한 최적화 */
+  .tx-table .col-id {
+    display: none !important; /* 모바일에서 공간 확보를 위해 No. 컬럼 숨김 */
+  }
+
+  .tx-table th.col-check,
+  .tx-table td.col-check {
+    width: 28px !important;
+    min-width: 28px !important;
+    padding: 6px 2px !important;
+    text-align: center;
+  }
+
+  .tx-table th.col-date,
+  .tx-table td.col-date {
+    width: 66px !important;
+    min-width: 62px !important;
+    padding: 6px 4px !important;
+    font-size: 0.76rem !important;
+    line-height: 1.25;
+  }
+
+  .tx-table th.col-merchant,
+  .tx-table td.col-merchant {
+    min-width: 90px !important;
+    max-width: 120px !important;
+    padding: 6px 6px !important;
+    white-space: normal !important;
+    word-break: break-all;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    line-height: 1.25;
+  }
+
+  .tx-table th.col-amt,
+  .tx-table td.col-amt {
+    width: 90px !important;
+    min-width: 82px !important;
+    padding: 6px 6px !important;
+    text-align: right !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    color: #38bdf8 !important; /* 모바일에서 금액이 눈에 바로 띄도록 강조 */
+  }
+
+  [data-theme="light"] .tx-table th.col-amt,
+  [data-theme="light"] .tx-table td.col-amt {
+    color: #0284c7 !important;
+  }
+
+  .tx-table td.col-amt .amt-gross {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em;
+  }
+
+  .tx-table td.col-amt .badge-settle {
+    font-size: 0.68rem !important;
+    padding: 1px 4px !important;
+    margin-top: 2px !important;
   }
 
   .col-cat {
-    width: 135px;
-    min-width: 125px;
+    width: 125px;
+    min-width: 115px;
     white-space: normal !important;
   }
 
