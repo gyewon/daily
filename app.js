@@ -555,13 +555,20 @@
   function autoFlagInstallments() {
     let changed = false;
     
-    // 1. 메모에 할부 키워드, 회차 형식(\d+/\d+), 개월 수, 또는 installment 필드가 일시불이 아닌 경우 플래그 활성화 (정산 메모 제외)
+    // 1. 메모에 명확한 할부 키워드, 회차 형식((X/Y), X/Y회), 개월 수가 있는 경우만 플래그 활성화 (정산/더치페이 및 단순 날짜 10/27 등 제외)
     appState.records.forEach(r => {
       if (r.manualInst === 'N') return; // 사용자가 직접 일시불(N)로 설정한 내역은 자동 플래그 제외
       const memo = r.memo || '';
       if (memo.includes('정산') || memo.includes('더치페이')) return;
-      const hasInstPattern = memo.includes('할부') || /\d+\s*\/\s*\d+/.test(memo) || /\d+\s*개월/.test(memo) || (r.installment && r.installment !== '일시불');
-      if (hasInstPattern) {
+      const hasStrictInstPattern = (
+        memo.includes('할부') || 
+        /\d+\s*개월/.test(memo) || 
+        /\(\s*\d+\s*\/\s*\d+\s*\)/.test(memo) || 
+        /\[\s*\d+\s*\/\s*\d+\s*\]/.test(memo) ||
+        /\d+\s*\/\s*\d+\s*회/.test(memo) ||
+        /할부\s*\d+\s*\/\s*\d+/.test(memo)
+      );
+      if (hasStrictInstPattern) {
         if (r.isInstallment !== 'Y') {
           r.isInstallment = 'Y';
           changed = true;
@@ -569,8 +576,11 @@
         if (!r.installment || r.installment === '일시불') {
           const m = memo.match(/\d+\s*\/\s*(\d+)/) || memo.match(/(\d+)\s*개월/);
           if (m) {
-            r.installment = `${m[1]}개월`;
-            changed = true;
+            const parsedMonths = parseInt(m[1], 10);
+            if (parsedMonths >= 2 && parsedMonths <= 60) {
+              r.installment = `${parsedMonths}개월`;
+              changed = true;
+            }
           }
         }
       }
@@ -589,12 +599,35 @@
       if (match) {
         const curr = parseInt(match[2], 10);
         const total = parseInt(match[3], 10);
+        
+        // 이전 회차의 체인이 존재하고 현재 회차가 더 크다면(예: 1회차 -> 2회차) 카테고리/카드 승계
+        if (chainMap[key] && chainMap[key].currentIdx < curr) {
+          const prev = chainMap[key];
+          if (prev.category && (!r.category || r.category === '미분류' || r.category === '할부')) {
+            r.category = prev.category;
+            r.subCategory = prev.subCategory || '';
+            changed = true;
+          }
+          if (prev.card && (!r.actualCard || r.actualCard.includes('간편결제') || r.actualCard === '미등록')) {
+            r.actualCard = prev.card;
+            changed = true;
+          }
+        }
+
+        // 메모 끝에 불필요한 닫는 괄호(오타/파싱 오류) 정리 (예: '... 2/3)' -> '... 2/3')
+        if (r.memo && !r.memo.includes('(') && r.memo.endsWith(')')) {
+          r.memo = r.memo.replace(/\)+$/, '');
+          changed = true;
+        }
+
         chainMap[key] = {
           prefix: match[1],
           currentIdx: curr,
           totalIdx: total,
           suffix: match[4],
           card: r.actualCard,
+          category: r.category,
+          subCategory: r.subCategory,
           lastDate: r.date
         };
       } else if (chainMap[key] && chainMap[key].currentIdx < chainMap[key].totalIdx) {
@@ -617,6 +650,12 @@
         // 간편결제로 매핑되어 있고 이전 할부 카드가 있으면 실물 카드도 자동 승계
         if ((!r.actualCard || r.actualCard.includes('간편결제') || r.actualCard === '미등록') && prev.card) {
           r.actualCard = prev.card;
+          changed = true;
+        }
+        // 카테고리도 자동 승계
+        if (prev.category && (!r.category || r.category === '미분류' || r.category === '할부')) {
+          r.category = prev.category;
+          r.subCategory = prev.subCategory || '';
           changed = true;
         }
         chainMap[key] = {
@@ -1011,9 +1050,13 @@
           totalIdx: totalIdx,
           firstDate: r.date,
           lastDate: r.date,
-          memo: memo || (r.installment ? `${r.installment} 할부` : '할부')
+          memo: memo || (r.installment ? `${r.installment} 할부` : '할부'),
+          recordIds: [r.id]
         };
       } else {
+        if (!trackingMap[key].recordIds.includes(r.id)) {
+          trackingMap[key].recordIds.push(r.id);
+        }
         if (r.date && (!trackingMap[key].firstDate || new Date(r.date) < new Date(trackingMap[key].firstDate))) {
           trackingMap[key].firstDate = r.date;
         }
@@ -1093,8 +1136,13 @@
             </div>
 
             <div class="inst-card-bottom">
-              <span class="inst-card-pill">[${item.card}]</span>
-              <span class="inst-last-date">${firstDateStr ? `시작: ${firstDateStr} · ` : ''}최근: ${dateStr}</span>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span class="inst-card-pill">[${item.card}]</span>
+                <span class="inst-last-date">${firstDateStr ? `시작: ${firstDateStr} · ` : ''}최근: ${dateStr}</span>
+              </div>
+              <button type="button" class="btn-remove-inst-card" data-ids="${(item.recordIds || []).join(',')}" data-merchant="${(item.merchant || '').replace(/"/g, '&quot;')}" title="이 항목을 할부 잔액 추적에서 제외하고 일시불(N)로 변경합니다">
+                <span>✕</span> 할부 제외
+              </button>
             </div>
           </div>
         `;
@@ -1110,7 +1158,39 @@
       const elBadge = document.getElementById('kpiInstallmentCountBadge');
       if (elBadge) elBadge.textContent = `${activeCount}건 진행 중`;
       const elList = document.getElementById('installmentTrackingList');
-      if (elList) elList.innerHTML = html;
+      if (elList) {
+        elList.innerHTML = html;
+
+        // 할부 추적 제외 버튼 클릭 이벤트
+        elList.querySelectorAll('.btn-remove-inst-card').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const merchant = btn.dataset.merchant || '해당';
+            const ids = (btn.dataset.ids || '').split(',').map(Number).filter(Boolean);
+            if (ids.length === 0) return;
+
+            if (!confirm(`[${merchant}] 항목을 할부 잔액 추적에서 제외하시겠습니까?\n\n• 연결된 ${ids.length}건의 지출 내역이 일시불(N)로 전환됩니다.\n• 메모의 할부 회차 표기도 자동으로 정리됩니다.`)) {
+              return;
+            }
+
+            ids.forEach(id => {
+              const rec = appState.records.find(r => r.id === id);
+              if (rec) {
+                rec.isInstallment = 'N';
+                rec.installment = '일시불';
+                rec.manualInst = 'N'; // 자동 플래그 재부여 방지
+                if (rec.memo) {
+                  rec.memo = rec.memo.replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)/g, '').replace(/할부\s*\d+\/\d+/g, '').replace(/할부/g, '').trim();
+                }
+              }
+            });
+
+            await saveData();
+            renderAll();
+            showToast(`[${merchant}] 할부 잔액 추적에서 제외되었습니다.`, 'info');
+          });
+        });
+      }
 
       // 정렬 버튼 활성화 상태 및 클릭 이벤트 등록
       document.querySelectorAll('.btn-inst-sort').forEach(btn => {
@@ -3651,6 +3731,27 @@
       showToast(`리뷰비 내역 ${reviewCount}건을 표시합니다.`, 'info');
     });
 
+    // 체험단 대시보드(claude.ai)는 외부 서버를 못 읽어서, 리뷰비 내역을 JSON으로 복사해 붙여넣게 함
+    document.getElementById('btnCopyReviewToCampaign')?.addEventListener('click', async () => {
+      const reviewCats = appState.customTypes['리뷰비'] || [];
+      const items = appState.records
+        .filter(r => (r.category === '리뷰비' || reviewCats.includes(r.category)) && Number(r.amount) > 0)
+        .map(r => ({ id: getSignature(r), date: r.date, merchant: r.merchant, amount: Number(r.amount), subCategory: r.subCategory || '', memo: r.memo || '', card: r.actualCard || '' }));
+      if (items.length === 0) return showToast('리뷰비 내역이 없습니다.', 'info');
+      const text = JSON.stringify({ type: 'daily-review-v1', items });
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      showToast(`리뷰비 내역 ${items.length}건을 복사했습니다. 체험단 대시보드에 붙여넣으세요.`, 'info');
+    });
+
     document.getElementById('btnFilterExcluded')?.addEventListener('click', () => {
       appState.filterExclude = 'N';
       document.getElementById('filterExclude').value = 'N';
@@ -3858,13 +3959,34 @@
         if (rec && rec.memo !== val) {
           rec.memo = val;
 
-          // 메모에 할부 또는 회차(N/M), 개월 수가 포함되어 있으면 즉시 할부(Y) 플래그 활성화
-          const isInstMemo = val.includes('할부') || /\d+\s*\/\s*\d+/.test(val) || /\d+\s*개월/.test(val);
-          if (isInstMemo && rec.isInstallment !== 'Y') {
+          // 진짜 할부 메모 패턴인지 엄격하게 검사
+          // (단순 날짜 10/27, 3/15 등이나 일반 슬래시(/)는 할부로 오인하지 않도록 방지)
+          const isStrictInstMemo = (
+            val.includes('할부') || 
+            /\d+\s*개월/.test(val) || 
+            /\(\s*\d+\s*\/\s*\d+\s*\)/.test(val) || 
+            /\[\s*\d+\s*\/\s*\d+\s*\]/.test(val) || 
+            /\d+\s*\/\s*\d+\s*회/.test(val) ||
+            /할부\s*\d+\s*\/\s*\d+/.test(val)
+          );
+
+          if (isStrictInstMemo) {
             rec.isInstallment = 'Y';
+            delete rec.manualInst;
             const monMatch = val.match(/\d+\s*\/\s*(\d+)/) || val.match(/(\d+)\s*개월/);
             if (monMatch) {
-              rec.installment = `${monMatch[1]}개월`;
+              const parsedMonths = parseInt(monMatch[1], 10);
+              if (parsedMonths >= 2 && parsedMonths <= 60) {
+                rec.installment = `${parsedMonths}개월`;
+              }
+            }
+          } else {
+            // 메모에서 할부 표기(/ 나 할부)를 지웠거나 일반 메모로 수정한 경우:
+            // 기존에 할부(Y)였더라도 자동으로 할부 해제(N) 및 일시불로 변경!
+            if (rec.isInstallment === 'Y') {
+              rec.isInstallment = 'N';
+              rec.installment = '일시불';
+              rec.manualInst = 'N'; // 사용자가 직접 수정했음을 기록하여 재자동감지 방지
             }
           }
 
@@ -4018,7 +4140,7 @@
             new Date(r.date) < new Date(current.date)
           ).pop();
 
-          if (prev && (current.isInstallment !== 'Y' || current.memo === prev.memo || !current.memo || !current.memo.includes('/'))) {
+          if (prev) {
             let nextMemo = current.memo;
             if (prev.memo) {
               const fractionMatch = prev.memo.match(/(.*?)(\d+)(\s*\/\s*\d+)(.*)/);
@@ -4033,9 +4155,32 @@
                 }
               }
             }
+
+            // 불필요한 닫는 괄호(예: '... 2/3)') 정리
+            if (nextMemo && !nextMemo.includes('(') && nextMemo.endsWith(')')) {
+              nextMemo = nextMemo.replace(/\)+$/, '');
+            }
             
-            // Only push if there's actually a change to be made
-            if (current.isInstallment !== 'Y' || current.memo !== nextMemo || current.category !== prev.category || current.actualCard !== prev.actualCard) {
+            const currMemoClean = (current.memo || '').trim();
+            const nextMemoClean = (nextMemo || '').trim();
+
+            const isInstMismatch = current.isInstallment !== 'Y';
+            const isMemoMismatch = currMemoClean !== nextMemoClean;
+            const isCatMismatch = prev.category && (
+              !current.category || 
+              current.category === '미분류' || 
+              current.category === '할부' || 
+              current.category !== prev.category ||
+              (prev.subCategory && current.subCategory !== prev.subCategory)
+            );
+            const isCardMismatch = prev.actualCard && (
+              !current.actualCard || 
+              current.actualCard.includes('간편결제') || 
+              current.actualCard === '미등록'
+            );
+
+            // 변경할 사항이 있는 경우 감지 목록에 추가
+            if (isInstMismatch || isMemoMismatch || isCatMismatch || isCardMismatch) {
               pendingChanges.push({
                 record: current,
                 prev: prev,
@@ -4135,9 +4280,13 @@
         pendingChanges.forEach(c => {
           c.record.isInstallment = 'Y';
           c.record.installment = c.prev.installment || '3개월';
-          c.record.category = c.prev.category;
-          c.record.subCategory = c.prev.subCategory;
-          c.record.actualCard = c.prev.actualCard;
+          if (c.prev.category) {
+            c.record.category = c.prev.category;
+            c.record.subCategory = c.prev.subCategory || '';
+          }
+          if (c.prev.actualCard && (!c.record.actualCard || c.record.actualCard.includes('간편결제') || c.record.actualCard === '미등록')) {
+            c.record.actualCard = c.prev.actualCard;
+          }
           c.record.memo = c.newMemo;
           delete c.record.manualInst;
         });
