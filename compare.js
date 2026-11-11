@@ -18,7 +18,7 @@
     '원이보험비(DB)': ['DB손해', '디비손해'],
     '원이보험비(삼성화재)': ['삼성화재'],
     '관리비': ['관리비', '전기', '예스코', '한국전력', '도시가스'],
-    '계원폰요금': ['계원폰', 'KT통신요금 자동납부'],
+    '계원폰요금': ['계원폰', 'KT통신요금'],
     '동욱폰요금': ['동욱폰'],
     '하이패스': ['하이패스', '도로공사'],
     '베인': ['베인', '배민', '우아한형제들']
@@ -105,37 +105,65 @@
     return null;
   }
 
-  // monthly 데이터 읽기: 같은 도메인 localStorage(수정본) / Supabase 중 최신 → 둘 다 없으면 monthly/app.js 기본 데이터
-  async function loadMonthlyState() {
-    var cands = [];
+  // ---- 설정/스냅샷 (daily Supabase app_settings 'compare_config' 에 저장 → 기기 간 공유) ----
+  var cfg = { items: {}, snapshot: null };
+  async function loadCfg() {
+    var r = await client(DAILY_URL, DAILY_KEY).from('app_settings').select('value').eq('key', 'compare_config').maybeSingle();
+    if (r.data && r.data.value) cfg = Object.assign({ items: {}, snapshot: null }, r.data.value);
+    if (!cfg.items) cfg.items = {};
+  }
+  async function saveCfg() {
+    var r = await client(DAILY_URL, DAILY_KEY).from('app_settings').upsert({ key: 'compare_config', value: cfg });
+    return !r.error;
+  }
+
+  function localMonthly() {
     try {
       var raw = localStorage.getItem('dongwook_gyewon_budget_app_v2');
-      if (raw) cands.push(JSON.parse(raw));
-    } catch (e) { /* ignore */ }
-    try {
-      var res = await Promise.race([
-        client(MONTHLY_URL, MONTHLY_KEY).from('monthly_budget_data').select('data').eq('id', 'main').single(),
-        new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 3000); })
-      ]);
-      if (res && !res.error && res.data && res.data.data) cands.push(res.data.data);
-    } catch (e) { /* monthly Supabase 연결 불가 시 무시 */ }
-    cands = cands.filter(function (c) { return c && Array.isArray(c.fixedExpenses) && c.fixedExpenses.length; });
-    if (cands.length) {
-      cands.sort(function (a, b) { return (b.lastUpdated || 0) - (a.lastUpdated || 0); });
-      return cands[0];
-    }
+      var s = raw && JSON.parse(raw);
+      return s && Array.isArray(s.fixedExpenses) && s.fixedExpenses.length ? s : null;
+    } catch (e) { return null; }
+  }
+  async function defaultMonthly() {
     var js = await (await fetch('../monthly/app.js?_=' + Date.now())).text();
     var lit = extractLiteral(js, 'DEFAULT_EXCEL_DATA = ');
     if (!lit) throw new Error('monthly 고정지출 데이터를 찾지 못했습니다.');
     return (new Function('return (' + lit + ')'))();
   }
+  function toSnap(state, source) {
+    return {
+      savedAt: Date.now(), source: source,
+      types: (state.categories && state.categories.paymentMethodTypes) || {},
+      items: state.fixedExpenses.map(function (f) {
+        return { name: f.name, amount: Number(f.amount) || 0, method: String(f.method || '').trim(), category: f.category, day: f.day };
+      })
+    };
+  }
+  var sig = function (s) { return JSON.stringify([s && s.types, s && s.items]); };
+
+  // monthly 고정지출을 읽어 스냅샷으로 저장. force=true 면 monthly 화면 데이터가 없을 때 monthly 기본 데이터를 다시 읽음
+  async function syncMonthly(force) {
+    var local = localMonthly(), snap = null;
+    if (local) snap = toSnap(local, 'monthly 화면 (이 브라우저)');
+    else if (force || !cfg.snapshot) snap = toSnap(await defaultMonthly(), 'monthly 기본 데이터');
+    if (snap && sig(snap) !== sig(cfg.snapshot)) {
+      cfg.snapshot = snap;
+      if (local || force) await saveCfg();
+      return true;
+    }
+    return false;
+  }
 
   async function loadData() {
-    var mstate = await loadMonthlyState();
-    var types = (mstate.categories && mstate.categories.paymentMethodTypes) || {};
-    var planned = (mstate.fixedExpenses || [])
-      .filter(function (f) { return pmType(f.method, types) === '카드'; })
-      .map(function (f) { return { id: f.id, name: f.name, method: String(f.method || '').trim(), category: f.category, amount: Number(f.amount) || 0, day: f.day }; });
+    await loadCfg();
+    await syncMonthly(false);
+    var snap = cfg.snapshot;
+    var planned = snap.items.map(function (it) {
+      var o = cfg.items[it.name] || {};
+      var auto = pmType(it.method, snap.types) === '카드';
+      var pay = o.pay === 'cash' ? 'cash' : o.pay === 'card' ? 'card' : (auto ? 'card' : 'other');
+      return { name: it.name, method: it.method, category: it.category, amount: it.amount, day: it.day, pay: pay, aliases: o.aliases || '' };
+    }).filter(function (p) { return p.pay !== 'other'; });
 
     var dc = client(DAILY_URL, DAILY_KEY);
     var rres = await dc.from('app_settings').select('*').in('key', ['records', 'custom_types']);
@@ -152,12 +180,15 @@
       if (!r.date || r.isCanceled) return false;
       return r.isFixed === 'Y' || fixedCats.indexOf(r.category) >= 0;
     });
-    return { planned: planned, fixed: fixed };
+    return { planned: planned, fixed: fixed, snap: snap };
   }
 
   // ---- 계산 ---------------------------------------------------------------
   function compute(data) {
-    var plannedTotal = data.planned.reduce(function (s, p) { return s + p.amount; }, 0);
+    var cardPlan = data.planned.filter(function (p) { return p.pay === 'card'; });
+    var cashPlan = data.planned.filter(function (p) { return p.pay === 'cash'; });
+    var plannedTotal = cardPlan.reduce(function (s, p) { return s + p.amount; }, 0);
+    var cashTotal = cashPlan.reduce(function (s, p) { return s + p.amount; }, 0);
     var byMonth = {};
     data.fixed.forEach(function (r) {
       var ym = String(r.date).slice(0, 7);
@@ -171,10 +202,11 @@
       var used = new Array(recs.length).fill(false);
       var text = function (r) { return ((r.merchant || '') + ' ' + (r.memo || '')).toLowerCase(); };
 
-      var items = data.planned.map(function (p) { return { plan: p, matched: [] }; });
+      var items = cardPlan.map(function (p) { return { plan: p, matched: [] }; });
       // 1) 키워드 매칭
       items.forEach(function (it) {
-        var keys = (ALIASES[it.plan.name] || []).map(function (k) { return k.toLowerCase(); });
+        var custom = String(it.plan.aliases || '').split(',').map(function (k) { return k.trim(); }).filter(Boolean);
+        var keys = (custom.length ? custom : (ALIASES[it.plan.name] || [])).map(function (k) { return k.toLowerCase(); });
         if (!keys.length) return;
         recs.forEach(function (r, i) {
           if (used[i]) return;
@@ -198,7 +230,7 @@
       var actualTotal = recs.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
       var paid = recs.filter(function (r) { return r.exclude === 'Y'; }).reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
       return {
-        ym: ym, items: items, extras: extras, recs: recs,
+        ym: ym, items: items, cashPlan: cashPlan, cashTotal: cashTotal, extras: extras, recs: recs,
         planned: plannedTotal, actual: actualTotal, diff: actualTotal - plannedTotal,
         paid: paid, pending: actualTotal - paid,
         extraTotal: extras.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0),
@@ -224,21 +256,41 @@
   };
 
   function render(host, data, rows) {
-    var plannedTotal = data.planned.reduce(function (s, p) { return s + p.amount; }, 0);
+    var cardPlan = data.planned.filter(function (p) { return p.pay === 'card'; });
+    var cashPlan = data.planned.filter(function (p) { return p.pay === 'cash'; });
+    var plannedTotal = cardPlan.reduce(function (s, p) { return s + p.amount; }, 0);
+    var cashTotal = cashPlan.reduce(function (s, p) { return s + p.amount; }, 0);
     var h = '<div class="cmp-wrap">';
     h += '<section class="panel"><div class="cmp-head"><div><h2>⚖️ 고정비 비교: 나가야 할 돈(monthly) vs 실제 나간 돈(daily)</h2>' +
-      '<p class="cmp-sub"><b>예정</b> = monthly 고정지출 관리에서 결제수단이 <b>카드</b>인 항목 합계 (' + data.planned.length + '개 항목).<br>' +
+      '<p class="cmp-sub"><b>예정</b> = monthly 고정지출 관리에서 결제수단이 <b>카드</b>인 항목 합계 (' + cardPlan.length + '개 항목, 현금으로 낸 항목은 제외).<br>' +
       '<b>실제</b> = daily 에서 대분류가 <b>고정비</b>인 월별 내역 합계. 새 달(예: 12월) 내역이 생기면 자동으로 표가 추가됩니다.</p></div>' +
-      '<button type="button" class="cmp-btn" id="cmpRefresh">🔄 새로고침</button></div>';
+      '<div><button type="button" class="cmp-btn" id="cmpSync">🔗 monthly 연동</button> <button type="button" class="cmp-btn" id="cmpRefresh">🔄 새로고침</button></div></div>';
 
     var latest = rows[rows.length - 1];
     h += '<div class="cmp-kpis">' +
-      '<div class="cmp-kpi"><div class="l">매월 나가야 할 카드 고정지출 (예정)</div><div class="v">' + won(plannedTotal) + '원</div><div class="s">monthly 고정지출 관리 · 카드 항목 ' + data.planned.length + '개 합계</div></div>';
+      '<div class="cmp-kpi"><div class="l">매월 나가야 할 카드 고정지출 (예정)</div><div class="v">' + won(plannedTotal) + '원</div><div class="s">monthly 고정지출 관리 · 카드 항목 ' + cardPlan.length + '개 합계</div></div>' +
+      '<div class="cmp-kpi"><div class="l">현금으로 지급 (비교 제외)</div><div class="v">' + won(cashTotal) + '원</div><div class="s">' + (cashPlan.length ? cashPlan.map(function (p) { return esc(p.name); }).join(', ') : '없음') + '</div></div>';
     if (latest) {
       h += '<div class="cmp-kpi"><div class="l">' + mLabel(latest.ym) + ' 실제 고정비</div><div class="v">' + won(latest.actual) + '원</div><div class="s">결제완료 ' + won(latest.paid) + ' / 대기 ' + won(latest.pending) + '</div></div>' +
         '<div class="cmp-kpi"><div class="l">' + mLabel(latest.ym) + ' 예정 대비</div><div class="v ' + (latest.diff < 0 ? 'neg' : latest.diff > 0 ? 'pos' : 'ok') + '">' + signed(latest.diff) + '원</div><div class="s">실제 − 예정</div></div>';
     }
     h += '</div></section>';
+
+    // 연결 설정 패널
+    var snapInfo = data.snap ? (esc(data.snap.source) + ' · ' + new Date(data.snap.savedAt).toLocaleString('ko-KR')) : '-';
+    h += '<section class="panel"><h3>⚙️ 항목 설정 (monthly 연동)</h3><p class="cmp-note">monthly 고정지출 기준: ' + snapInfo + '<br>지급방식을 <b>현금 지급</b>으로 바꾸면 카드 비교에서 빠지고 현금 지급으로 표시됩니다. 연결 키워드는 daily 가맹점명·메모와 연결할 때 쓰며(쉼표로 구분, 비우면 기본값), 변경 즉시 저장됩니다.</p>' +
+      '<div class="cmp-tablewrap"><table class="cmp-table"><thead><tr><th>항목</th><th>monthly 결제수단</th><th>예정 금액</th><th class="t">지급방식</th><th class="t">연결 키워드</th></tr></thead><tbody>';
+    data.snap.items.forEach(function (it) {
+      var o = cfg.items[it.name] || {};
+      var autoCard = pmType(it.method, data.snap.types) === '카드';
+      var cur = o.pay || 'auto';
+      h += '<tr><td>' + esc(it.name) + '</td><td class="mut">' + esc(it.method) + '</td><td>' + won(it.amount) + '</td><td class="t"><select class="cmp-pay" data-name="' + esc(it.name) + '">' +
+        '<option value="auto"' + (cur === 'auto' ? ' selected' : '') + '>자동 (' + (autoCard ? '카드' : '카드 아님') + ')</option>' +
+        '<option value="card"' + (cur === 'card' ? ' selected' : '') + '>카드로 비교</option>' +
+        '<option value="cash"' + (cur === 'cash' ? ' selected' : '') + '>현금 지급</option></select></td>' +
+        '<td class="t"><input class="cmp-alias" data-name="' + esc(it.name) + '" value="' + esc(o.aliases || '') + '" placeholder="' + esc((ALIASES[it.name] || []).join(', ')) + '" style="width:100%;min-width:180px;padding:6px 8px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary)"></td></tr>';
+    });
+    h += '</tbody></table></div></section>';
 
     // 월별 요약표
     h += '<section class="panel"><h3>📅 월별 비교표</h3><div class="cmp-tablewrap"><table class="cmp-table"><thead><tr>' +
@@ -270,6 +322,9 @@
           '<td class="' + (it.diff < 0 || it.status === 'none' ? 'neg' : it.diff > 0 ? 'pos' : 'ok') + '">' + (it.status === 'none' ? signed(-it.plan.amount) : signed(it.diff)) + '</td>' +
           '<td class="t"><span class="bdg ' + b[0] + '">' + b[1] + '</span></td><td class="t mut">' + (it.matched.map(recDesc).join('<br>') || '-') + '</td></tr>';
       });
+      r.cashPlan.forEach(function (p) {
+        h += '<tr><td>' + esc(p.name) + '</td><td class="mut">' + esc(p.method) + ' → 현금</td><td>' + won(p.amount) + '</td><td>현금 ' + won(p.amount) + '</td><td class="ok">0</td><td class="t"><span class="bdg same">현금 지급</span></td><td class="t mut">카드 비교 제외</td></tr>';
+      });
       if (r.extras.length) {
         h += '<tr class="sub"><td colspan="7">예정에 없는 daily 고정비 내역 (' + r.extras.length + '건, ' + won(r.extraTotal) + '원)</td></tr>';
         r.extras.forEach(function (e) {
@@ -284,6 +339,31 @@
     host.innerHTML = h;
     var btn = host.querySelector('#cmpRefresh');
     if (btn) btn.addEventListener('click', function () { refresh(host, true); });
+    var sb = host.querySelector('#cmpSync');
+    if (sb) sb.addEventListener('click', async function () {
+      sb.disabled = true; sb.textContent = '연동 중…';
+      try { await syncMonthly(true); await saveCfg(); } catch (e) { alert(e.message || e); }
+      loading = false; refresh(host, true);
+    });
+    var change = async function (el) {
+      var n = el.dataset.name, o = cfg.items[n] || (cfg.items[n] = {});
+      if (el.classList.contains('cmp-pay')) o.pay = el.value; else o.aliases = el.value.trim();
+      if ((!o.pay || o.pay === 'auto') && !o.aliases) delete cfg.items[n];
+      await saveCfg();
+      render(host, data, compute(data = rebuild(data)));
+    };
+    host.querySelectorAll('.cmp-pay, .cmp-alias').forEach(function (el) { el.addEventListener('change', function () { change(el); }); });
+  }
+
+  function rebuild(data) {
+    var snap = data.snap;
+    data.planned = snap.items.map(function (it) {
+      var o = cfg.items[it.name] || {};
+      var auto = pmType(it.method, snap.types) === '카드';
+      var pay = o.pay === 'cash' ? 'cash' : o.pay === 'card' ? 'card' : (auto ? 'card' : 'other');
+      return { name: it.name, method: it.method, category: it.category, amount: it.amount, day: it.day, pay: pay, aliases: o.aliases || '' };
+    }).filter(function (p) { return p.pay !== 'other'; });
+    return data;
   }
 
   var loading = false;
