@@ -233,12 +233,26 @@
           if (keys.some(function (k) { return t.indexOf(k) >= 0; })) { used[i] = true; it.matched.push(r); }
         });
       });
+      // 1-2) 같은 소분류(daily 소분류 = monthly 카테고리명) + 금액이 정확히 같은 내역
+      items.forEach(function (it) {
+        if (it.matched.length || !it.plan.category) return;
+        for (var i = 0; i < recs.length; i++) {
+          if (!used[i] && recs[i].subCategory === it.plan.category && (Number(recs[i].amount) || 0) === it.plan.amount) { used[i] = true; it.matched.push(recs[i]); break; }
+        }
+      });
       // 2) 금액이 정확히 같은 내역
       items.forEach(function (it) {
         if (it.matched.length) return;
         for (var i = 0; i < recs.length; i++) {
           if (!used[i] && (Number(recs[i].amount) || 0) === it.plan.amount) { used[i] = true; it.matched.push(recs[i]); break; }
         }
+      });
+      // 3) 남은 내역을 소분류로 연결: 같은 소분류 항목이 하나뿐이거나, 항목명이 카테고리명과 같은 항목(예: 관리비)이 있으면 거기로 모음
+      recs.forEach(function (r, i) {
+        if (used[i] || !r.subCategory) return;
+        var same = items.filter(function (it) { return it.plan.category === r.subCategory; });
+        var target = same.length === 1 ? same[0] : same.filter(function (it) { return it.plan.name === it.plan.category; })[0];
+        if (target) { used[i] = true; target.matched.push(r); }
       });
       items.forEach(function (it) {
         it.actual = it.matched.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
@@ -334,7 +348,7 @@
         '<td class="t mut">' + (short || '-') + '</td></tr>';
     });
     h += '</tbody><tfoot><tr><td>합계</td><td>' + won(sp) + '</td><td>' + won(sa) + '</td><td class="' + (sa - sp < 0 ? 'neg' : 'pos') + '">' + signed(sa - sp) + '</td><td>' + (sp ? Math.round(sa / sp * 100) : 0) + '%</td><td>' + won(spaid) + '</td><td>' + won(spend) + '</td><td colspan="2"></td></tr></tfoot></table></div>' +
-      '<p class="cmp-note">부족 = 그 달 daily 고정비에서 예정 금액만큼 잡히지 않은 항목 / 초과 = 예정보다 더 나간 항목. 항목별 연결은 가맹점명·메모 키워드와 금액으로 자동 판단하며, 맞지 않으면 compare.js 상단의 ALIASES 를 수정하면 됩니다.</p></section>';
+      '<p class="cmp-note">부족 = 그 달 daily 고정비에서 예정 금액만큼 잡히지 않은 항목 / 초과 = 예정보다 더 나간 항목. 항목별 연결은 ① 가맹점명·메모 키워드 ② 같은 소분류+같은 금액 ③ 같은 금액 ④ 같은 소분류(monthly 카테고리명 = daily 소분류) 순으로 자동 판단하며, 맞지 않으면 compare.js 상단의 ALIASES 를 수정하면 됩니다.</p></section>';
 
     // 월별 상세
     rows.slice().reverse().forEach(function (r, idx) {
@@ -351,7 +365,7 @@
       if (r.extras.length) {
         h += '<tr class="sub"><td colspan="7">예정에 없는 daily 고정비 내역 (' + r.extras.length + '건, ' + won(r.extraTotal) + '원)</td></tr>';
         r.extras.forEach(function (e) {
-          h += '<tr><td>' + esc(e.merchant) + '</td><td class="mut">' + esc(e.actualCard || '') + '</td><td>-</td><td>' + won(e.amount) + '</td><td class="pos">' + signed(e.amount) + '</td>' +
+          h += '<tr><td>' + esc(e.merchant) + (e.subCategory ? ' <span class="mut">(' + esc(e.subCategory) + ')</span>' : '') + '</td><td class="mut">' + esc(e.actualCard || '') + '</td><td>-</td><td>' + won(e.amount) + '</td><td class="pos">' + signed(e.amount) + '</td>' +
             '<td class="t"><span class="bdg extra">예정 외</span></td><td class="t mut">' + e.date.slice(5) + (e.memo ? ' · ' + esc(e.memo) : '') + ' (' + (e.exclude === 'Y' ? '완료' : '대기') + ')</td></tr>';
         });
       }
