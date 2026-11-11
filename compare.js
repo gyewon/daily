@@ -221,7 +221,7 @@
       var used = new Array(recs.length).fill(false);
       var text = function (r) { return ((r.merchant || '') + ' ' + (r.memo || '')).toLowerCase(); };
 
-      var items = cardPlan.map(function (p) { return { plan: p, matched: [] }; });
+      var items = data.planned.map(function (p) { return { plan: p, matched: [] }; });
       // 1) 키워드 매칭
       items.forEach(function (it) {
         var custom = String(it.plan.aliases || '').split(',').map(function (k) { return k.trim(); }).filter(Boolean);
@@ -244,12 +244,17 @@
         it.actual = it.matched.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
         it.diff = it.actual - it.plan.amount;
         it.status = !it.matched.length ? 'none' : it.diff === 0 ? 'same' : it.diff < 0 ? 'short' : 'over';
+        // 현금 지급으로 정한 항목은 daily 내역이 없으면 현금 지급 완료로 처리 (daily 내역이 있으면 그 내역으로 비교)
+        if (it.plan.pay === 'cash' && !it.matched.length) { it.status = 'cash'; it.actual = it.plan.amount; it.diff = 0; it.cash = true; }
       });
+      var cashDone = items.filter(function (i) { return i.cash; }).reduce(function (s, i) { return s + i.actual; }, 0);
+      var rank = function (i) { return (i.status === 'same') ? 2 : (i.status === 'cash') ? 1 : 0; };
+      items = items.map(function (i, n) { return { i: i, n: n }; }).sort(function (a, b) { return rank(a.i) - rank(b.i) || a.n - b.n; }).map(function (x) { return x.i; });
       var extras = recs.filter(function (r, i) { return !used[i]; });
       var recTotal = recs.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
       var recPaid = recs.filter(function (r) { return r.exclude === 'Y'; }).reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
       // monthly 기준: 현금으로 지급한 항목도 예정에 포함하고, 실제에는 '현금 지급 완료'로 포함
-      var actualTotal = recTotal + cashTotal, paid = recPaid + cashTotal, plannedAll = plannedTotal + cashTotal;
+      var actualTotal = recTotal + cashDone, paid = recPaid + cashDone, plannedAll = plannedTotal + cashTotal;
       return {
         ym: ym, items: items, cashPlan: cashPlan, cashTotal: cashTotal, extras: extras, recs: recs,
         planned: plannedAll, actual: actualTotal, diff: actualTotal - plannedAll,
@@ -262,7 +267,7 @@
 
   // ---- 렌더 ---------------------------------------------------------------
   var BADGE = {
-    same: ['same', '일치'], short: ['short', '부족'], over: ['over', '초과'], none: ['none', '내역 없음']
+    same: ['same', '일치'], cash: ['same', '현금 지급'], short: ['short', '부족'], over: ['over', '초과'], none: ['none', '내역 없음']
   };
   function totalBadge(diff) {
     if (diff === 0) return '<span class="bdg same">일치</span>';
@@ -299,7 +304,7 @@
 
     // 연결 설정 패널
     var snapInfo = data.snap ? (esc(data.snap.source) + ' · ' + new Date(data.snap.savedAt).toLocaleString('ko-KR')) : '-';
-    h += '<section class="panel"><h3>⚙️ 항목 설정 (monthly 연동)</h3><p class="cmp-note">monthly 고정지출 중 <b>[표시] 체크되고 결제수단이 현금/이체가 아닌 항목만</b> 불러옵니다 (' + data.snap.items.length + '개) · 기준: ' + snapInfo + '<br>지급방식을 <b>현금 지급</b>으로 바꾸면 daily 내역과 연결하지 않고 현금 지급 완료로 처리됩니다 (예정·실제 양쪽에 같은 금액 포함). 연결 키워드는 daily 가맹점명·메모와 연결할 때 쓰며(쉼표로 구분, 비우면 기본값), 변경 즉시 저장됩니다.</p>' +
+    h += '<section class="panel"><h3>⚙️ 항목 설정 (monthly 연동)</h3><p class="cmp-note">monthly 고정지출 중 <b>[표시] 체크되고 결제수단이 현금/이체가 아닌 항목만</b> 불러옵니다 (' + data.snap.items.length + '개) · 기준: ' + snapInfo + '<br>지급방식을 <b>현금 지급</b>으로 바꾸면 daily에 같은 내역이 없으면 현금 지급 완료로 처리하고 (예정·실제 양쪽에 같은 금액 포함), 있으면 그 내역과 비교합니다. 연결 키워드는 daily 가맹점명·메모와 연결할 때 쓰며(쉼표로 구분, 비우면 기본값), 변경 즉시 저장됩니다.</p>' +
       '<div class="cmp-tablewrap"><table class="cmp-table"><thead><tr><th>항목</th><th>monthly 결제수단</th><th>예정 금액</th><th class="t">지급방식</th><th class="t">연결 키워드</th></tr></thead><tbody>';
     data.snap.items.forEach(function (it) {
       var o = cfg.items[it.name] || {};
@@ -338,12 +343,9 @@
       r.items.forEach(function (it) {
         var b = BADGE[it.status];
         h += '<tr><td>' + esc(it.plan.name) + '</td><td class="mut">' + esc(it.plan.method) + '</td><td>' + won(it.plan.amount) + '</td>' +
-          '<td>' + (it.matched.length ? won(it.actual) : '-') + '</td>' +
+          '<td>' + (it.cash ? '현금 ' + won(it.actual) : it.matched.length ? won(it.actual) : '-') + '</td>' +
           '<td class="' + (it.diff < 0 || it.status === 'none' ? 'neg' : it.diff > 0 ? 'pos' : 'ok') + '">' + (it.status === 'none' ? signed(-it.plan.amount) : signed(it.diff)) + '</td>' +
-          '<td class="t"><span class="bdg ' + b[0] + '">' + b[1] + '</span></td><td class="t mut">' + (it.matched.map(recDesc).join('<br>') || '-') + '</td></tr>';
-      });
-      r.cashPlan.forEach(function (p) {
-        h += '<tr><td>' + esc(p.name) + '</td><td class="mut">' + esc(p.method) + ' → 현금</td><td>' + won(p.amount) + '</td><td>현금 ' + won(p.amount) + '</td><td class="ok">0</td><td class="t"><span class="bdg same">현금 지급</span></td><td class="t mut">daily 내역과 연결 안 함</td></tr>';
+          '<td class="t"><span class="bdg ' + b[0] + '">' + b[1] + '</span></td><td class="t mut">' + (it.cash ? '현금으로 지급 (daily 내역 없음)' : (it.matched.map(recDesc).join('<br>') || '-')) + '</td></tr>';
       });
       if (r.extras.length) {
         h += '<tr class="sub"><td colspan="7">예정에 없는 daily 고정비 내역 (' + r.extras.length + '건, ' + won(r.extraTotal) + '원)</td></tr>';
