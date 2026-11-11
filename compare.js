@@ -249,8 +249,9 @@
       });
       var cashDone = items.filter(function (i) { return i.cash; }).reduce(function (s, i) { return s + i.actual; }, 0);
       var rank = function (i) { return (i.status === 'same') ? 2 : (i.status === 'cash') ? 1 : 0; };
-      items = items.map(function (i, n) { return { i: i, n: n }; }).sort(function (a, b) { return rank(a.i) - rank(b.i) || a.n - b.n; }).map(function (x) { return x.i; });
-      var extras = recs.filter(function (r, i) { return !used[i]; });
+      items = items.map(function (i, n) { return { i: i, n: n }; }).sort(function (a, b) { var d = function (i) { return i.status === 'none' ? -i.plan.amount : i.diff; };
+        return rank(a.i) - rank(b.i) || (rank(a.i) === 0 ? d(b.i) - d(a.i) : 0) || a.n - b.n; }).map(function (x) { return x.i; });
+      var extras = recs.filter(function (r, i) { return !used[i]; }).sort(function (a, b) { return (Number(b.amount) || 0) - (Number(a.amount) || 0); });
       var recTotal = recs.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
       var recPaid = recs.filter(function (r) { return r.exclude === 'Y'; }).reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
       // monthly 기준: 현금으로 지급한 항목도 예정에 포함하고, 실제에는 '현금 지급 완료'로 포함
