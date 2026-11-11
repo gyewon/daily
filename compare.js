@@ -21,7 +21,8 @@
     '계원폰요금': ['계원폰', 'KT통신요금'],
     '동욱폰요금': ['동욱폰'],
     '하이패스': ['하이패스', '도로공사'],
-    '베인': ['베인', '배민', '우아한형제들']
+    '베인': ['베인', '배민', '우아한형제들'],
+    '배달의민족': ['배달의민족', '배민', '우아한형제들']
   };
 
   var won = function (n) { return (Math.round(n) || 0).toLocaleString('ko-KR'); };
@@ -134,7 +135,7 @@
     return {
       savedAt: Date.now(), source: source,
       types: (state.categories && state.categories.paymentMethodTypes) || {},
-      items: state.fixedExpenses.filter(function (f) { return f.isPaid; }).map(function (f) {
+      items: state.fixedExpenses.filter(function (f) { return f.isPaid && f.method && pmType(f.method, (state.categories && state.categories.paymentMethodTypes) || {}) !== '현금/이체'; }).map(function (f) {
         return { name: f.name, amount: Number(f.amount) || 0, method: String(f.method || '').trim(), category: f.category, day: f.day };
       })
     };
@@ -179,7 +180,7 @@
     var planned = snap.items.map(function (it) {
       var o = cfg.items[it.name] || {};
       var auto = pmType(it.method, snap.types) === '카드';
-      var pay = o.pay === 'cash' ? 'cash' : o.pay === 'card' ? 'card' : (auto ? 'card' : 'other');
+      var pay = o.pay === 'cash' ? 'cash' : 'card';
       return { name: it.name, method: it.method, category: it.category, amount: it.amount, day: it.day, pay: pay, aliases: o.aliases || '' };
     }).filter(function (p) { return p.pay !== 'other'; });
 
@@ -280,9 +281,9 @@
     var cashTotal = cashPlan.reduce(function (s, p) { return s + p.amount; }, 0);
     var h = '<div class="cmp-wrap">';
     h += '<section class="panel"><div class="cmp-head"><div><h2>⚖️ 고정비 비교: 나가야 할 돈(monthly) vs 실제 나간 돈(daily)</h2>' +
-      '<p class="cmp-sub"><b>예정</b> = monthly 고정지출 관리에서 <b>[표시] 체크</b>되고 결제수단이 <b>카드</b>인 항목 합계 (' + cardPlan.length + '개 항목, 현금으로 낸 항목은 제외).<br>' +
+      '<p class="cmp-sub"><b>예정</b> = monthly 고정지출 관리에서 <b>[표시] 체크</b>되고 현금/이체가 아닌 결제수단 항목 합계 (' + cardPlan.length + '개 항목, 현금으로 낸 항목은 제외).<br>' +
       '<b>실제</b> = daily 에서 대분류가 <b>고정비</b>인 월별 내역 합계. 새 달(예: 12월) 내역이 생기면 자동으로 표가 추가됩니다.</p></div>' +
-      '<div><button type="button" class="cmp-btn" id="cmpSync">🔗 monthly 동기화 (표시 체크 항목만)</button> <button type="button" class="cmp-btn" id="cmpRefresh">🔄 새로고침</button></div></div>';
+      '<div><button type="button" class="cmp-btn" id="cmpSync">🔗 monthly 동기화 (표시 체크·현금 제외)</button> <button type="button" class="cmp-btn" id="cmpRefresh">🔄 새로고침</button></div></div>';
 
     var latest = rows[rows.length - 1];
     h += '<div class="cmp-kpis">' +
@@ -296,15 +297,14 @@
 
     // 연결 설정 패널
     var snapInfo = data.snap ? (esc(data.snap.source) + ' · ' + new Date(data.snap.savedAt).toLocaleString('ko-KR')) : '-';
-    h += '<section class="panel"><h3>⚙️ 항목 설정 (monthly 연동)</h3><p class="cmp-note">monthly 고정지출 중 <b>[표시] 체크된 항목만</b> 불러옵니다 (' + data.snap.items.length + '개) · 기준: ' + snapInfo + '<br>지급방식을 <b>현금 지급</b>으로 바꾸면 카드 비교에서 빠지고 현금 지급으로 표시됩니다. 연결 키워드는 daily 가맹점명·메모와 연결할 때 쓰며(쉼표로 구분, 비우면 기본값), 변경 즉시 저장됩니다.</p>' +
+    h += '<section class="panel"><h3>⚙️ 항목 설정 (monthly 연동)</h3><p class="cmp-note">monthly 고정지출 중 <b>[표시] 체크되고 결제수단이 현금/이체가 아닌 항목만</b> 불러옵니다 (' + data.snap.items.length + '개) · 기준: ' + snapInfo + '<br>지급방식을 <b>현금 지급</b>으로 바꾸면 카드 비교에서 빠지고 현금 지급으로 표시됩니다. 연결 키워드는 daily 가맹점명·메모와 연결할 때 쓰며(쉼표로 구분, 비우면 기본값), 변경 즉시 저장됩니다.</p>' +
       '<div class="cmp-tablewrap"><table class="cmp-table"><thead><tr><th>항목</th><th>monthly 결제수단</th><th>예정 금액</th><th class="t">지급방식</th><th class="t">연결 키워드</th></tr></thead><tbody>';
     data.snap.items.forEach(function (it) {
       var o = cfg.items[it.name] || {};
       var autoCard = pmType(it.method, data.snap.types) === '카드';
       var cur = o.pay || 'auto';
       h += '<tr><td>' + esc(it.name) + '</td><td class="mut">' + esc(it.method) + '</td><td>' + won(it.amount) + '</td><td class="t"><select class="cmp-pay" data-name="' + esc(it.name) + '">' +
-        '<option value="auto"' + (cur === 'auto' ? ' selected' : '') + '>자동 (' + (autoCard ? '카드' : '카드 아님') + ')</option>' +
-        '<option value="card"' + (cur === 'card' ? ' selected' : '') + '>카드로 비교</option>' +
+        '<option value="auto"' + (cur !== 'cash' ? ' selected' : '') + '>카드로 비교</option>' +
         '<option value="cash"' + (cur === 'cash' ? ' selected' : '') + '>현금 지급</option></select></td>' +
         '<td class="t"><input class="cmp-alias" data-name="' + esc(it.name) + '" value="' + esc(o.aliases || '') + '" placeholder="' + esc((ALIASES[it.name] || []).join(', ')) + '" style="width:100%;min-width:180px;padding:6px 8px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary)"></td></tr>';
     });
@@ -378,7 +378,7 @@
     data.planned = snap.items.map(function (it) {
       var o = cfg.items[it.name] || {};
       var auto = pmType(it.method, snap.types) === '카드';
-      var pay = o.pay === 'cash' ? 'cash' : o.pay === 'card' ? 'card' : (auto ? 'card' : 'other');
+      var pay = o.pay === 'cash' ? 'cash' : 'card';
       return { name: it.name, method: it.method, category: it.category, amount: it.amount, day: it.day, pay: pay, aliases: o.aliases || '' };
     }).filter(function (p) { return p.pay !== 'other'; });
     return data;
