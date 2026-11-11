@@ -246,12 +246,14 @@
         it.status = !it.matched.length ? 'none' : it.diff === 0 ? 'same' : it.diff < 0 ? 'short' : 'over';
       });
       var extras = recs.filter(function (r, i) { return !used[i]; });
-      var actualTotal = recs.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
-      var paid = recs.filter(function (r) { return r.exclude === 'Y'; }).reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+      var recTotal = recs.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+      var recPaid = recs.filter(function (r) { return r.exclude === 'Y'; }).reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+      // monthly 기준: 현금으로 지급한 항목도 예정에 포함하고, 실제에는 '현금 지급 완료'로 포함
+      var actualTotal = recTotal + cashTotal, paid = recPaid + cashTotal, plannedAll = plannedTotal + cashTotal;
       return {
         ym: ym, items: items, cashPlan: cashPlan, cashTotal: cashTotal, extras: extras, recs: recs,
-        planned: plannedTotal, actual: actualTotal, diff: actualTotal - plannedTotal,
-        paid: paid, pending: actualTotal - paid,
+        planned: plannedAll, actual: actualTotal, diff: actualTotal - plannedAll,
+        paid: paid, pending: recTotal - recPaid,
         extraTotal: extras.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0),
         shortItems: items.filter(function (i) { return i.status === 'short' || i.status === 'none'; })
       };
@@ -281,14 +283,14 @@
     var cashTotal = cashPlan.reduce(function (s, p) { return s + p.amount; }, 0);
     var h = '<div class="cmp-wrap">';
     h += '<section class="panel"><div class="cmp-head"><div><h2>⚖️ 고정비 비교: 나가야 할 돈(monthly) vs 실제 나간 돈(daily)</h2>' +
-      '<p class="cmp-sub"><b>예정</b> = monthly 고정지출 관리에서 <b>[표시] 체크</b>되고 현금/이체가 아닌 결제수단 항목 합계 (' + cardPlan.length + '개 항목, 현금으로 낸 항목은 제외).<br>' +
+      '<p class="cmp-sub"><b>예정</b> = monthly 고정지출 관리에서 <b>[표시] 체크</b>되고 현금/이체가 아닌 결제수단 항목 합계 (' + (cardPlan.length + cashPlan.length) + '개 항목). 현금으로 준 항목은 예정에 포함하고, 실제에는 현금 지급 완료로 더합니다.<br>' +
       '<b>실제</b> = daily 에서 대분류가 <b>고정비</b>인 월별 내역 합계. 새 달(예: 12월) 내역이 생기면 자동으로 표가 추가됩니다.</p></div>' +
       '<div><button type="button" class="cmp-btn" id="cmpSync">🔗 monthly 동기화 (표시 체크·현금 제외)</button> <button type="button" class="cmp-btn" id="cmpRefresh">🔄 새로고침</button></div></div>';
 
     var latest = rows[rows.length - 1];
     h += '<div class="cmp-kpis">' +
-      '<div class="cmp-kpi"><div class="l">매월 나가야 할 카드 고정지출 (예정)</div><div class="v">' + won(plannedTotal) + '원</div><div class="s">monthly 고정지출 관리 · 카드 항목 ' + cardPlan.length + '개 합계</div></div>' +
-      '<div class="cmp-kpi"><div class="l">현금으로 지급 (비교 제외)</div><div class="v">' + won(cashTotal) + '원</div><div class="s">' + (cashPlan.length ? cashPlan.map(function (p) { return esc(p.name); }).join(', ') : '없음') + '</div></div>';
+      '<div class="cmp-kpi"><div class="l">매월 나가야 할 카드 고정지출 (예정)</div><div class="v">' + won(plannedTotal + cashTotal) + '원</div><div class="s">monthly 결제수단별 비중 ‘카드’ 합계 · ' + (cardPlan.length + cashPlan.length) + '개 (카드 결제 ' + won(plannedTotal) + ' + 현금 지급 ' + won(cashTotal) + ')</div></div>' +
+      '<div class="cmp-kpi"><div class="l">그중 현금으로 지급 (실제에 포함)</div><div class="v">' + won(cashTotal) + '원</div><div class="s">' + (cashPlan.length ? cashPlan.map(function (p) { return esc(p.name); }).join(', ') : '없음') + '</div></div>';
     if (latest) {
       h += '<div class="cmp-kpi"><div class="l">' + mLabel(latest.ym) + ' 실제 고정비</div><div class="v">' + won(latest.actual) + '원</div><div class="s">결제완료 ' + won(latest.paid) + ' / 대기 ' + won(latest.pending) + '</div></div>' +
         '<div class="cmp-kpi"><div class="l">' + mLabel(latest.ym) + ' 예정 대비</div><div class="v ' + (latest.diff < 0 ? 'neg' : latest.diff > 0 ? 'pos' : 'ok') + '">' + signed(latest.diff) + '원</div><div class="s">실제 − 예정</div></div>';
@@ -297,7 +299,7 @@
 
     // 연결 설정 패널
     var snapInfo = data.snap ? (esc(data.snap.source) + ' · ' + new Date(data.snap.savedAt).toLocaleString('ko-KR')) : '-';
-    h += '<section class="panel"><h3>⚙️ 항목 설정 (monthly 연동)</h3><p class="cmp-note">monthly 고정지출 중 <b>[표시] 체크되고 결제수단이 현금/이체가 아닌 항목만</b> 불러옵니다 (' + data.snap.items.length + '개) · 기준: ' + snapInfo + '<br>지급방식을 <b>현금 지급</b>으로 바꾸면 카드 비교에서 빠지고 현금 지급으로 표시됩니다. 연결 키워드는 daily 가맹점명·메모와 연결할 때 쓰며(쉼표로 구분, 비우면 기본값), 변경 즉시 저장됩니다.</p>' +
+    h += '<section class="panel"><h3>⚙️ 항목 설정 (monthly 연동)</h3><p class="cmp-note">monthly 고정지출 중 <b>[표시] 체크되고 결제수단이 현금/이체가 아닌 항목만</b> 불러옵니다 (' + data.snap.items.length + '개) · 기준: ' + snapInfo + '<br>지급방식을 <b>현금 지급</b>으로 바꾸면 daily 내역과 연결하지 않고 현금 지급 완료로 처리됩니다 (예정·실제 양쪽에 같은 금액 포함). 연결 키워드는 daily 가맹점명·메모와 연결할 때 쓰며(쉼표로 구분, 비우면 기본값), 변경 즉시 저장됩니다.</p>' +
       '<div class="cmp-tablewrap"><table class="cmp-table"><thead><tr><th>항목</th><th>monthly 결제수단</th><th>예정 금액</th><th class="t">지급방식</th><th class="t">연결 키워드</th></tr></thead><tbody>';
     data.snap.items.forEach(function (it) {
       var o = cfg.items[it.name] || {};
@@ -341,7 +343,7 @@
           '<td class="t"><span class="bdg ' + b[0] + '">' + b[1] + '</span></td><td class="t mut">' + (it.matched.map(recDesc).join('<br>') || '-') + '</td></tr>';
       });
       r.cashPlan.forEach(function (p) {
-        h += '<tr><td>' + esc(p.name) + '</td><td class="mut">' + esc(p.method) + ' → 현금</td><td>' + won(p.amount) + '</td><td>현금 ' + won(p.amount) + '</td><td class="ok">0</td><td class="t"><span class="bdg same">현금 지급</span></td><td class="t mut">카드 비교 제외</td></tr>';
+        h += '<tr><td>' + esc(p.name) + '</td><td class="mut">' + esc(p.method) + ' → 현금</td><td>' + won(p.amount) + '</td><td>현금 ' + won(p.amount) + '</td><td class="ok">0</td><td class="t"><span class="bdg same">현금 지급</span></td><td class="t mut">daily 내역과 연결 안 함</td></tr>';
       });
       if (r.extras.length) {
         h += '<tr class="sub"><td colspan="7">예정에 없는 daily 고정비 내역 (' + r.extras.length + '건, ' + won(r.extraTotal) + '원)</td></tr>';
