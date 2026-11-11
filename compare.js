@@ -134,7 +134,7 @@
     return {
       savedAt: Date.now(), source: source,
       types: (state.categories && state.categories.paymentMethodTypes) || {},
-      items: state.fixedExpenses.map(function (f) {
+      items: state.fixedExpenses.filter(function (f) { return f.isPaid; }).map(function (f) {
         return { name: f.name, amount: Number(f.amount) || 0, method: String(f.method || '').trim(), category: f.category, day: f.day };
       })
     };
@@ -142,13 +142,31 @@
   var sig = function (s) { return JSON.stringify([s && s.types, s && s.items]); };
 
   // monthly 고정지출을 읽어 스냅샷으로 저장. force=true 면 monthly 화면 데이터가 없을 때 monthly 기본 데이터를 다시 읽음
+  async function remoteMonthly() {
+    try {
+      var res = await Promise.race([
+        client(MONTHLY_URL, MONTHLY_KEY).from('monthly_budget_data').select('data').eq('id', 'main').single(),
+        new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 4000); })
+      ]);
+      var d = res && !res.error && res.data && res.data.data;
+      return d && Array.isArray(d.fixedExpenses) && d.fixedExpenses.length ? d : null;
+    } catch (e) { return null; }
+  }
+
+  // monthly 의 [표시] 체크된 고정지출만 스냅샷으로 저장.
+  // 자동: 이 브라우저의 monthly 데이터 사용 / 버튼(force): monthly Supabase 와 비교해 최신 → 없으면 기본 데이터
   async function syncMonthly(force) {
-    var local = localMonthly(), snap = null;
-    if (local) snap = toSnap(local, 'monthly 화면 (이 브라우저)');
+    var local = localMonthly(), remote = null, snap = null;
+    if (force || !local) remote = await remoteMonthly();
+    var cands = [];
+    if (local) cands.push({ s: local, src: 'monthly 화면 (이 브라우저)' });
+    if (remote) cands.push({ s: remote, src: 'monthly 클라우드(Supabase)' });
+    cands.sort(function (a, b) { return (b.s.lastUpdated || 0) - (a.s.lastUpdated || 0); });
+    if (cands.length) snap = toSnap(cands[0].s, cands[0].src);
     else if (force || !cfg.snapshot) snap = toSnap(await defaultMonthly(), 'monthly 기본 데이터');
     if (snap && sig(snap) !== sig(cfg.snapshot)) {
       cfg.snapshot = snap;
-      if (local || force) await saveCfg();
+      if (cands.length || force) await saveCfg();
       return true;
     }
     return false;
@@ -262,9 +280,9 @@
     var cashTotal = cashPlan.reduce(function (s, p) { return s + p.amount; }, 0);
     var h = '<div class="cmp-wrap">';
     h += '<section class="panel"><div class="cmp-head"><div><h2>⚖️ 고정비 비교: 나가야 할 돈(monthly) vs 실제 나간 돈(daily)</h2>' +
-      '<p class="cmp-sub"><b>예정</b> = monthly 고정지출 관리에서 결제수단이 <b>카드</b>인 항목 합계 (' + cardPlan.length + '개 항목, 현금으로 낸 항목은 제외).<br>' +
+      '<p class="cmp-sub"><b>예정</b> = monthly 고정지출 관리에서 <b>[표시] 체크</b>되고 결제수단이 <b>카드</b>인 항목 합계 (' + cardPlan.length + '개 항목, 현금으로 낸 항목은 제외).<br>' +
       '<b>실제</b> = daily 에서 대분류가 <b>고정비</b>인 월별 내역 합계. 새 달(예: 12월) 내역이 생기면 자동으로 표가 추가됩니다.</p></div>' +
-      '<div><button type="button" class="cmp-btn" id="cmpSync">🔗 monthly 연동</button> <button type="button" class="cmp-btn" id="cmpRefresh">🔄 새로고침</button></div></div>';
+      '<div><button type="button" class="cmp-btn" id="cmpSync">🔗 monthly 동기화 (표시 체크 항목만)</button> <button type="button" class="cmp-btn" id="cmpRefresh">🔄 새로고침</button></div></div>';
 
     var latest = rows[rows.length - 1];
     h += '<div class="cmp-kpis">' +
@@ -278,7 +296,7 @@
 
     // 연결 설정 패널
     var snapInfo = data.snap ? (esc(data.snap.source) + ' · ' + new Date(data.snap.savedAt).toLocaleString('ko-KR')) : '-';
-    h += '<section class="panel"><h3>⚙️ 항목 설정 (monthly 연동)</h3><p class="cmp-note">monthly 고정지출 기준: ' + snapInfo + '<br>지급방식을 <b>현금 지급</b>으로 바꾸면 카드 비교에서 빠지고 현금 지급으로 표시됩니다. 연결 키워드는 daily 가맹점명·메모와 연결할 때 쓰며(쉼표로 구분, 비우면 기본값), 변경 즉시 저장됩니다.</p>' +
+    h += '<section class="panel"><h3>⚙️ 항목 설정 (monthly 연동)</h3><p class="cmp-note">monthly 고정지출 중 <b>[표시] 체크된 항목만</b> 불러옵니다 (' + data.snap.items.length + '개) · 기준: ' + snapInfo + '<br>지급방식을 <b>현금 지급</b>으로 바꾸면 카드 비교에서 빠지고 현금 지급으로 표시됩니다. 연결 키워드는 daily 가맹점명·메모와 연결할 때 쓰며(쉼표로 구분, 비우면 기본값), 변경 즉시 저장됩니다.</p>' +
       '<div class="cmp-tablewrap"><table class="cmp-table"><thead><tr><th>항목</th><th>monthly 결제수단</th><th>예정 금액</th><th class="t">지급방식</th><th class="t">연결 키워드</th></tr></thead><tbody>';
     data.snap.items.forEach(function (it) {
       var o = cfg.items[it.name] || {};
@@ -341,7 +359,7 @@
     if (btn) btn.addEventListener('click', function () { refresh(host, true); });
     var sb = host.querySelector('#cmpSync');
     if (sb) sb.addEventListener('click', async function () {
-      sb.disabled = true; sb.textContent = '연동 중…';
+      sb.disabled = true; sb.textContent = '동기화 중…';
       try { await syncMonthly(true); await saveCfg(); } catch (e) { alert(e.message || e); }
       loading = false; refresh(host, true);
     });
